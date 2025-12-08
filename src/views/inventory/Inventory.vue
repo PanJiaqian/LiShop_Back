@@ -251,11 +251,6 @@ const viewLogs = (item) => {
 </script>
 
 <style scoped lang="scss">
-.filter-bar {
-  display: flex;
-  gap: 12px;
-}
-
 .product-info {
   display: flex;
   align-items: center;

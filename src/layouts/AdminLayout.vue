@@ -29,7 +29,7 @@
                 v-model="field.value" 
                 class="form-input" 
               />
-              <select v-else-if="field.type === 'select'" v-model="field.value" class="form-input">
+              <select v-else-if="field.type === 'select'" v-model="field.value" class="form-select">
                 <option v-for="opt in field.options" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
               </select>
             </div>
@@ -240,6 +240,8 @@ body {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 12px;
   
   h3 {
     margin: 0;
@@ -250,19 +252,24 @@ body {
 }
 
 /* Form Inputs */
-.form-input {
+.form-input, .form-select {
   width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
+  padding: 10px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
   font-size: 14px;
-  transition: border-color 0.2s;
+  transition: all 0.2s;
   box-sizing: border-box;
+  background-color: #fff;
+  
+  &:hover {
+    border-color: #cbd5e1;
+  }
   
   &:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
   }
 }
 
@@ -275,28 +282,41 @@ body {
   input {
     width: 200px;
   }
+  
+  select {
+    width: auto;
+    min-width: 120px;
+  }
 }
 
 /* Buttons */
 .btn-sm, .btn-lg, .btn-link {
-  border: 1px solid #e5e7eb;
+  border: 1px solid transparent;
   background: #fff;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-weight: 500;
+  outline: none;
 }
 
 .btn-sm {
-  padding: 6px 12px;
-  font-size: 13px;
+  padding: 8px 16px;
+  font-size: 14px;
+  border: 1px solid #e2e8f0;
   
   &:hover {
-    background: #f9fafb;
-    border-color: #d1d5db;
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  }
+  
+  &:active {
+    transform: translateY(0);
   }
   
   &.active {
@@ -309,14 +329,28 @@ body {
     background: var(--primary-color);
     color: #fff;
     border-color: var(--primary-color);
-    &:hover { background: var(--primary-hover); }
+    box-shadow: 0 1px 2px rgba(37, 99, 235, 0.1);
+    
+    &:hover { 
+      background: var(--primary-hover);
+      border-color: var(--primary-hover);
+      box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2), 0 2px 4px -1px rgba(37, 99, 235, 0.1);
+    }
+    
+    &:active {
+      background: var(--primary-hover);
+      box-shadow: none;
+    }
   }
   
   &.secondary {
-    background: #f3f4f6;
-    color: #374151;
-    border-color: #e5e7eb;
-    &:hover { background: #e5e7eb; }
+    background: #f1f5f9;
+    color: #475569;
+    border-color: transparent;
+    &:hover { 
+      background: #e2e8f0;
+      color: #1e293b;
+    }
   }
 }
 

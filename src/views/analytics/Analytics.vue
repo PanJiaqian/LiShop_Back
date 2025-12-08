@@ -4,15 +4,12 @@
     
     <div class="card" style="margin-bottom: 24px;">
       <div class="filter-bar">
-        <div class="form-group" style="margin-bottom: 0; margin-right: 16px;">
-          <label style="margin-right: 8px;">时间范围</label>
-          <select class="form-input" style="width: 150px;">
-            <option>最近7天</option>
-            <option>最近30天</option>
-            <option>本季度</option>
-            <option>本年度</option>
-          </select>
-        </div>
+        <select class="form-select" style="width: 150px;">
+          <option>最近7天</option>
+          <option>最近30天</option>
+          <option>本季度</option>
+          <option>本年度</option>
+        </select>
         <button class="btn-sm primary">生成报表</button>
         <button class="btn-sm" style="margin-left: auto;">导出数据</button>
       </div>
@@ -155,19 +152,6 @@ export default {
 </script>
 
 <style scoped>
-.card-header {
-  margin-bottom: 20px;
-  border-bottom: 1px solid #e5e7eb;
-  padding-bottom: 12px;
-}
-
-.card-header h3 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #111827;
-}
-
 .chart-container {
   height: 240px;
   display: flex;

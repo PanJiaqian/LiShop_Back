@@ -121,10 +121,6 @@ export default {
     font-weight: 500;
     color: #333;
   }
-  
-  .form-input, .form-select {
-    width: 100%;
-  }
 }
 
 .upload-box {
@@ -190,7 +186,7 @@ export default {
   }
   
   input:checked + .slider {
-    background-color: #1890ff;
+    background-color: var(--primary-color);
   }
   
   input:checked + .slider:before {

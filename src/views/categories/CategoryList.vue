@@ -207,27 +207,6 @@ const addAttribute = () => {
 </script>
 
 <style scoped lang="scss">
-.grid {
-  display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  gap: 24px;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  border-bottom: 1px solid #f0f0f0;
-  padding-bottom: 12px;
-  
-  h3 {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-  }
-}
-
 .category-tree {
   .tree-node {
     .node-content {
@@ -342,10 +321,5 @@ const addAttribute = () => {
     font-size: 48px;
     margin-bottom: 16px;
   }
-}
-
-.actions {
-  display: flex;
-  gap: 12px;
 }
 </style>

@@ -210,20 +210,9 @@ export default {
   }
 }
 
-.btn-sm {
-  padding: 4px 12px;
-  border: 1px solid #e5e7eb;
-  background: #fff;
-  border-radius: 6px;
-  font-size: 12px;
-  cursor: pointer;
-  margin-left: 8px;
-  
-  &.active {
-    background: var(--primary-color);
-    color: #fff;
-    border-color: var(--primary-color);
-  }
+.card-actions {
+  display: flex;
+  gap: 8px;
 }
 
 .chart-placeholder {

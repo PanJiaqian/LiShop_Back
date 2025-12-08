@@ -168,52 +168,6 @@ const deleteAdmin = (admin) => {
 </script>
 
 <style scoped lang="scss">
-.filter-bar {
-  display: flex;
-  gap: 12px;
-}
-.form-input, .form-select {
-  height: 32px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  padding: 0 12px;
-  font-size: 14px;
-  outline: none;
-  &:focus { border-color: var(--primary-color); }
-}
-.btn-sm {
-  padding: 4px 12px;
-  font-size: 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  border: 1px solid transparent;
-  &.primary {
-    background: var(--primary-color);
-    color: #fff;
-    &:hover { opacity: 0.9; }
-  }
-  &.active {
-    background: var(--primary-color);
-    color: #fff;
-  }
-  &:disabled {
-    background: #f3f4f6;
-    color: #9ca3af;
-    cursor: not-allowed;
-  }
-}
-.btn-link {
-  border: none;
-  background: none;
-  color: var(--primary-color);
-  cursor: pointer;
-  font-size: 13px;
-  margin-right: 8px;
-  padding: 0;
-  &:hover { text-decoration: underline; }
-  &.danger { color: #ef4444; }
-}
-
 .tag {
   display: inline-block;
   padding: 2px 8px;
@@ -238,4 +192,6 @@ const deleteAdmin = (admin) => {
     background: #ff4d4f;
   }
 }
+
+
 </style>

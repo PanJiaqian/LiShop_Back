@@ -24,7 +24,7 @@
         <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 20px;">
           <div class="form-group">
             <label>商品分类</label>
-            <select class="form-input" v-model="form.category">
+            <select class="form-select" v-model="form.category">
               <option value="">请选择分类</option>
               <option value="1">电子产品 / 手机</option>
               <option value="2">电子产品 / 配件</option>
@@ -33,7 +33,7 @@
           </div>
           <div class="form-group">
             <label>商品品牌</label>
-            <select class="form-input" v-model="form.brand">
+            <select class="form-select" v-model="form.brand">
               <option value="">请选择品牌</option>
               <option value="1">Apple</option>
               <option value="2">Huawei</option>
@@ -91,7 +91,7 @@
         </div>
         <div class="form-group">
           <label>运费模板</label>
-          <select class="form-input" v-model="form.shippingTemplate">
+          <select class="form-select" v-model="form.shippingTemplate">
             <option value="1">全国包邮</option>
             <option value="2">按重量计费</option>
           </select>
@@ -194,19 +194,6 @@ export default {
 </script>
 
 <style scoped>
-.card-header {
-  margin-bottom: 20px;
-  border-bottom: 1px solid #e5e7eb;
-  padding-bottom: 12px;
-}
-
-.card-header h3 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #111827;
-}
-
 .form-group {
   margin-bottom: 20px;
 }

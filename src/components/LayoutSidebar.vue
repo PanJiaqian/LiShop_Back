@@ -13,10 +13,6 @@
           <span class="icon">📦</span>
           <span class="text">商品列表</span>
         </router-link>
-        <router-link class="menu-item" to="/products/create">
-          <span class="icon">➕</span>
-          <span class="text">新建商品</span>
-        </router-link>
         <router-link class="menu-item" to="/categories">
           <span class="icon">🗂️</span>
           <span class="text">类目管理</span>

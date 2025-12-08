@@ -235,28 +235,14 @@ const savePermissions = () => {
     }
     
     .role-actions {
-      opacity: 0;
-      transition: opacity 0.3s;
-    }
-    
-    &:hover .role-actions {
-      opacity: 1;
-    }
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  
+  &:hover .role-actions {
+    opacity: 1;
   }
 }
-
-.btn-sm {
-  padding: 4px 12px;
-  font-size: 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  border: 1px solid transparent;
-  
-  &.primary {
-    background: var(--primary-color);
-    color: #fff;
-    &:hover { opacity: 0.9; }
-  }
 }
 
 .btn-icon {

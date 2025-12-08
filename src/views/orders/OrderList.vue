@@ -211,21 +211,6 @@ export default {
   &:hover { color: var(--primary-color); }
   &.active { color: var(--primary-color); border-bottom-color: var(--primary-color); font-weight: 500; }
 }
-.filter-bar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-.form-input {
-  height: 32px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  padding: 0 12px;
-  font-size: 14px;
-  outline: none;
-  &:focus { border-color: var(--primary-color); }
-}
 .separator {
   color: #9ca3af;
 }
@@ -244,31 +229,5 @@ export default {
 .shipping-fee {
   font-size: 12px;
   color: #9ca3af;
-}
-.actions {
-  display: flex;
-  gap: 8px;
-}
-.btn-link {
-  border: none;
-  background: none;
-  color: var(--primary-color);
-  cursor: pointer;
-  font-size: 13px;
-  padding: 0;
-  
-  &.danger { color: #ef4444; }
-  &:hover { text-decoration: underline; }
-}
-.pagination {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid #f3f4f6;
-  
-  .page-info { font-size: 13px; color: #6b7280; }
-  .page-btns { display: flex; }
 }
 </style>

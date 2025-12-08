@@ -146,21 +146,6 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.filter-bar {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-.form-input, .form-select {
-  height: 32px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  padding: 0 12px;
-  font-size: 14px;
-  outline: none;
-  color: #374151;
-  &:focus { border-color: var(--primary-color); }
-}
 .product-thumb {
   width: 40px;
   height: 40px;
@@ -174,31 +159,5 @@ export default {
 .product-name-cell {
   .name { font-weight: 500; color: #111827; }
   .code { font-size: 12px; color: #6b7280; margin-top: 2px; }
-}
-.actions {
-  display: flex;
-  gap: 8px;
-}
-.btn-link {
-  border: none;
-  background: none;
-  color: var(--primary-color);
-  cursor: pointer;
-  font-size: 13px;
-  padding: 0;
-  
-  &.danger { color: #ef4444; }
-  &:hover { text-decoration: underline; }
-}
-.pagination {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid #f3f4f6;
-  
-  .page-info { font-size: 13px; color: #6b7280; }
-  .page-btns { display: flex; }
 }
 </style>
