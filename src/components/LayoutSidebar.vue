@@ -2,94 +2,93 @@
   <aside class="sidebar" :class="{ collapsed }">
     <nav class="menu">
       <div class="menu-group">
-        <router-link class="menu-item" to="/dashboard">
-          <span class="icon">🏠</span>
-          <span class="text">仪表盘</span>
-        </router-link>
-      </div>
-      <div class="menu-group">
         <div class="menu-group-title">商品</div>
-        <router-link class="menu-item" to="/products">
-          <span class="icon">📦</span>
-          <span class="text">商品列表</span>
+        <router-link to="/products" custom v-slot="{ navigate, href, isActive }">
+          <a :class="['menu-item', { 'router-link-active': isActive }]" :href="href" @click="handleLink($event, navigate)">
+            <span class="icon">📦</span>
+            <span class="text">商品列表</span>
+          </a>
         </router-link>
-        <router-link class="menu-item" to="/categories">
-          <span class="icon">🗂️</span>
-          <span class="text">类目管理</span>
-        </router-link>
-        <router-link class="menu-item" to="/inventory">
-          <span class="icon">📊</span>
-          <span class="text">库存管理</span>
+        <router-link to="/categories" custom v-slot="{ navigate, href, isActive }">
+          <a :class="['menu-item', { 'router-link-active': isActive }]" :href="href" @click="handleLink($event, navigate)">
+            <span class="icon">🗂️</span>
+            <span class="text">类目管理</span>
+          </a>
         </router-link>
       </div>
       <div class="menu-group">
         <div class="menu-group-title">交易</div>
-        <router-link class="menu-item" to="/orders">
-          <span class="icon">🧾</span>
-          <span class="text">订单管理</span>
+        <router-link to="/orders" custom v-slot="{ navigate, href, isActive }">
+          <a :class="['menu-item', { 'router-link-active': isActive }]" :href="href" @click="handleLink($event, navigate)">
+            <span class="icon">🧾</span>
+            <span class="text">订单管理</span>
+          </a>
         </router-link>
-        <router-link class="menu-item" to="/users">
-          <span class="icon">👥</span>
-          <span class="text">用户管理</span>
+        <router-link to="/analytics/transaction-stats" custom v-slot="{ navigate, href, isActive }">
+          <a :class="['menu-item', { 'router-link-active': isActive }]" :href="href" @click="handleLink($event, navigate)">
+            <span class="icon">📊</span>
+            <span class="text">交易统计</span>
+          </a>
+        </router-link>
+        <router-link to="/users" custom v-slot="{ navigate, href, isActive }">
+          <a :class="['menu-item', { 'router-link-active': isActive }]" :href="href" @click="handleLink($event, navigate)">
+            <span class="icon">👥</span>
+            <span class="text">用户管理</span>
+          </a>
         </router-link>
       </div>
       <div class="menu-group">
         <div class="menu-group-title">权限</div>
-        <router-link class="menu-item" to="/admins">
-          <span class="icon">🛡️</span>
-          <span class="text">管理员</span>
+        <router-link to="/admins" custom v-slot="{ navigate, href, isActive }">
+          <a :class="['menu-item', { 'router-link-active': isActive }]" :href="href" @click="handleAdminNavigate($event, navigate)">
+            <span class="icon">🛡️</span>
+            <span class="text">管理员</span>
+          </a>
         </router-link>
-        <router-link class="menu-item" to="/admins/roles">
-          <span class="icon">🔑</span>
-          <span class="text">角色权限</span>
+        <router-link to="/admins/roles" custom v-slot="{ navigate, href, isActive }">
+          <a :class="['menu-item', { 'router-link-active': isActive }]" :href="href" @click="handleLink($event, navigate)">
+            <span class="icon">🔑</span>
+            <span class="text">角色权限</span>
+          </a>
         </router-link>
       </div>
       <div class="menu-group">
         <div class="menu-group-title">营销</div>
-        <router-link class="menu-item" to="/marketing/coupons">
-          <span class="icon">🎟️</span>
-          <span class="text">优惠券</span>
-        </router-link>
-        <router-link class="menu-item" to="/marketing/campaigns">
-          <span class="icon">📣</span>
-          <span class="text">活动管理</span>
+        <router-link to="/pricing/strategies" custom v-slot="{ navigate, href, isActive }">
+          <a :class="['menu-item', { 'router-link-active': isActive }]" :href="href" @click="handleLink($event, navigate)">
+            <span class="icon">💵</span>
+            <span class="text">价格策略</span>
+          </a>
         </router-link>
       </div>
       <div class="menu-group">
         <div class="menu-group-title">内容</div>
-        <router-link class="menu-item" to="/content/banners">
-          <span class="icon">🖼️</span>
-          <span class="text">Banner</span>
+        <router-link to="/content/carousel" custom v-slot="{ navigate, href, isActive }">
+          <a :class="['menu-item', { 'router-link-active': isActive }]" :href="href" @click="handleLink($event, navigate)">
+            <span class="icon">🎠</span>
+            <span class="text">轮播管理</span>
+          </a>
+        </router-link>
+        <router-link to="/content/recommendations" custom v-slot="{ navigate, href, isActive }">
+          <a :class="['menu-item', { 'router-link-active': isActive }]" :href="href" @click="handleLink($event, navigate)">
+            <span class="icon">⭐</span>
+            <span class="text">猜你喜欢</span>
+          </a>
+        </router-link>
+        <router-link to="/content/announcements" custom v-slot="{ navigate, href, isActive }">
+          <a :class="['menu-item', { 'router-link-active': isActive }]" :href="href" @click="handleLink($event, navigate)">
+            <span class="icon">📢</span>
+            <span class="text">公告管理</span>
+          </a>
         </router-link>
       </div>
       <div class="menu-group">
-        <div class="menu-group-title">物流与支付</div>
-        <router-link class="menu-item" to="/shipping/templates">
-          <span class="icon">🚚</span>
-          <span class="text">运费模板</span>
-        </router-link>
-        <router-link class="menu-item" to="/payments/channels">
-          <span class="icon">💳</span>
-          <span class="text">支付渠道</span>
-        </router-link>
-      </div>
-      <div class="menu-group">
-        <div class="menu-group-title">统计与系统</div>
-        <router-link class="menu-item" to="/analytics">
-          <span class="icon">📈</span>
-          <span class="text">报表分析</span>
-        </router-link>
-        <router-link class="menu-item" to="/settings">
-          <span class="icon">⚙️</span>
-          <span class="text">系统设置</span>
-        </router-link>
-        <router-link class="menu-item" to="/system/audit">
-          <span class="icon">📝</span>
-          <span class="text">审计日志</span>
-        </router-link>
-        <router-link class="menu-item" to="/messages">
-          <span class="icon">✉️</span>
-          <span class="text">消息工单</span>
+        <div class="menu-group-title">其他</div>
+        <router-link to="/messages" custom v-slot="{ navigate, href, isActive }">
+          <a :class="['menu-item', { 'router-link-active': isActive }]" :href="href" @click="handleLink($event, navigate)">
+            <span class="icon">✉️</span>
+            <span class="text">消息工单</span>
+          </a>
         </router-link>
       </div>
     </nav>
@@ -97,12 +96,104 @@
 </template>
 
 <script>
+import { inject } from 'vue'
+import { loginAdmin, listAdmins, useAuthStore } from '@/api/admin.js'
+
 export default {
   name: 'LayoutSidebar',
   props: {
     collapsed: {
       type: Boolean,
       default: false
+    }
+  },
+  setup() {
+    const showModal = inject('showModal')
+    return { showModal }
+  },
+  methods: {
+    handleLink (e, navigate) {
+      const auth = useAuthStore()
+      if (!auth.isLoggedIn) {
+        e.preventDefault()
+        this.openLogin()
+        return
+      }
+      navigate(e)
+    },
+    handleAdminNavigate (e, navigate) {
+      const auth = useAuthStore()
+      if (!auth.isLoggedIn) {
+        e.preventDefault()
+        this.openLogin()
+        return
+      }
+      const role = String((auth.user && auth.user.role) || '').toUpperCase().trim()
+      if (role !== 'SUPER') {
+        e.preventDefault()
+        this.showModal({
+          type: 'confirm',
+          title: '提示',
+          message: '此账号没有权限'
+        })
+        return
+      }
+      navigate(e)
+    },
+    openLogin () {
+      this.showModal({
+        type: 'form',
+        title: '管理员登录',
+        className: 'login-modal',
+        fields: {
+          phone: { label: '手机号', type: 'text', value: '' },
+          password: { label: '密码', type: 'password', value: '' }
+        },
+        onConfirm: async (fields) => {
+          const phone = (fields.phone && fields.phone.value) || ''
+          const password = (fields.password && fields.password.value) || ''
+          try {
+            const res = await loginAdmin({ phone, password })
+            const msg = (res && res.message) || '登录成功'
+            this.showModal({ type: 'confirm', title: '提示', message: msg })
+            try {
+              const auth = useAuthStore()
+              const listRes = await listAdmins({ admin_id: '', page: 1, page_size: 20, sort_by: 'id', sort_order: '' })
+              const items = (listRes && listRes.data && listRes.data.items) || []
+              const self = items.find(i => i.phone === (auth.user && auth.user.phone))
+              if (self && self.role) {
+                auth.user = { ...(auth.user || {}), role: self.role }
+                localStorage.setItem('shopback_admin_user', JSON.stringify(auth.user))
+              }
+            } catch (e) {}
+          } catch (e) {
+            this.showModal({ type: 'confirm', title: '提示', message: '登录失败' })
+          }
+        }
+      })
+    },
+    handleNavClick (e) {
+      const auth = useAuthStore()
+      if (!auth.isLoggedIn) {
+        e.preventDefault()
+        this.openLogin()
+      }
+    },
+    handleAdminClick (e) {
+      const auth = useAuthStore()
+      if (!auth.isLoggedIn) {
+        e.preventDefault()
+        this.openLogin()
+        return
+      }
+      if (auth.user && auth.user.role !== 'SUPER') {
+        e.preventDefault()
+        this.showModal({
+          type: 'confirm',
+          title: '提示',
+          message: '此账号没有权限'
+        })
+      }
     }
   }
 }

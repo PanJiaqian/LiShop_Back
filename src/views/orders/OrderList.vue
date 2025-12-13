@@ -230,4 +230,10 @@ export default {
   font-size: 12px;
   color: #9ca3af;
 }
+
+.data-table th, .data-table td {
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
+}
 </style>

@@ -294,6 +294,7 @@ export default {
 .product-cell {
   display: flex;
   align-items: center;
+  justify-content: center;
   
   .product-img-placeholder {
     width: 40px;
@@ -312,6 +313,12 @@ export default {
     font-size: 12px;
     color: #999;
   }
+}
+
+.data-table th, .data-table td {
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
 }
 
 .order-total {

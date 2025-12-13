@@ -10,7 +10,7 @@
 
     <!-- Global Modal Component -->
     <div v-if="modal.show" class="modal-overlay" @click="closeModal">
-      <div class="modal-container" @click.stop>
+      <div class="modal-container" :class="modal.className" @click.stop>
         <div class="modal-header">
           <h3>{{ modal.title }}</h3>
           <button class="close-btn" @click="closeModal">&times;</button>
@@ -19,14 +19,27 @@
           <div v-if="modal.type === 'confirm'" class="modal-message">
             {{ modal.message }}
           </div>
+          <div v-else-if="modal.type === 'detail'" class="modal-detail">
+            <div v-for="(item, idx) in modal.data" :key="idx" class="detail-row">
+              <div class="detail-label">{{ item.label }}</div>
+              <div class="detail-value">{{ item.value }}</div>
+            </div>
+          </div>
           <div v-else-if="modal.type === 'form'" class="modal-form">
             <!-- Dynamic form fields based on modal.fields -->
             <div v-for="(field, key) in modal.fields" :key="key" class="form-group">
               <label>{{ field.label }}</label>
               <input 
-                v-if="field.type === 'text' || field.type === 'number'" 
+                v-if="field.type === 'text' || field.type === 'number' || field.type === 'password' || field.type === 'email'" 
                 :type="field.type" 
                 v-model="field.value" 
+                class="form-input" 
+              />
+              <input 
+                v-else-if="field.type === 'file'" 
+                type="file" 
+                :multiple="field.multiple"
+                @change="(e) => { field.files = e.target.files; if(field.onChange) field.onChange(e) }"
                 class="form-input" 
               />
               <select v-else-if="field.type === 'select'" v-model="field.value" class="form-select">
@@ -40,6 +53,9 @@
           <button class="btn-sm primary" @click="confirmModal">确定</button>
         </div>
       </div>
+    </div>
+    <div class="toast-container">
+      <div v-for="(t, idx) in toasts" :key="idx" class="toast">{{ t }}</div>
     </div>
   </div>
 </template>
@@ -60,11 +76,13 @@ export default {
   setup() {
     const modal = reactive({
       show: false,
-      type: 'confirm', // 'confirm' or 'form'
+      type: 'confirm', // 'confirm', 'form', 'detail'
       title: '',
       message: '',
       fields: {},
-      onConfirm: null
+      data: [],
+      onConfirm: null,
+      className: ''
     })
 
     const showModal = (options) => {
@@ -72,7 +90,9 @@ export default {
       modal.title = options.title || '提示'
       modal.message = options.message || ''
       modal.fields = options.fields || {}
+      modal.data = options.data || []
       modal.onConfirm = options.onConfirm
+      modal.className = options.className || ''
       modal.show = true
     }
 
@@ -88,11 +108,33 @@ export default {
     }
 
     provide('showModal', showModal)
+    const toasts = reactive([])
+    const showToast = (msg) => {
+      const m = String(msg || '')
+      if (!m) return
+      toasts.push(m)
+      setTimeout(() => {
+        const i = toasts.indexOf(m)
+        if (i >= 0) toasts.splice(i, 1)
+      }, 2000)
+    }
+    const confirmDialog = (options) => {
+      showModal({
+        type: 'confirm',
+        title: (options && options.title) || '提示',
+        message: (options && (options.content || options.message)) || '',
+        onConfirm: options && options.onConfirm,
+        className: options && options.className || ''
+      })
+    }
+    provide('showToast', showToast)
+    provide('confirmDialog', confirmDialog)
 
     return {
       modal,
       closeModal,
-      confirmModal
+      confirmModal,
+      toasts
     }
   },
   methods: {
@@ -501,6 +543,9 @@ body {
   max-width: 90%;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   animation: modalFadeIn 0.2s ease-out;
+  display: flex;
+  flex-direction: column;
+  max-height: 85vh;
 }
 
 @keyframes modalFadeIn {
@@ -514,6 +559,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
   
   h3 {
     margin: 0;
@@ -538,11 +584,42 @@ body {
 
 .modal-body {
   padding: 24px;
+  overflow-y: auto;
+  flex: 1;
   
   .modal-message {
     color: #4b5563;
     font-size: 15px;
     line-height: 1.5;
+  }
+
+  .modal-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .detail-row {
+    display: flex;
+    border-bottom: 1px solid #f3f4f6;
+    padding-bottom: 8px;
+    
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  .detail-label {
+    width: 100px;
+    color: #6b7280;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+
+  .detail-value {
+    color: #111827;
+    flex: 1;
+    word-break: break-all;
   }
   
   .form-group {
@@ -566,5 +643,81 @@ body {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+  flex-shrink: 0;
+}
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 1100;
+}
+.toast {
+  background: #111827;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+  font-size: 13px;
 }
 </style>
+.modal-container.login-modal {
+  width: 400px;
+  border: none;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+.login-modal .modal-header {
+  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+  color: #fff;
+  padding: 20px 24px;
+}
+.login-modal .modal-header h3 {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.login-modal .modal-header .close-btn {
+  color: rgba(255, 255, 255, 0.8);
+}
+.login-modal .modal-header .close-btn:hover {
+  color: #fff;
+}
+.login-modal .modal-body {
+  padding: 32px 32px 24px;
+}
+.login-modal .modal-footer {
+  background: #f9fafb;
+  padding: 16px 32px 24px;
+  border-top: none;
+  justify-content: center;
+}
+.login-modal .modal-footer button {
+  width: 100%;
+  justify-content: center;
+  padding: 10px 20px;
+  font-size: 15px;
+  border-radius: 8px;
+}
+.login-modal .form-group {
+  margin-bottom: 20px;
+}
+.login-modal .form-group label {
+  color: #4b5563;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.login-modal .form-group .form-input {
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  padding: 12px 16px;
+  background-color: #f9fafb;
+  transition: all 0.2s;
+}
+.login-modal .form-group .form-input:focus {
+  background-color: #fff;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+}

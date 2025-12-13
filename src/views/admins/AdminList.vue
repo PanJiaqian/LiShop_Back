@@ -20,32 +20,34 @@
       <table class="data-table">
         <thead>
           <tr>
+            <th>管理员ID</th>
             <th>用户名</th>
             <th>姓名</th>
+            <th>手机号</th>
             <th>角色</th>
-            <th>最后登录时间</th>
-            <th>最后登录IP</th>
             <th>状态</th>
+            <th>创建时间</th>
             <th width="150">操作</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="admin in admins" :key="admin.id">
+            <td>{{ admin.admins_id }}</td>
             <td>{{ admin.username }}</td>
             <td>{{ admin.name }}</td>
+            <td>{{ admin.phone }}</td>
             <td>
-              <span class="tag">{{ admin.role }}</span>
+              <span class="tag">{{ admin.role_display }}</span>
             </td>
-            <td>{{ admin.lastLoginTime }}</td>
-            <td>{{ admin.lastLoginIp }}</td>
             <td>
-              <span class="status-dot" :class="admin.status === '启用' ? 'active' : 'inactive'"></span>
-              {{ admin.status }}
+              <span class="badge" :class="admin.status === 1 ? 'success' : 'gray'">{{ admin.status === 1 ? '启用' : '禁用' }}</span>
             </td>
+            <td>{{ admin.created_at }}</td>
             <td>
               <div class="actions">
+                <button class="btn-link" @click="viewAdmin(admin)">详情</button>
                 <button class="btn-link" @click="editAdmin(admin)">编辑</button>
-                <button class="btn-link danger" v-if="admin.id !== 1" @click="deleteAdmin(admin)">删除</button>
+                <!-- <button class="btn-link danger" v-if="admin.id !== 1" @click="deleteAdmin(admin)">删除</button> -->
               </div>
             </td>
           </tr>
@@ -53,7 +55,7 @@
       </table>
       
       <div class="pagination">
-        <span class="page-info">共 5 条记录</span>
+        <span class="page-info">共 {{ admins.length }} 条记录</span>
         <div class="page-btns">
           <button class="btn-sm" disabled>上一页</button>
           <button class="btn-sm active">1</button>
@@ -65,7 +67,8 @@
 </template>
 
 <script setup>
-import { ref, inject } from 'vue'
+import { ref, inject, onMounted } from 'vue'
+import { listAdmins, createAdmin, updateAdmin, updateAdminStatus, updateAdminPermissions, useAuthStore } from '@/api/admin.js'
 
 const showModal = inject('showModal')
 const showToast = inject('showToast')
@@ -76,82 +79,124 @@ const filter = ref({
   role: ''
 })
 
-const admins = ref([
-  { id: 1, username: 'admin', name: '系统管理员', role: '超级管理员', lastLoginTime: '2025-12-04 09:00:00', lastLoginIp: '192.168.1.10', status: '启用' },
-  { id: 2, username: 'editor01', name: '张三', role: '内容编辑', lastLoginTime: '2025-12-03 14:20:00', lastLoginIp: '192.168.1.12', status: '启用' },
-  { id: 3, username: 'service01', name: '李四', role: '客服专员', lastLoginTime: '2025-12-04 08:30:00', lastLoginIp: '192.168.1.15', status: '启用' },
-  { id: 4, username: 'finance', name: '王五', role: '财务专员', lastLoginTime: '2025-12-02 17:00:00', lastLoginIp: '192.168.1.20', status: '禁用' },
-  { id: 5, username: 'test', name: '测试员', role: '普通管理员', lastLoginTime: '2025-11-30 10:00:00', lastLoginIp: '192.168.1.30', status: '启用' }
-])
+const admins = ref([])
 
-const handleSearch = () => {
-  showToast('搜索已更新')
+const auth = useAuthStore()
+
+const formatTime = (t) => {
+  if (!t) return ''
+  const d = new Date(t)
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
+
+const fetchAdmins = async () => {
+  try {
+    const res = await listAdmins({ admin_id: '', page: 1, page_size: 20, sort_by: 'id', sort_order: '' })
+    const items = (res && res.data && res.data.items) || []
+    admins.value = items.map((it, idx) => ({
+      id: idx + 1,
+      admins_id: it.admins_id,
+      username: it.username,
+      name: it.real_name,
+      role: it.role, // raw role code
+      role_display: it.role === 'SUB' ? '子管理员' : (it.role === 'SUPER' ? '超级管理员' : it.role),
+      created_at: formatTime(it.created_at),
+      status: it.status,
+      phone: it.phone,
+      permissions: it.permissions || []
+    }))
+  } catch (e) {
+    showToast('获取管理员列表失败')
+  }
+}
+
+const handleSearch = async () => {
+  await fetchAdmins()
+}
+
+const viewAdmin = (admin) => {
+  const rows = [
+    { label: '管理员ID', value: admin.admins_id },
+    { label: '用户名', value: admin.username },
+    { label: '手机号', value: admin.phone },
+    { label: '姓名', value: admin.name },
+    { label: '角色', value: admin.role_display },
+    { label: '状态', value: admin.status === 1 ? '启用' : '禁用' },
+    { label: '创建时间', value: admin.created_at },
+    { label: '权限', value: admin.permissions.join(', ') || '无' }
+  ]
+  showModal({ type: 'detail', title: '管理员详情', data: rows })
 }
 
 const addAdmin = () => {
   showModal({
+    type: 'form',
     title: '添加管理员',
-    content: `
-      <div class="form-group">
-        <label>用户名</label>
-        <input type="text" class="form-input" placeholder="请输入用户名">
-      </div>
-      <div class="form-group">
-        <label>姓名</label>
-        <input type="text" class="form-input" placeholder="请输入真实姓名">
-      </div>
-      <div class="form-group">
-        <label>角色</label>
-        <select class="form-select">
-          <option>请选择角色</option>
-          <option>超级管理员</option>
-          <option>内容编辑</option>
-          <option>客服专员</option>
-          <option>财务专员</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>密码</label>
-        <input type="password" class="form-input" placeholder="请输入密码">
-      </div>
-    `,
-    onConfirm: () => {
-      showToast('管理员添加成功')
+    fields: {
+      username: { label: '用户名', type: 'text', value: '' },
+      real_name: { label: '姓名', type: 'text', value: '' },
+      phone: { label: '手机号', type: 'text', value: '' },
+      password: { label: '密码', type: 'password', value: '' },
+      role: { label: '角色', type: 'select', value: 'SUB', options: [
+        { label: '普通管理员', value: 'SUB' },
+        { label: '超级管理员', value: 'SUPER' }
+      ]}
+    },
+    onConfirm: async (fields) => {
+      try {
+        const res = await createAdmin({
+          username: fields.username.value,
+          phone: fields.phone.value,
+          password: fields.password.value,
+          real_name: fields.real_name.value,
+          role: fields.role.value,
+          permissions: ['user.create', 'categories.update', 'user.list'] // Default permissions
+        })
+        const msg = (res && res.message) || '管理员添加成功'
+        showToast(msg)
+        await fetchAdmins()
+      } catch (e) {
+        showToast('管理员添加失败')
+      }
     }
   })
 }
 
 const editAdmin = (admin) => {
   showModal({
+    type: 'form',
     title: '编辑管理员',
-    content: `
-      <div class="form-group">
-        <label>用户名</label>
-        <input type="text" class="form-input" value="${admin.username}" disabled>
-      </div>
-      <div class="form-group">
-        <label>姓名</label>
-        <input type="text" class="form-input" value="${admin.name}">
-      </div>
-      <div class="form-group">
-        <label>角色</label>
-        <select class="form-select">
-          <option ${admin.role === '超级管理员' ? 'selected' : ''}>超级管理员</option>
-          <option ${admin.role === '内容编辑' ? 'selected' : ''}>内容编辑</option>
-          <option ${admin.role === '客服专员' ? 'selected' : ''}>客服专员</option>
-          <option ${admin.role === '财务专员' ? 'selected' : ''}>财务专员</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>状态</label>
-        <select class="form-select">
-          <option ${admin.status === '启用' ? 'selected' : ''}>启用</option>
-          <option ${admin.status === '禁用' ? 'selected' : ''}>禁用</option>
-        </select>
-      </div>
-    `,
-    onConfirm: () => {
-      showToast('管理员信息已更新')
+    fields: {
+      username: { label: '用户名', type: 'text', value: admin.username },
+      admins_id: { label: '管理员ID', type: 'text', value: admin.admins_id },
+      real_name: { label: '姓名', type: 'text', value: admin.name },
+      phone: { label: '手机号', type: 'text', value: admin.phone },
+      status: { label: '状态', type: 'select', value: admin.status === '启用' ? '1' : '0', options: [
+        { label: '启用', value: '1' },
+        { label: '禁用', value: '0' }
+      ]}
+    },
+    onConfirm: async (fields) => {
+      try {
+        const res = await updateAdmin({
+          username: fields.username.value,
+          admin_id: fields.admins_id.value,
+          phone: fields.phone.value,
+          real_name: fields.real_name.value
+        })
+        const statusRes = await updateAdminStatus({
+          admin_id: fields.admins_id.value,
+          status: fields.status.value
+        })
+        // Permissions update can be added if we have a permission selector
+        
+        const msg = (res && res.message) || (statusRes && statusRes.message) || '管理员信息已更新'
+        showToast(msg)
+        await fetchAdmins()
+      } catch (e) {
+        showToast('管理员更新失败')
+      }
     }
   })
 }
@@ -165,6 +210,12 @@ const deleteAdmin = (admin) => {
     }
   })
 }
+
+onMounted(async () => {
+  if (auth.isLoggedIn) {
+    await fetchAdmins()
+  }
+})
 </script>
 
 <style scoped lang="scss">
@@ -177,20 +228,60 @@ const deleteAdmin = (admin) => {
   color: #666;
 }
 
-.status-dot {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  margin-right: 4px;
-  
-  &.active {
-    background: #52c41a;
-  }
-  
-  &.inactive {
-    background: #ff4d4f;
-  }
+.badge.success {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.badge.gray {
+  background: #f3f4f6;
+  color: #6b7280;
+  border: 1px solid #e5e7eb;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.data-table th {
+  background: #f9fafb;
+  padding: 12px 16px;
+  text-align: center;
+  font-weight: 500;
+  color: #6b7280;
+  border-bottom: 1px solid #e5e7eb;
+}
+.data-table td {
+  padding: 16px;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: middle;
+  text-align: center;
+  white-space: nowrap;
+}
+.data-table tr:hover td {
+  background-color: #f9fafb;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+.btn-link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #3b82f6;
+  cursor: pointer;
+  font-size: 14px;
+}
+.btn-link:hover {
+  text-decoration: underline;
 }
 
 

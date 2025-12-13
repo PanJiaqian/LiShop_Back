@@ -5,17 +5,10 @@
     <!-- 筛选栏 -->
     <div class="card" style="margin-bottom: 24px;">
       <div class="filter-bar">
-        <input type="text" class="form-input" placeholder="用户昵称/手机号/邮箱" v-model="filter.keyword" />
-        <select class="form-select" v-model="filter.level">
-          <option value="">会员等级</option>
-          <option value="normal">普通会员</option>
-          <option value="gold">黄金会员</option>
-          <option value="diamond">钻石会员</option>
-        </select>
-        <select class="form-select" v-model="filter.status">
-          <option value="">账号状态</option>
-          <option value="active">正常</option>
-          <option value="disabled">禁用</option>
+        <input type="text" class="form-input" placeholder="用户名/手机号/邮箱" v-model="filter.user_id" />
+        <select class="form-select" v-model="filter.sort_order">
+          <option value="desc">注册时间倒序</option>
+          <option value="asc">注册时间正序</option>
         </select>
         <button class="btn-sm primary" @click="handleSearch">查询</button>
         <button class="btn-sm" @click="resetFilter">重置</button>
@@ -27,56 +20,58 @@
       <div class="card-header">
         <div class="left">
           <button class="btn-sm primary" @click="addUser">添加用户</button>
-          <button class="btn-sm danger" @click="batchDisable">批量禁用</button>
+          <button class="btn-sm success" @click="triggerImport">导入用户</button>
+          <input type="file" ref="fileInput" style="display: none" accept=".xlsx, .xls" @change="handleImport" />
         </div>
         <div class="right">
-          <button class="btn-sm" @click="exportUsers">导出数据</button>
+          <!-- <button class="btn-sm" @click="exportUsers">导出数据</button> -->
         </div>
       </div>
       
       <table class="data-table">
         <thead>
           <tr>
-            <th width="50"><input type="checkbox" /></th>
+            <!-- <th width="50"><input type="checkbox" /></th> -->
             <th>用户</th>
+            <th>邮箱</th>
+            <th>联系人</th>
+            <th>公司</th>
             <th>手机号</th>
-            <th>会员等级</th>
-            <th>账户余额</th>
-            <th>积分</th>
-            <th>注册时间</th>
+            <th>等级</th>
+            <th>地区</th>
+            <!-- <th>上级ID</th> -->
+            <!-- <th>注册时间</th> -->
             <th>状态</th>
-            <th width="180">操作</th>
+            <th width="150">操作</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="user in users" :key="user.id">
-            <td><input type="checkbox" /></td>
+          <tr v-for="user in users" :key="user.user_id">
+            <!-- <td><input type="checkbox" /></td> -->
             <td>
               <div class="user-cell">
-                <div class="avatar">{{ user.nickname.charAt(0) }}</div>
-                <div class="info">
-                  <div class="nickname">{{ user.nickname }}</div>
-                  <div class="email" v-if="user.email">{{ user.email }}</div>
-                </div>
+                <!-- <div class="avatar">{{ (user.username || '').charAt(0).toUpperCase() }}</div> -->
+                <div class="info">{{ user.username }}</div>
               </div>
             </td>
+            <td>{{ user.email }}</td>
+            <td>{{ user.contact_name }}</td>
+            <td>{{ user.company_name }}</td>
             <td>{{ user.phone }}</td>
             <td>
-              <span class="badge" :class="getLevelClass(user.level)">{{ user.level }}</span>
+              <span class="badge" :class="getLevelClass(user.level)">Level {{ user.level }}</span>
             </td>
-            <td>¥ {{ user.balance }}</td>
-            <td>{{ user.points }}</td>
-            <td>{{ user.registerTime }}</td>
+            <td>{{ user.region }}</td>
+            <!-- <td>{{ user.parent_id }}</td> -->
+            <!-- <td>{{ formatTime(user.created_at) }}</td> -->
             <td>
-              <span class="status-dot" :class="user.status === '正常' ? 'active' : 'inactive'"></span>
-              {{ user.status }}
+              <span class="status-dot" :class="user.status === 1 ? 'active' : 'inactive'"></span>
+              {{ user.status === 1 ? '正常' : '禁用' }}
             </td>
             <td>
               <div class="actions">
                 <button class="btn-link" @click="viewUser(user)">详情</button>
                 <button class="btn-link" @click="editUser(user)">编辑</button>
-                <button class="btn-link danger" v-if="user.status === '正常'" @click="toggleStatus(user)">禁用</button>
-                <button class="btn-link success" v-else @click="toggleStatus(user)">启用</button>
               </div>
             </td>
           </tr>
@@ -85,17 +80,11 @@
 
       <!-- 分页 -->
       <div class="pagination">
-        <span class="page-info">共 {{ users.length }} 条记录</span>
+        <span class="page-info">共 {{ total }} 条记录</span>
         <div class="page-btns">
-          <button class="btn-sm" disabled>上一页</button>
-          <button class="btn-sm active">1</button>
-          <button class="btn-sm">2</button>
-          <button class="btn-sm">3</button>
-          <button class="btn-sm">4</button>
-          <button class="btn-sm">5</button>
-          <button class="btn-sm">...</button>
-          <button class="btn-sm">50</button>
-          <button class="btn-sm">下一页</button>
+          <button class="btn-sm" :disabled="page === 1" @click="changePage(page - 1)">上一页</button>
+          <span style="margin: 0 10px;">{{ page }}</span>
+          <button class="btn-sm" :disabled="users.length < pageSize" @click="changePage(page + 1)">下一页</button>
         </div>
       </div>
     </div>
@@ -103,40 +92,72 @@
 </template>
 
 <script>
-import { inject, reactive } from 'vue'
+import { inject, reactive, ref, onMounted } from 'vue'
+import { listUsers, createUser, updateUser, updateUserStatus, importUsersExcel } from '@/api/user.js'
 
 export default {
   name: 'UserList',
   setup() {
     const showModal = inject('showModal')
+    const showToast = inject('showToast')
+    
     const filter = reactive({
-      keyword: '',
-      level: '',
-      status: ''
+      user_id: '',
+      sort_by: 'id',
+      sort_order: 'desc'
     })
 
-    const users = reactive([
-        { id: 1, nickname: 'Alice Smith', email: 'alice@example.com', phone: '138****1234', level: '钻石会员', balance: '2580.00', points: 12500, registerTime: '2025-01-15 10:20:30', status: '正常' },
-        { id: 2, nickname: 'Bob Jones', email: 'bob@example.com', phone: '139****5678', level: '黄金会员', balance: '580.00', points: 3200, registerTime: '2025-03-22 14:15:00', status: '正常' },
-        { id: 3, nickname: 'Charlie Brown', email: '', phone: '150****9876', level: '普通会员', balance: '0.00', points: 100, registerTime: '2025-05-10 09:30:45', status: '禁用' },
-        { id: 4, nickname: 'David Wilson', email: 'david@test.com', phone: '136****4321', level: '黄金会员', balance: '120.50', points: 560, registerTime: '2025-06-01 16:40:20', status: '正常' },
-        { id: 5, nickname: 'Eva Davis', email: '', phone: '189****6789', level: '普通会员', balance: '50.00', points: 20, registerTime: '2025-11-11 11:11:11', status: '正常' }
-    ])
+    const users = ref([])
+    const total = ref(0)
+    const page = ref(1)
+    const pageSize = ref(20)
+    const fileInput = ref(null)
+
+    const formatTime = (t) => {
+      if (!t) return ''
+      return t.replace('T', ' ').split('.')[0]
+    }
+
+    const fetchUsers = async () => {
+      try {
+        const res = await listUsers({
+          user_id: filter.user_id,
+          page: page.value,
+          page_size: pageSize.value,
+          sort_by: filter.sort_by,
+          sort_order: filter.sort_order
+        })
+        if (res && res.data) {
+          users.value = res.data.items || []
+          total.value = res.data.total || 0
+        }
+      } catch (e) {
+        console.error(e)
+        showToast('获取用户列表失败')
+      }
+    }
+
+    const changePage = (p) => {
+      if (p < 1) return
+      page.value = p
+      fetchUsers()
+    }
 
     const getLevelClass = (level) => {
-      if (level === '钻石会员') return 'primary'
-      if (level === '黄金会员') return 'warning'
+      if (level >= 3) return 'primary' // 钻石
+      if (level === 2) return 'warning' // 黄金
       return 'info'
     }
 
     const handleSearch = () => {
-      console.log('Search:', filter)
+      page.value = 1
+      fetchUsers()
     }
 
     const resetFilter = () => {
-      filter.keyword = ''
-      filter.level = ''
-      filter.status = ''
+      filter.user_id = ''
+      filter.sort_order = 'desc'
+      handleSearch()
     }
 
     const addUser = () => {
@@ -144,32 +165,83 @@ export default {
         type: 'form',
         title: '添加用户',
         fields: {
-          nickname: { label: '昵称', type: 'text', value: '' },
+          username: { label: '用户名', type: 'text', value: '' },
           phone: { label: '手机号', type: 'text', value: '' },
-          password: { label: '密码', type: 'text', value: '' }
+          password: { label: '密码', type: 'password', value: '' },
+          email: { label: '邮箱', type: 'email', value: '' },
+          company_name: { label: '公司名称', type: 'text', value: '' },
+          contact_name: { label: '联系人', type: 'text', value: '' },
+          region: { label: '所在地区', type: 'text', value: '' },
+          level: { label: '会员等级', type: 'number', value: '1' }
         },
-        onConfirm: (fields) => {
-          users.unshift({
-            id: users.length + 1,
-            nickname: fields.nickname.value,
-            email: '',
-            phone: fields.phone.value,
-            level: '普通会员',
-            balance: '0.00',
-            points: 0,
-            registerTime: new Date().toLocaleString(),
-            status: '正常'
-          })
+        onConfirm: async (fields) => {
+          try {
+            await createUser({
+              username: fields.username.value,
+              phone: fields.phone.value,
+              password: fields.password.value,
+              email: fields.email.value,
+              company_name: fields.company_name.value,
+              contact_name: fields.contact_name.value,
+              region: fields.region.value,
+              level: parseInt(fields.level.value) || 1,
+              parent_id: 0
+            })
+            showToast('用户添加成功')
+            fetchUsers()
+          } catch (e) {
+            showToast('用户添加失败')
+          }
         }
       })
     }
 
+    const triggerImport = () => {
+      fileInput.value.click()
+    }
+
+    const handleImport = async (e) => {
+      const file = e.target.files[0]
+      if (!file) return
+      
+      try {
+        const res = await importUsersExcel(file)
+        if (res && res.success) {
+          const successCount = res.data.success_count || 0
+          const failureCount = res.data.failure_count || 0
+          let msg = `导入完成：成功 ${successCount} 条`
+          if (failureCount > 0) {
+            msg += `，失败 ${failureCount} 条`
+          }
+          showToast(msg)
+          fetchUsers()
+        } else {
+          showToast('导入失败')
+        }
+      } catch (e) {
+        showToast('导入出错')
+      } finally {
+        e.target.value = '' // Reset input
+      }
+    }
+
     const viewUser = (user) => {
       showModal({
-        type: 'confirm',
+        type: 'detail',
         title: '用户详情',
-        message: `用户：${user.nickname}\n手机：${user.phone}\n余额：${user.balance}\n积分：${user.points}`,
-        onConfirm: () => {}
+        data: [
+          { label: '用户ID', value: user.user_id },
+          { label: '用户名', value: user.username },
+          { label: '手机号', value: user.phone },
+          { label: '邮箱', value: user.email },
+          { label: '公司名称', value: user.company_name },
+          { label: '联系人', value: user.contact_name },
+          { label: '地区', value: user.region },
+          { label: '等级', value: user.level },
+          { label: '状态', value: user.status === 1 ? '正常' : '禁用' },
+          { label: '上级ID', value: user.parent_id },
+          { label: '注册时间', value: user.created_at }
+        ]
       })
     }
 
@@ -178,67 +250,98 @@ export default {
         type: 'form',
         title: '编辑用户',
         fields: {
-          nickname: { label: '昵称', type: 'text', value: user.nickname },
-          phone: { label: '手机号', type: 'text', value: user.phone }
+          username: { label: '用户名', type: 'text', value: user.username },
+          email: { label: '邮箱', type: 'email', value: user.email },
+          phone: { label: '手机号', type: 'text', value: user.phone },
+          company_name: { label: '公司名称', type: 'text', value: user.company_name },
+          contact_name: { label: '联系人', type: 'text', value: user.contact_name },
+          region: { label: '所在地区', type: 'text', value: user.region },
+          level: { label: '会员等级', type: 'number', value: String(user.level || 1) },
+          status: { label: '状态', type: 'select', value: String(user.status || 1), options: [
+            { label: '正常', value: '1' },
+            { label: '禁用', value: '0' }
+          ]}
         },
-        onConfirm: (fields) => {
-          user.nickname = fields.nickname.value
-          user.phone = fields.phone.value
+        onConfirm: async (fields) => {
+          try {
+            await updateUser({
+              user_id: user.user_id,
+              username: fields.username.value,
+              email: fields.email.value,
+              phone: fields.phone.value,
+              company_name: fields.company_name.value,
+              contact_name: fields.contact_name.value,
+              region: fields.region.value,
+              level: parseInt(fields.level.value) || 1
+            })
+            await updateUserStatus({
+              user_id: user.user_id,
+              status: fields.status.value
+            })
+            showToast('修改成功')
+            fetchUsers()
+          } catch (e) {
+            showToast('修改失败')
+          }
         }
       })
     }
 
-    const toggleStatus = (user) => {
-      const action = user.status === '正常' ? '禁用' : '启用'
-      showModal({
-        type: 'confirm',
-        title: `${action}用户`,
-        message: `确定要${action}用户 "${user.nickname}" 吗？`,
-        onConfirm: () => {
-          user.status = user.status === '正常' ? '禁用' : '正常'
-        }
-      })
-    }
-    
-    const batchDisable = () => {
-      showModal({
-        type: 'confirm',
-        title: '批量禁用',
-        message: '确定要禁用选中的用户吗？',
-        onConfirm: () => {}
-      })
-    }
-
-    const exportUsers = () => {
-      showModal({
-        type: 'confirm',
-        title: '导出用户',
-        message: '确定要导出用户数据吗？',
-        onConfirm: () => {}
-      })
-    }
+    onMounted(() => {
+      fetchUsers()
+    })
 
     return {
       filter,
       users,
+      total,
+      page,
+      pageSize,
+      fileInput,
       getLevelClass,
       handleSearch,
       resetFilter,
       addUser,
+      triggerImport,
+      handleImport,
       viewUser,
       editUser,
-      toggleStatus,
-      batchDisable,
-      exportUsers
+      changePage,
+      formatTime
     }
   }
 }
 </script>
 
 <style scoped lang="scss">
+.data-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.data-table th {
+  background: #f9fafb;
+  padding: 12px 16px;
+  text-align: center;
+  font-weight: 500;
+  color: #6b7280;
+  border-bottom: 1px solid #e5e7eb;
+}
+.data-table td {
+  padding: 16px;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: middle;
+  text-align: center;
+  white-space: nowrap;
+}
+.data-table tr:hover td {
+  background-color: #f9fafb;
+}
+
 .user-cell {
   display: flex;
   align-items: center;
+  justify-content: center;
   
   .avatar {
     width: 36px;
@@ -255,6 +358,7 @@ export default {
   }
   
   .info {
+    text-align: left;
     .nickname {
       font-size: 14px;
       color: #333;
@@ -281,6 +385,23 @@ export default {
   &.inactive {
     background: #ff4d4f;
   }
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+.btn-link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #3b82f6;
+  cursor: pointer;
+  font-size: 14px;
+}
+.btn-link:hover {
+  text-decoration: underline;
 }
 
 /* Removing .badge.purple as requested to avoid purple */

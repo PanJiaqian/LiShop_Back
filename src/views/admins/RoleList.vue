@@ -124,18 +124,20 @@ const toggleGroup = (group, checked) => {
 
 const addRole = () => {
   showModal({
+    type: 'form',
     title: '添加角色',
-    content: `
-      <div class="form-group">
-        <label>角色名称</label>
-        <input type="text" class="form-input" placeholder="请输入角色名称">
-      </div>
-      <div class="form-group">
-        <label>角色描述</label>
-        <textarea class="form-input" rows="3" placeholder="请输入角色描述"></textarea>
-      </div>
-    `,
-    onConfirm: () => {
+    fields: {
+      name: { label: '角色名称', type: 'text', value: '' },
+      description: { label: '角色描述', type: 'textarea', value: '' }
+    },
+    onConfirm: (fields) => {
+      const newRole = {
+        id: Date.now(),
+        name: fields.name.value,
+        description: fields.description.value,
+        isSystem: false
+      }
+      roles.value.push(newRole)
       showToast('角色添加成功')
     }
   })
@@ -143,18 +145,15 @@ const addRole = () => {
 
 const editRole = (role) => {
   showModal({
+    type: 'form',
     title: '编辑角色',
-    content: `
-      <div class="form-group">
-        <label>角色名称</label>
-        <input type="text" class="form-input" value="${role.name}">
-      </div>
-      <div class="form-group">
-        <label>角色描述</label>
-        <textarea class="form-input" rows="3">${role.description}</textarea>
-      </div>
-    `,
-    onConfirm: () => {
+    fields: {
+      name: { label: '角色名称', type: 'text', value: role.name },
+      description: { label: '角色描述', type: 'textarea', value: role.description }
+    },
+    onConfirm: (fields) => {
+      role.name = fields.name.value
+      role.description = fields.description.value
       showToast('角色信息已更新')
     }
   })
@@ -165,7 +164,14 @@ const deleteRole = (role) => {
     title: '确认删除',
     content: `确定要删除角色 "${role.name}" 吗？`,
     onConfirm: () => {
-      showToast('角色已删除')
+      const index = roles.value.findIndex(r => r.id === role.id)
+      if (index !== -1) {
+        roles.value.splice(index, 1)
+        if (activeRole.value.id === role.id && roles.value.length > 0) {
+          activeRole.value = roles.value[0]
+        }
+        showToast('角色已删除')
+      }
     }
   })
 }
