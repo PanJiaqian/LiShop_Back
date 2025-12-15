@@ -76,7 +76,7 @@
           </a>
         </router-link>
       </div>
-      <div class="menu-group">
+      <!-- <div class="menu-group">
         <div class="menu-group-title">其他</div>
         <router-link to="/messages" custom v-slot="{ navigate, href, isActive }">
           <a :class="['menu-item', { 'router-link-active': isActive }]" :href="href" @click="handleLink($event, navigate)">
@@ -84,7 +84,7 @@
             <span class="text">消息工单</span>
           </a>
         </router-link>
-      </div>
+      </div> -->
     </nav>
   </aside>
 </template>

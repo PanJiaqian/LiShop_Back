@@ -58,12 +58,68 @@
           <div class="stat-value">{{ result.total_sales_amount || 0 }}</div>
         </div>
       </div>
+      <div style="padding: 16px;">
+        <table class="data-table" v-if="activeTab === 'mother'">
+          <thead>
+            <tr>
+              <th>母商品ID</th>
+              <th>母商品名称</th>
+              <th>总销量</th>
+              <th>总金额</th>
+              <th>Top3子商品</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="it in (result.items || [])" :key="it.available_product_id">
+              <td>{{ it.available_product_id }}</td>
+              <td>{{ it.available_product_name }}</td>
+              <td>{{ it.total_sales_volume }}</td>
+              <td>{{ it.total_sales_amount }}</td>
+              <td>
+                <div v-for="c in (it.top3_children || [])" :key="c.product_id" class="child-line">
+                  <span class="mono">{{ c.product_id }}</span>
+                  <span> - {{ c.product_name }}</span>
+                  <span> / 销量: {{ c.sales_volume }}</span>
+                  <span> / 金额: {{ c.sales_amount }}</span>
+                </div>
+              </td>
+            </tr>
+            <tr v-if="!(result.items && result.items.length)">
+              <td colspan="5" style="text-align:center;color:#999;">暂无数据</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <table class="data-table" v-else>
+          <thead>
+            <tr>
+              <th>子商品ID</th>
+              <th>母商品名称</th>
+              <th>子商品名称</th>
+              <th>总销量</th>
+              <th>总金额</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="it in (result.items || [])" :key="it.product_id">
+              <td>{{ it.product_id }}</td>
+              <td>{{ it.available_product_name }}</td>
+              <td>{{ it.product_name }}</td>
+              <td>{{ it.total_sales_volume }}</td>
+              <td>{{ it.total_sales_amount }}</td>
+            </tr>
+            <tr v-if="!(result.items && result.items.length)">
+              <td colspan="5" style="text-align:center;color:#999;">暂无数据</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </template>
 
 <script>
-import { inject, ref, watch } from 'vue'
+import { inject, ref, watch, onMounted } from 'vue'
 import { getAvailableProductSalesStats, getProductSalesStats } from '@/api/stats'
 
 export default {
@@ -101,6 +157,11 @@ export default {
     watch(activeTab, () => {
       queryId.value = ''
       result.value = {}
+      fetchStats()
+    })
+
+    onMounted(() => {
+      fetchStats()
     })
 
     return { activeTab, queryId, start, end, sortType, result, fetchStats }
@@ -137,4 +198,9 @@ export default {
   color: var(--primary-color, #2563eb);
   border-bottom-color: var(--primary-color, #2563eb);
 }
+.data-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.data-table th { background: #f9fafb; padding: 12px 16px; text-align: center; font-weight: 500; color: #6b7280; border-bottom: 1px solid #e5e7eb; }
+.data-table td { padding: 12px 16px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; text-align: left; }
+.child-line { font-size: 12px; color: #374151; line-height: 1.6; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; color: #6b7280; }
 </style>

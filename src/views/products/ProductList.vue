@@ -42,7 +42,13 @@
           <tr v-for="item in (products || [])" :key="item.available_product_id">
             <td>
               <div class="product-thumb">
-                <img v-if="item.main_image" :src="Array.isArray(item.main_image) ? item.main_image[0] : item.main_image" alt="" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;">
+                <img 
+                  v-if="item.main_image" 
+                  :src="Array.isArray(item.main_image) ? item.main_image[0] : item.main_image" 
+                  alt="" 
+                  style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; cursor: pointer;" 
+                  @click="previewImage(Array.isArray(item.main_image) ? item.main_image[0] : item.main_image)"
+                >
                 <span v-else>📷</span>
               </div>
             </td>
@@ -440,19 +446,13 @@ export default {
       })
     }
 
-    const viewDetail = async (item) => {
-      const now = new Date()
-      const end = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()))
-      const start = new Date(end)
-      start.setDate(start.getDate() - 7)
-      const fmt = (d) => `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`
-      const paramsBase = { start_time: fmt(start), end_time: fmt(end), sort_type: '金额' }
+    const previewImage = (url) => {
+      const u = String(url || '').trim()
+      if (!u) return
+      showModal({ type: 'detail', title: '图片预览', data: [{ label: '', value: u, type: 'image' }] })
+    }
 
-      let orderStats = null
-      let salesStats = null
-      try { orderStats = await getOrderStats({ ...paramsBase, view_type: '下单量' }) } catch (e) {}
-      try { salesStats = await getAvailableProductSalesStats({ ...paramsBase, available_product_id: item.available_product_id }) } catch (e) {}
-
+    const viewDetail = (item) => {
       const rows = [
         { label: '商品ID', value: String(item.available_product_id || '') },
         { label: '商品名称', value: String(item.name || '') },
@@ -462,17 +462,11 @@ export default {
         { label: '状态', value: String(item.status) === '1' ? '上架' : '下架' },
         { label: '创建时间', value: String(item.created_at || '') }
       ]
-
-      if (orderStats && orderStats.success && orderStats.data) {
-        rows.push({ label: '订单统计-时间范围', value: `${paramsBase.start_time} 至 ${paramsBase.end_time}` })
-        rows.push({ label: '订单统计-视图', value: '下单量' })
-        rows.push({ label: '订单统计-总数', value: String(orderStats.data.total || '') })
-      }
-      if (salesStats && salesStats.success && salesStats.data) {
-        rows.push({ label: '母商品销量-总销量', value: String(salesStats.data.total_sales_volume || '') })
-        rows.push({ label: '母商品销量-总金额', value: String(salesStats.data.total_sales_amount || '') })
-      }
-      showModal({ type: 'detail', title: '商品详情', data: rows })
+      const data = []
+      const img = Array.isArray(item.main_image) ? item.main_image[0] : item.main_image
+      if (img) data.push({ label: '商品主图', value: img, type: 'image' })
+      rows.forEach(r => data.push(r))
+      showModal({ type: 'detail', title: '商品详情', data })
     }
 
     return {
@@ -493,7 +487,8 @@ export default {
       toggleStatus,
       deleteProduct,
       goToDetail,
-      getCategoryName
+      getCategoryName,
+      previewImage
     }
   }
 }

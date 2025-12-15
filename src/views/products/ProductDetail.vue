@@ -46,7 +46,7 @@
           <tr v-for="item in products" :key="item.product_id">
             <td>
               <div class="product-thumb">
-                <img v-if="item.image" :src="item.image" alt="" @click="previewImage(item.image)" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; cursor: pointer;">
+                <img v-if="getImageUrl(item)" :src="getImageUrl(item)" alt="" @click="previewImage(getImageUrl(item))" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; cursor: pointer;">
                 <span v-else>📷</span>
               </div>
             </td>
@@ -102,8 +102,7 @@ import {
   updateProductStatus,
   listProducts
 } from '@/api/product'
-import { listAvailableProducts } from '@/api/available_product'
-import { getOrderStats, getProductSalesStats } from '@/api/stats'
+ 
 
 export default {
   name: 'ProductDetail',
@@ -176,6 +175,16 @@ export default {
     const previewImage = (url) => {
       if (!url) return
       showModal({ type: 'detail', title: '图片预览', data: [{ label: '', value: url, type: 'image' }] })
+    }
+
+    const getImageUrl = (item) => {
+      const u = item && (item.image_url || item.image || item.imageUrl || item.img_url)
+      if (!u) return ''
+      let s = String(u).trim()
+      s = s.replace(/^`+|`+$/g, '')
+      s = s.replace(/^"+|"+$/g, '')
+      s = s.replace(/^'+|'+$/g, '')
+      return s
     }
 
     // --- Operations copied and adapted from ProductList.vue ---
@@ -323,32 +332,21 @@ export default {
       })
     }
 
-    const openUpdateModal = async (item) => {
-        const productOptions = []
-        try {
-          const res = await listAvailableProducts({ page: 1, page_size: 200 })
-          const items = (res && res.data && res.data.items) || []
-          items.forEach(p => {
-            const label = p.name || String(p.available_product_id || '')
-            const value = label
-            productOptions.push({ label, value })
-          })
-        } catch (e) {}
-        // Pre-fill fields with item data
+    const openUpdateModal = (item) => {
         showModal({
         type: 'form',
         title: '更新明细商品',
         fields: {
           product_id: { label: '明细商品ID', type: 'text', value: item.product_id, readonly: true },
           name: { label: '明细商品名称', type: 'text', value: item.name },
-          available_products_name: { label: '关联商品名称', type: 'select', value: productOptions.find(o => o.label === String(item.available_products_name))?.value || (productOptions[0]?.value || ''), options: productOptions },
+          available_products_name: { label: '关联商品名称', type: 'text', value: item.available_products_name || '' },
           unit: { label: '单位', type: 'text', value: item.unit },
           unit_price: { label: '单价', type: 'number', value: item.unit_price, hint: '该单位价格指代的为1m的价格' },
           additional_price: { label: '附加费', type: 'number', value: item.additional_price },
           inventory: { label: '库存', type: 'number', value: item.inventory },
           compute_method: { label: '计算方式', type: 'select', value: item.compute_method, options: [{label:'直接', value:'直接'}, {label:'公式', value:'公式'}] },
           has_length: { label: '是否有长度', type: 'select', value: String(item.has_length), options: [{label:'是', value:'1'}, {label:'否', value:'0'}] },
-          length_unit: { label: '长度单位', type: 'select', value: 'm', options: [
+          length_unit: { label: '长度单位', type: 'select', value: item.length_unit || 'm', options: [
             { label: 'cm', value: 'cm' },
             { label: 'mm', value: 'mm' },
             { label: 'm', value: 'm' }
@@ -412,39 +410,33 @@ export default {
       })
     }
 
-   const viewDetail = async (item) => {
-      const now = new Date()
-      const end = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()))
-      const start = new Date(end)
-      start.setDate(start.getDate() - 7)
-      const fmt = (d) => `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`
-      const paramsBase = { start_time: fmt(start), end_time: fmt(end), sort_type: '金额' }
-
-      let orderStats = null
-      let salesStats = null
-      try { orderStats = await getOrderStats({ ...paramsBase, view_type: '下单量' }) } catch (e) {}
-      try { salesStats = await getProductSalesStats({ ...paramsBase, product_id: item.product_id }) } catch (e) {}
-
+   const viewDetail = (item) => {
       const rows = [
         { label: '明细商品ID', value: String(item.product_id || '') },
         { label: '明细商品名称', value: String(item.name || '') },
+        { label: '关联商品名称', value: String(item.available_products_name || '') },
         { label: '单位', value: String(item.unit || '') },
         { label: '单价', value: String(item.unit_price || '') },
+        { label: '附加费', value: String(item.additional_price || '') },
         { label: '库存', value: String(item.inventory || '') },
         { label: '计算方式', value: String(item.compute_method || '') },
+        { label: '是否有长度', value: String(item.has_length) === '1' ? '是' : '否' },
+        { label: '长度单位', value: String(item.length_unit || '') },
+        { label: '色温', value: String(item.color_temperature || '') },
+        { label: '定价类型', value: String(item.pricing_type || '') },
+        { label: '最大长度', value: String(item.max_length || '') },
+        { label: '最小长度', value: String(item.min_length || '') },
+        { label: '长度间隔', value: String(item.length_interval || '') },
+        { label: '等级折扣', value: String(item.level_discount || '') },
+        { label: '产品分类', value: String(item.product_category || '') },
+        { label: '规格', value: String(item.specification || '') },
+        { label: '颜色', value: String(item.color || '') },
+        { label: '型号', value: String(item.model || '') },
         { label: '状态', value: String(item.status) === '1' ? '上架' : '下架' }
       ]
-      if (orderStats && orderStats.success && orderStats.data) {
-        rows.push({ label: '订单统计-时间范围', value: `${paramsBase.start_time} 至 ${paramsBase.end_time}` })
-        rows.push({ label: '订单统计-视图', value: '下单量' })
-        rows.push({ label: '订单统计-总数', value: String(orderStats.data.total || '') })
-      }
-      if (salesStats && salesStats.success && salesStats.data) {
-        rows.push({ label: '子商品销量-总销量', value: String(salesStats.data.total_sales_volume || '') })
-        rows.push({ label: '子商品销量-总金额', value: String(salesStats.data.total_sales_amount || '') })
-      }
       const data = []
-      if (item.image) data.push({ label: '商品图片', value: item.image, type: 'image' })
+      const img = getImageUrl(item)
+      if (img) data.push({ label: '商品图片', value: img, type: 'image' })
       rows.forEach(r => data.push(r))
       showModal({ type: 'detail', title: '明细商品详情', data })
     }
@@ -564,6 +556,7 @@ export default {
       resetFilter,
       changePage,
       previewImage,
+      getImageUrl,
       handleCreateDetailProduct,
       handleImportDetailExcel,
       handleImportDetailImages,

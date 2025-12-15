@@ -1,7 +1,8 @@
 <template>
   <header class="header">
     <button class="menu-btn" @click="$emit('toggle')">☰</button>
-    <div class="brand">Shop Admin</div>
+    <!-- <div class="brand">Shop Admin</div> -->
+     <img style="height: 25px;width: 130px;" mode="aspectFit" src="/logo.png" alt="">
     <div class="header-spacer"></div>
     <div class="actions">
       <input class="search" type="text" placeholder="搜索" />
