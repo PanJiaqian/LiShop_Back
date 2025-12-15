@@ -97,7 +97,7 @@
           </select>
         </div>
         <div class="form-group">
-          <label>排序权重</label>
+          <label>推荐值</label>
           <input type="number" class="form-input" v-model="form.sort" />
         </div>
       </div>

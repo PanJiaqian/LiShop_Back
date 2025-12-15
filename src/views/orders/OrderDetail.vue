@@ -8,28 +8,30 @@
     </div>
 
     <!-- 状态步骤条 -->
-    <div class="card mb-4">
-      <div class="steps">
-        <div class="step active">
-          <div class="step-icon">1</div>
-          <div class="step-title">提交订单</div>
-          <div class="step-time">2025-12-04 10:30:00</div>
+        <div class="card mb-4">
+          <div class="steps">
+            <div class="step" :class="{ active: isStepActive(1) }">
+              <div class="step-icon">1</div>
+              <div class="step-title">提交订单</div>
+              <div class="step-time">{{ order.created_at || '—' }}</div>
+            </div>
+            <div class="step" :class="{ active: isStepActive(2) }">
+              <div class="step-icon">2</div>
+              <div class="step-title">完成支付</div>
+              <div class="step-time">{{ '—' }}</div>
+            </div>
+            <div class="step" :class="{ active: isStepActive(3) }">
+              <div class="step-icon">3</div>
+              <div class="step-title">商家发货</div>
+              <div class="step-time">{{ order.tracking_number ? '—' : '—' }}</div>
+            </div>
+            <div class="step" :class="{ active: isStepActive(4) }">
+              <div class="step-icon">4</div>
+              <div class="step-title">确认收货</div>
+              <div class="step-time">{{ '—' }}</div>
+            </div>
+          </div>
         </div>
-        <div class="step active">
-          <div class="step-icon">2</div>
-          <div class="step-title">完成支付</div>
-          <div class="step-time">2025-12-04 10:30:45</div>
-        </div>
-        <div class="step">
-          <div class="step-icon">3</div>
-          <div class="step-title">商家发货</div>
-        </div>
-        <div class="step">
-          <div class="step-icon">4</div>
-          <div class="step-title">确认收货</div>
-        </div>
-      </div>
-    </div>
 
     <div class="detail-grid">
       <!-- 左侧：订单信息 -->
@@ -37,28 +39,36 @@
         <div class="card mb-4">
           <div class="card-header">
             <h3>基本信息</h3>
-            <span class="badge info">待发货</span>
+            <span class="badge" :class="statusClass">{{ statusText }}</span>
           </div>
           <div class="info-list">
             <div class="info-item">
               <span class="label">订单编号：</span>
-              <span class="value">ORD-20251204-001</span>
+              <span class="value">{{ order.order_id }}</span>
             </div>
             <div class="info-item">
               <span class="label">下单时间：</span>
-              <span class="value">2025-12-04 10:30:00</span>
+              <span class="value">{{ order.created_at }}</span>
             </div>
             <div class="info-item">
-              <span class="label">支付方式：</span>
-              <span class="value">微信支付</span>
+              <span class="label">用户ID：</span>
+              <span class="value">{{ order.user_id }}</span>
             </div>
             <div class="info-item">
-              <span class="label">支付流水：</span>
-              <span class="value">WX20251204103045001</span>
+              <span class="label">收货地址：</span>
+              <span class="value">{{ order.address_id }}</span>
             </div>
             <div class="info-item">
-              <span class="label">配送方式：</span>
-              <span class="value">顺丰速运</span>
+              <span class="label">运单号：</span>
+              <span class="value">{{ order.tracking_number || '—' }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">物流公司：</span>
+              <span class="value">{{ order.logistics_company || '—' }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">备注：</span>
+              <span class="value">{{ order.note || '' }}</span>
             </div>
           </div>
         </div>
@@ -94,33 +104,31 @@
           <table class="data-table">
             <thead>
               <tr>
-                <th>商品</th>
-                <th>单价</th>
+                <th>房间</th>
+                <th>色温</th>
+                <th>长度</th>
                 <th>数量</th>
+                <th>单位价格</th>
+                <th>备注</th>
                 <th>小计</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="item in orderItems" :key="item.id">
-                <td>
-                  <div class="product-cell">
-                    <div class="product-img-placeholder"></div>
-                    <div class="product-info">
-                      <div class="name">{{ item.name }}</div>
-                      <div class="sku">{{ item.sku }}</div>
-                    </div>
-                  </div>
-                </td>
-                <td>¥ {{ item.price }}</td>
-                <td>x {{ item.quantity }}</td>
-                <td>¥ {{ (item.price * item.quantity).toFixed(2) }}</td>
+                <td>{{ item.room_name }}</td>
+                <td>{{ item.color_temperature }}</td>
+                <td>{{ item.length }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>¥ {{ Number(item.unit_price || 0).toFixed(2) }}</td>
+                <td>{{ item.note }}</td>
+                <td>¥ {{ (Number(item.unit_price || 0) * Number(item.quantity || 0)).toFixed(2) }}</td>
               </tr>
             </tbody>
           </table>
           <div class="order-total">
             <div class="total-row">
               <span class="label">商品总额：</span>
-              <span class="value">¥ 299.00</span>
+              <span class="value">¥ {{ itemsTotal.toFixed(2) }}</span>
             </div>
             <div class="total-row">
               <span class="label">运费：</span>
@@ -132,9 +140,77 @@
             </div>
             <div class="total-row grand-total">
               <span class="label">实付款：</span>
-              <span class="value">¥ 299.00</span>
+              <span class="value">¥ {{ Number(order.total_amount || 0).toFixed(2) }}</span>
             </div>
           </div>
+        </div>
+
+        <div class="card mb-4">
+          <div class="card-header">
+            <h3>物流信息</h3>
+          </div>
+          <div class="info-list">
+            <div class="info-item">
+              <span class="label">物流状态：</span>
+              <span class="value">{{ (order.logistics_data && order.logistics_data.status) || '—' }} {{ (order.logistics_data && order.logistics_data.message) ? '(' + order.logistics_data.message + ')' : '' }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">揽收状态：</span>
+              <span class="value">{{ (order.logistics_data && order.logistics_data.billstatus) || '—' }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">公司代码：</span>
+              <span class="value">{{ ((order.logistics_data && order.logistics_data.lastResult && order.logistics_data.lastResult.com) || order.logistics_company || '—') }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">运单号：</span>
+              <span class="value">{{ ((order.logistics_data && order.logistics_data.lastResult && order.logistics_data.lastResult.nu) || order.tracking_number || '—') }}</span>
+            </div>
+            <div class="info-item" v-if="order.logistics_data && order.logistics_data.lastResult && order.logistics_data.lastResult.trailUrl">
+              <span class="label">轨迹地图：</span>
+              <span class="value"><a :href="order.logistics_data.lastResult.trailUrl" target="_blank">{{ order.logistics_data.lastResult.trailUrl }}</a></span>
+            </div>
+            <div class="info-item" v-if="order.logistics_data && order.logistics_data.lastResult && order.logistics_data.lastResult.routeInfo && order.logistics_data.lastResult.routeInfo.to">
+              <span class="label">目的地：</span>
+              <span class="value">{{ order.logistics_data.lastResult.routeInfo.to.name }} ({{ order.logistics_data.lastResult.routeInfo.to.number }})</span>
+            </div>
+            <div class="info-item" v-if="order.logistics_data && order.logistics_data.lastResult && order.logistics_data.lastResult.routeInfo && order.logistics_data.lastResult.routeInfo.cur">
+              <span class="label">当前：</span>
+              <span class="value">{{ order.logistics_data.lastResult.routeInfo.cur.name }} ({{ order.logistics_data.lastResult.routeInfo.cur.number }})</span>
+            </div>
+            <div class="info-item" v-if="order.logistics_data && order.logistics_data.lastResult && order.logistics_data.lastResult.routeInfo && order.logistics_data.lastResult.routeInfo.from">
+              <span class="label">始发地：</span>
+              <span class="value">{{ order.logistics_data.lastResult.routeInfo.from.name }} ({{ order.logistics_data.lastResult.routeInfo.from.number }})</span>
+            </div>
+            <div class="info-item" v-if="order.logistics_data && order.logistics_data.lastResult && (order.logistics_data.lastResult.totalTime || order.logistics_data.lastResult.remainTime || order.logistics_data.lastResult.arrivalTime)">
+              <span class="label">时效：</span>
+              <span class="value">总时长 {{ order.logistics_data.lastResult.totalTime || '—' }}；剩余 {{ order.logistics_data.lastResult.remainTime || '—' }}；预计到达 {{ order.logistics_data.lastResult.arrivalTime || '—' }}</span>
+            </div>
+          </div>
+          <div class="card-header" style="margin-top: 8px;">
+            <h3>物流轨迹</h3>
+          </div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>时间</th>
+                <th>状态</th>
+                <th>详情</th>
+                <th>地区</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(log, idx) in ((order.logistics_data && order.logistics_data.lastResult && order.logistics_data.lastResult.data) || [])" :key="idx">
+                <td>{{ log.ftime || log.time }}</td>
+                <td>{{ log.status }}</td>
+                <td style="white-space: normal; text-align: left;">{{ log.context }}</td>
+                <td>{{ log.areaName }}</td>
+              </tr>
+              <tr v-if="!(order.logistics_data && order.logistics_data.lastResult && order.logistics_data.lastResult.data && order.logistics_data.lastResult.data.length)">
+                <td colspan="4" style="text-align: center; color: #999;">暂无轨迹数据</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
         <div class="card">
@@ -142,13 +218,9 @@
             <h3>操作记录</h3>
           </div>
           <ul class="timeline">
-            <li class="timeline-item">
-              <div class="time">2025-12-04 10:30:45</div>
-              <div class="content">用户完成支付</div>
-            </li>
-            <li class="timeline-item">
-              <div class="time">2025-12-04 10:30:00</div>
-              <div class="content">用户提交订单</div>
+            <li class="timeline-item" v-for="(rec, idx) in operationRecords" :key="idx">
+              <div class="time">{{ rec.time || '—' }}</div>
+              <div class="content">{{ rec.text }}</div>
             </li>
           </ul>
         </div>
@@ -165,13 +237,87 @@
 </template>
 
 <script>
+import { listAdminOrdersDetail } from '@/api/order.js'
+
 export default {
   name: 'OrderDetail',
   data () {
     return {
-      orderItems: [
-        { id: 1, name: '无线降噪耳机 Pro', sku: '颜色: 黑色', price: 299.00, quantity: 1 }
+      order: {
+        order_id: '',
+        user_id: '',
+        address_id: '',
+        total_amount: 0,
+        status: '',
+        tracking_number: '',
+        logistics_company: '',
+        note: '',
+        created_at: ''
+      },
+      orderItems: [],
+      operationRecords: []
+    }
+  },
+  computed: {
+    itemsTotal () {
+      return this.orderItems.reduce((sum, it) => sum + (Number(it.unit_price || 0) * Number(it.quantity || 0)), 0)
+    },
+    statusText () {
+      const k = String(this.order.status || '').toUpperCase()
+      const map = { PENDING: '待付款', CONFIRMED: '待发货', SHIPPED: '待收货', COMPLETED: '已收货', CANCELLED: '已取消' }
+      return map[k] || this.order.status
+    },
+    statusClass () {
+      const t = this.statusText
+      const map = { '待付款': 'warning', '待发货': 'info', '待收货': 'primary', '已收货': 'success', '已取消': 'gray' }
+      return map[t] || 'gray'
+    }
+  },
+  methods: {
+    isStepActive (idx) {
+      const k = String(this.order.status || '').toUpperCase()
+      const countMap = { PENDING: 1, CONFIRMED: 2, SHIPPED: 3, COMPLETED: 4, CANCELLED: 1 }
+      const cnt = countMap[k] || 1
+      return idx <= cnt
+    }
+  },
+  mounted: async function () {
+    const id = this.$route && this.$route.params && this.$route.params.id
+    try {
+      const res = await listAdminOrdersDetail({ order_id: id, page: 1, page_size: 20, sort_by: 'price', sort_order: 'desc' })
+      let o = {}
+      let items = []
+      if (res && res.data && res.data.order) {
+        o = res.data.order
+        items = res.data.items || []
+      } else {
+        const arr = (res && res.data && Array.isArray(res.data.orders)) ? res.data.orders : []
+        const found = arr.find(e => e.order && e.order.order_id === id) || arr[0]
+        o = (found && found.order) || {}
+        items = (found && Array.isArray(found.items)) ? found.items : []
+      }
+      this.order = {
+        order_id: o.order_id || '',
+        user_id: o.user_id || '',
+        address_id: o.address_id || '',
+        total_amount: o.total_amount || 0,
+        status: o.status || '',
+        tracking_number: o.tracking_number || '',
+        logistics_company: o.logistics_company || '',
+        logistics_data: o.logistics_data || null,
+        note: o.note || '',
+        created_at: o.created_at ? String(o.created_at).replace('T', ' ').split('.')[0] : ''
+      }
+      this.orderItems = items
+      this.operationRecords = [
+        { time: this.order.created_at, text: '用户提交订单' },
+        ...(String(this.order.status || '').toUpperCase() !== 'PENDING' ? [{ time: '', text: '用户完成支付' }] : []),
+        ...(String(this.order.status || '').toUpperCase() === 'SHIPPED' || String(this.order.status || '').toUpperCase() === 'COMPLETED' ? [{ time: '', text: '商家发货' }] : []),
+        ...(String(this.order.status || '').toUpperCase() === 'COMPLETED' ? [{ time: '', text: '用户确认收货' }] : []),
+        ...(String(this.order.status || '').toUpperCase() === 'CANCELLED' ? [{ time: '', text: '订单已取消' }] : [])
       ]
+    } catch (e) {
+      // silent
     }
   }
 }

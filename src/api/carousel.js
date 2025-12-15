@@ -23,3 +23,9 @@ export const updateCarouselStatus = (payload) => {
 export const listCarousel = (params) => {
   return api.get('/admin/carousel/list', { params }).then(res => res.data)
 }
+
+export const deleteCarousel = (formData) => {
+  return api.post('/admin/carousel/delete', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }).then(res => res.data)
+}

@@ -18,7 +18,16 @@
             <div class="node-children" v-if="category.expanded">
               <div class="tree-node" v-for="child in category.children" :key="child.id">
                 <div class="node-content" :class="{ active: activeCategory && activeCategory.id === child.id }" @click="selectCategory(child)">
+                  <span class="toggle-icon" @click.stop="toggleExpand(child)">{{ child.expanded ? '▼' : '▶' }}</span>
                   <span class="node-name" style="padding-left: 20px;">{{ child.name }}</span>
+                </div>
+                <div class="node-children" v-if="child.expanded">
+                  <div class="tree-node" v-for="grand in child.children" :key="grand.id">
+                    <div class="node-content" :class="{ active: activeCategory && activeCategory.id === grand.id }" @click="selectCategory(grand)">
+                      <span class="toggle-icon" @click.stop="toggleExpand(grand)">{{ grand.expanded ? '▼' : '▶' }}</span>
+                      <span class="node-name" style="padding-left: 40px;">{{ grand.name }}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -45,12 +54,12 @@
             <div class="form-group">
               <label>上级类目</label>
               <select class="form-select" v-model="activeCategory.parent_id">
-                <option value="0">一级类目</option>
-                <option v-for="cat in flatCategories" :key="cat.id" :value="cat.id" v-show="cat.id !== activeCategory.id">{{ cat.name }}</option>
+                <option value="无">一级类目</option>
+                <option v-for="cat in flatCategories" :key="cat.id" :value="cat.name" v-show="cat.name !== activeCategory.name">{{ cat.name }}</option>
               </select>
             </div>
             <div class="form-group">
-              <label>排序</label>
+              <label>推荐值</label>
               <input type="number" class="form-input" v-model="activeCategory.sort_order">
             </div>
             <div class="form-group">
@@ -85,7 +94,7 @@
 
 <script setup>
 import { ref, inject, onMounted, computed } from 'vue'
-import { listCategories, createCategory, updateCategory, updateCategoryStatus } from '@/api/category'
+import { listCategories, createCategory, updateCategory, updateCategoryStatus, deleteCategory as deleteCategoryApi } from '@/api/category'
 
 const showModal = inject('showModal')
 const showToast = inject('showToast')
@@ -108,6 +117,7 @@ const fetchCategories = async () => {
       }))
       flatCategories.value = items
       categories.value = buildTree(items)
+      sortTree(categories.value)
       
       // Refresh active category if it exists
       if (activeCategory.value) {
@@ -124,26 +134,40 @@ const fetchCategories = async () => {
   }
 }
 
+// Resolve the value selected in UI to an ID string for API submission
+const resolveParentId = (val) => {
+  if (!val || val === '无') return '0'
+  // If already looks like an id, pass through
+  if (typeof val === 'string' && /^cat\d+/.test(val)) return val
+  const found = (flatCategories.value || []).find(c => c.name === val)
+  return found ? (found.id || '0') : '0'
+}
+
 const buildTree = (items) => {
-  const map = {}
+  const mapByName = {}
   const roots = []
   
-  // Clone items to avoid reference issues during build
   const nodes = items.map(item => ({ ...item, children: [] }))
   
   nodes.forEach(node => {
-    map[node.id] = node
+    mapByName[node.name] = node
   })
   
   nodes.forEach(node => {
-    if (node.parent_id === '0' || !map[node.parent_id]) {
+    if (node.parent_id === '无' || !node.parent_id || !mapByName[node.parent_id]) {
       roots.push(node)
     } else {
-      map[node.parent_id].children.push(node)
+      mapByName[node.parent_id].children.push(node)
     }
   })
   
   return roots
+}
+
+const sortTree = (nodes) => {
+  if (!Array.isArray(nodes)) return
+  nodes.sort((a, b) => (parseInt(a.sort_order || 0) - parseInt(b.sort_order || 0)))
+  nodes.forEach(n => sortTree(n.children))
 }
 
 onMounted(() => {
@@ -159,9 +183,9 @@ const toggleExpand = (cat) => {
 }
 
 const handleAddCategory = () => {
-  const options = [{ label: '一级类目', value: '0' }]
+  const options = [{ label: '一级类目', value: '无' }]
   flatCategories.value.forEach(c => {
-    options.push({ label: c.name, value: c.id })
+    options.push({ label: c.name, value: c.name })
   })
 
   showModal({
@@ -169,8 +193,8 @@ const handleAddCategory = () => {
     title: '添加类目',
     fields: {
       name: { label: '类目名称', type: 'text', value: '' },
-      parent_id: { label: '上级类目', type: 'select', value: '0', options },
-      sort_order: { label: '排序', type: 'number', value: '1' },
+      parent_id: { label: '上级类目', type: 'select', value: '无', options },
+      sort_order: { label: '推荐值', type: 'number', value: '1' },
       status: { label: '状态', type: 'select', value: '1', options: [
         { label: '显示', value: '1' },
         { label: '隐藏', value: '0' }
@@ -180,7 +204,7 @@ const handleAddCategory = () => {
       try {
         await createCategory({
           name: fields.name.value,
-          parent_id: fields.parent_id.value,
+          parent_id: resolveParentId(fields.parent_id.value),
           sort_order: parseInt(fields.sort_order.value),
           status: parseInt(fields.status.value)
         })
@@ -197,9 +221,18 @@ const deleteCategory = (cat) => {
   confirmDialog({
     title: '确认删除',
     content: `确定要删除类目 "${cat.name}" 吗？此操作不可恢复。`,
-    onConfirm: () => {
-      showToast('暂未开放删除功能')
-      // activeCategory.value = null
+    onConfirm: async () => {
+      try {
+        const fd = new FormData()
+        fd.append('category_id', cat.id)
+        const res = await deleteCategoryApi(fd)
+        const msg = (res && res.message) || '删除分类成功'
+        showToast(msg)
+        activeCategory.value = null
+        await fetchCategories()
+      } catch (e) {
+        showToast('删除分类失败')
+      }
     }
   })
 }
@@ -211,7 +244,7 @@ const saveCategory = async () => {
     await updateCategory({
       category_id: activeCategory.value.id,
       name: activeCategory.value.name,
-      parent_id: activeCategory.value.parent_id,
+      parent_id: resolveParentId(activeCategory.value.parent_id),
       sort_order: parseInt(activeCategory.value.sort_order)
     })
     

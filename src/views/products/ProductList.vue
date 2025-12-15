@@ -31,7 +31,7 @@
             <th width="80">图片</th>
             <th>商品名称 / ID</th>
             <th>分类</th>
-            <th>排序</th>
+            <th>推荐值</th>
             <th>发货地</th>
             <th>状态</th>
             <th>创建时间</th>
@@ -52,7 +52,7 @@
                 <div class="code" style="font-size: 12px; color: #999;">{{ item.available_product_id }}</div>
               </div>
             </td>
-            <td>{{ item.category_id }}</td>
+            <td>{{ getCategoryName(item.category_id) }}</td>
             <td>{{ item.sort_order }}</td>
             <td>{{ item.shipping_origin }}</td>
             <td>
@@ -126,6 +126,27 @@ export default {
       status: ''
     })
     
+    const categoriesMap = ref({})
+    const loadCategoriesMap = async () => {
+      try {
+        const res = await listCategories({ page: 1, page_size: 500 })
+        const items = (res && res.data && Array.isArray(res.data.items)) ? res.data.items : []
+        const map = {}
+        items.forEach(c => {
+          const id = c.categories_id || c.category_id
+          const name = c.name || c.category_name || ''
+          if (id) map[id] = name
+        })
+        categoriesMap.value = map
+      } catch (e) {
+        categoriesMap.value = {}
+      }
+    }
+    const getCategoryName = (id) => {
+      const k = String(id || '')
+      return (categoriesMap.value && categoriesMap.value[k]) || k
+    }
+    
     const fetchProducts = async () => {
       loading.value = true
       try {
@@ -151,6 +172,7 @@ export default {
     }
 
     onMounted(() => {
+      loadCategoriesMap()
       fetchProducts()
     })
 
@@ -184,7 +206,7 @@ export default {
         fields: {
           name: { label: '商品名称', type: 'text', value: '' },
           category_name: { label: '分类名称', type: 'text', value: '' },
-          sort_order: { label: '排序', type: 'number', value: '0' },
+          sort_order: { label: '推荐值', type: 'number', value: '0' },
           shipping_origin: { label: '发货地', type: 'text', value: '' },
           status: { label: '状态', type: 'select', value: '1', options: [{label:'上架', value:'1'}, {label:'下架', value:'0'}] },
           is_free_shipping: { label: '包邮', type: 'select', value: '1', options: [{label:'是', value:'1'}, {label:'否', value:'0'}] },
@@ -340,7 +362,7 @@ export default {
           product_id: { label: '商品ID', type: 'text', value: item.available_product_id, readonly: true },
           name: { label: '商品名称', type: 'text', value: item.name },
           category_name: { label: '分类名称', type: 'select', value: categoryOptions.find(o => o.label === String(item.category_id))?.value || (categoryOptions[0]?.value || ''), options: categoryOptions },
-          sort_order: { label: '排序', type: 'number', value: item.sort_order },
+          sort_order: { label: '推荐值', type: 'number', value: item.sort_order },
           shipping_origin: { label: '发货地', type: 'text', value: item.shipping_origin },
           main_image: { label: '主图(修改则上传)', type: 'file', multiple: false, files: null },
           images: { label: '轮播图(修改则上传)', type: 'file', multiple: true, files: null },
@@ -434,8 +456,8 @@ export default {
       const rows = [
         { label: '商品ID', value: String(item.available_product_id || '') },
         { label: '商品名称', value: String(item.name || '') },
-        { label: '分类', value: String(item.category_id || '') },
-        { label: '排序', value: String(item.sort_order || '') },
+        { label: '分类', value: getCategoryName(item.category_id) },
+        { label: '推荐值', value: String(item.sort_order || '') },
         { label: '发货地', value: String(item.shipping_origin || '') },
         { label: '状态', value: String(item.status) === '1' ? '上架' : '下架' },
         { label: '创建时间', value: String(item.created_at || '') }
@@ -470,7 +492,8 @@ export default {
       editProduct,
       toggleStatus,
       deleteProduct,
-      goToDetail
+      goToDetail,
+      getCategoryName
     }
   }
 }

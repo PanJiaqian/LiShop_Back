@@ -19,3 +19,9 @@ export const listAnnouncements = (params) => {
   return api.get('/admin/announcements', { params })
     .then(res => res.data)
 }
+
+export const deleteAnnouncement = (formData) => {
+  return api.post('/admin/announcements/delete', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }).then(res => res.data)
+}

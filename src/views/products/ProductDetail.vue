@@ -46,7 +46,7 @@
           <tr v-for="item in products" :key="item.product_id">
             <td>
               <div class="product-thumb">
-                <img v-if="item.image" :src="item.image" alt="" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;">
+                <img v-if="item.image" :src="item.image" alt="" @click="previewImage(item.image)" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; cursor: pointer;">
                 <span v-else>📷</span>
               </div>
             </td>
@@ -173,6 +173,11 @@ export default {
       fetchProducts()
     }
 
+    const previewImage = (url) => {
+      if (!url) return
+      showModal({ type: 'detail', title: '图片预览', data: [{ label: '', value: url, type: 'image' }] })
+    }
+
     // --- Operations copied and adapted from ProductList.vue ---
 
     const handleCreateDetailProduct = () => {
@@ -183,12 +188,17 @@ export default {
           name: { label: '明细商品名称', type: 'text', value: '' },
           available_products_name: { label: '关联商品名称', type: 'text', value: '' }, // Could auto-fill this if we had the parent name
           unit: { label: '单位', type: 'text', value: '件' },
-          unit_price: { label: '单价', type: 'number', value: '0.00' },
+          unit_price: { label: '单价', type: 'number', value: '0.00', hint: '该单位价格指代的为1m的价格' },
           additional_price: { label: '附加费', type: 'number', value: '0.00' },
           inventory: { label: '库存', type: 'number', value: '0' },
           
           compute_method: { label: '计算方式', type: 'select', value: '直接', options: [{label:'直接', value:'直接'}, {label:'公式', value:'公式'}] },
           has_length: { label: '是否有长度', type: 'select', value: '0', options: [{label:'是', value:'1'}, {label:'否', value:'0'}] },
+          length_unit: { label: '长度单位', type: 'select', value: 'm', options: [
+            { label: 'cm', value: 'cm' },
+            { label: 'mm', value: 'mm' },
+            { label: 'm', value: 'm' }
+          ] },
           color_temperature: { label: '色温', type: 'text', value: '' },
           pricing_type: { label: '定价类型', type: 'select', value: 'fixed', options: [{label:'固定', value:'fixed'}, {label:'全部定价', value:'all_pricing'}] },
           
@@ -220,6 +230,7 @@ export default {
           append('additional_price')
           append('compute_method')
           append('has_length')
+          append('length_unit')
           append('color_temperature')
           append('pricing_type')
           append('max_length')
@@ -332,11 +343,16 @@ export default {
           name: { label: '明细商品名称', type: 'text', value: item.name },
           available_products_name: { label: '关联商品名称', type: 'select', value: productOptions.find(o => o.label === String(item.available_products_name))?.value || (productOptions[0]?.value || ''), options: productOptions },
           unit: { label: '单位', type: 'text', value: item.unit },
-          unit_price: { label: '单价', type: 'number', value: item.unit_price },
+          unit_price: { label: '单价', type: 'number', value: item.unit_price, hint: '该单位价格指代的为1m的价格' },
           additional_price: { label: '附加费', type: 'number', value: item.additional_price },
           inventory: { label: '库存', type: 'number', value: item.inventory },
           compute_method: { label: '计算方式', type: 'select', value: item.compute_method, options: [{label:'直接', value:'直接'}, {label:'公式', value:'公式'}] },
           has_length: { label: '是否有长度', type: 'select', value: String(item.has_length), options: [{label:'是', value:'1'}, {label:'否', value:'0'}] },
+          length_unit: { label: '长度单位', type: 'select', value: 'm', options: [
+            { label: 'cm', value: 'cm' },
+            { label: 'mm', value: 'mm' },
+            { label: 'm', value: 'm' }
+          ] },
           color_temperature: { label: '色温', type: 'text', value: item.color_temperature },
           pricing_type: { label: '定价类型', type: 'select', value: item.pricing_type, options: [{label:'固定', value:'fixed'}, {label:'全部定价', value:'all_pricing'}] },
           max_length: { label: '最大长度', type: 'number', value: item.max_length },
@@ -362,6 +378,7 @@ export default {
             append('compute_method')
             append('has_length')
             append('color_temperature')
+            append('length_unit')
             append('pricing_type')
             append('max_length')
             append('min_length')
@@ -426,7 +443,10 @@ export default {
         rows.push({ label: '子商品销量-总销量', value: String(salesStats.data.total_sales_volume || '') })
         rows.push({ label: '子商品销量-总金额', value: String(salesStats.data.total_sales_amount || '') })
       }
-      showModal({ type: 'detail', title: '明细商品详情', data: rows })
+      const data = []
+      if (item.image) data.push({ label: '商品图片', value: item.image, type: 'image' })
+      rows.forEach(r => data.push(r))
+      showModal({ type: 'detail', title: '明细商品详情', data })
     }
 
 
@@ -434,31 +454,36 @@ export default {
        // This is the manual ID entry version from previous requirement
        showModal({
         type: 'form',
-        title: '更新明细商品(输入ID)',
-        fields: {
-          product_id: { label: '明细商品ID', type: 'text', value: '' },
-          name: { label: '明细商品名称', type: 'text', value: '' },
-          // ... (simplified for manual entry, or same full fields)
-          // To save space, I'll just use the same full fields but empty
-          available_products_name: { label: '关联商品名称', type: 'text', value: '' },
-          unit: { label: '单位', type: 'text', value: '件' },
-          unit_price: { label: '单价', type: 'number', value: '0.00' },
-          additional_price: { label: '附加费', type: 'number', value: '0.00' },
-          inventory: { label: '库存', type: 'number', value: '0' },
-          compute_method: { label: '计算方式', type: 'select', value: '直接', options: [{label:'直接', value:'直接'}, {label:'公式', value:'公式'}] },
-          has_length: { label: '是否有长度', type: 'select', value: '0', options: [{label:'是', value:'1'}, {label:'否', value:'0'}] },
-          color_temperature: { label: '色温', type: 'text', value: '' },
-          pricing_type: { label: '定价类型', type: 'select', value: 'fixed', options: [{label:'固定', value:'fixed'}, {label:'全部定价', value:'all_pricing'}] },
-          max_length: { label: '最大长度', type: 'number', value: '0' },
-          min_length: { label: '最小长度', type: 'number', value: '0' },
-          length_interval: { label: '长度间隔', type: 'text', value: '无' },
-          level_discount: { label: '等级折扣(JSON)', type: 'text', value: '[]' },
-          product_category: { label: '产品分类', type: 'text', value: '' },
-          specification: { label: '规格', type: 'text', value: '' },
-          color: { label: '颜色', type: 'text', value: '' },
-          model: { label: '型号', type: 'text', value: '' },
-          image: { label: '图片', type: 'file', multiple: false, files: null }
-        },
+       title: '更新明细商品(输入ID)',
+       fields: {
+         product_id: { label: '明细商品ID', type: 'text', value: '' },
+         name: { label: '明细商品名称', type: 'text', value: '' },
+         // ... (simplified for manual entry, or same full fields)
+         // To save space, I'll just use the same full fields but empty
+         available_products_name: { label: '关联商品名称', type: 'text', value: '' },
+         unit: { label: '单位', type: 'text', value: '件' },
+          unit_price: { label: '单价', type: 'number', value: '0.00', hint: '该单位价格指代的为1m的价格' },
+         additional_price: { label: '附加费', type: 'number', value: '0.00' },
+         inventory: { label: '库存', type: 'number', value: '0' },
+         compute_method: { label: '计算方式', type: 'select', value: '直接', options: [{label:'直接', value:'直接'}, {label:'公式', value:'公式'}] },
+         has_length: { label: '是否有长度', type: 'select', value: '0', options: [{label:'是', value:'1'}, {label:'否', value:'0'}] },
+         length_unit: { label: '长度单位', type: 'select', value: 'm', options: [
+           { label: 'cm', value: 'cm' },
+           { label: 'mm', value: 'mm' },
+           { label: 'm', value: 'm' }
+         ] },
+         color_temperature: { label: '色温', type: 'text', value: '' },
+         pricing_type: { label: '定价类型', type: 'select', value: 'fixed', options: [{label:'固定', value:'fixed'}, {label:'全部定价', value:'all_pricing'}] },
+         max_length: { label: '最大长度', type: 'number', value: '0' },
+         min_length: { label: '最小长度', type: 'number', value: '0' },
+         length_interval: { label: '长度间隔', type: 'text', value: '无' },
+         level_discount: { label: '等级折扣(JSON)', type: 'text', value: '[]' },
+         product_category: { label: '产品分类', type: 'text', value: '' },
+         specification: { label: '规格', type: 'text', value: '' },
+         color: { label: '颜色', type: 'text', value: '' },
+         model: { label: '型号', type: 'text', value: '' },
+         image: { label: '图片', type: 'file', multiple: false, files: null }
+       },
         onConfirm: async (fields) => {
             const formData = new FormData()
             const append = (key) => formData.append(key, fields[key].value)
@@ -472,6 +497,7 @@ export default {
             append('compute_method')
             append('has_length')
             append('color_temperature')
+            append('length_unit')
             append('pricing_type')
             append('max_length')
             append('min_length')
@@ -534,10 +560,10 @@ export default {
       products,
       pagination,
       filter,
-      fetchProducts,
       handleSearch,
       resetFilter,
       changePage,
+      previewImage,
       handleCreateDetailProduct,
       handleImportDetailExcel,
       handleImportDetailImages,

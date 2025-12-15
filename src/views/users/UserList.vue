@@ -72,6 +72,7 @@
               <div class="actions">
                 <button class="btn-link" @click="viewUser(user)">详情</button>
                 <button class="btn-link" @click="editUser(user)">编辑</button>
+                <button class="btn-link danger" @click="removeUser(user)">删除</button>
               </div>
             </td>
           </tr>
@@ -93,7 +94,7 @@
 
 <script>
 import { inject, reactive, ref, onMounted } from 'vue'
-import { listUsers, createUser, updateUser, updateUserStatus, importUsersExcel } from '@/api/user.js'
+import { listUsers, createUser, updateUser, updateUserStatus, importUsersExcel, deleteUser } from '@/api/user.js'
 
 export default {
   name: 'UserList',
@@ -287,6 +288,26 @@ export default {
       })
     }
 
+    const removeUser = (user) => {
+      showModal({
+        type: 'confirm',
+        title: '删除用户',
+        message: `确定要删除用户 "${user.username}" 吗？`,
+        onConfirm: async () => {
+          try {
+            const fd = new FormData()
+            fd.append('user_id', user.user_id)
+            const res = await deleteUser(fd)
+            const msg = (res && res.message) || '删除用户成功'
+            showToast(msg)
+            fetchUsers()
+          } catch (e) {
+            showToast('删除用户失败')
+          }
+        }
+      })
+    }
+
     onMounted(() => {
       fetchUsers()
     })
@@ -306,6 +327,7 @@ export default {
       handleImport,
       viewUser,
       editUser,
+      removeUser,
       changePage,
       formatTime
     }

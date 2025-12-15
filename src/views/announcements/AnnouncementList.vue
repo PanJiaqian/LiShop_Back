@@ -41,6 +41,7 @@
             <td>
               <div class="actions">
                 <button class="btn-link" @click="editAnnouncement(ann)">编辑</button>
+                <button class="btn-link danger" @click="removeAnnouncement(ann)">删除</button>
               </div>
             </td>
           </tr>
@@ -60,7 +61,7 @@
 
 <script>
 import { inject, ref, onMounted } from 'vue'
-import { createAnnouncement, updateAnnouncement, updateAnnouncementStatus, listAnnouncements } from '@/api/announcement'
+import { createAnnouncement, updateAnnouncement, updateAnnouncementStatus, listAnnouncements, deleteAnnouncement } from '@/api/announcement'
 
 export default {
   name: 'AnnouncementList',
@@ -136,6 +137,26 @@ export default {
       })
     }
 
+    const removeAnnouncement = (ann) => {
+      showModal({
+        type: 'confirm',
+        title: '删除公告',
+        message: '确定删除该公告吗？',
+        onConfirm: async () => {
+          try {
+            const fd = new FormData()
+            fd.append('announcement_id', ann.announcement_id || ann.id)
+            const res = await deleteAnnouncement(fd)
+            const msg = (res && res.message) || '删除成功'
+            showToast(msg)
+            await openAnnouncementList()
+          } catch (e) {
+            showToast('删除失败')
+          }
+        }
+      })
+    }
+
     const openAnnouncementList = async () => {
       try {
         const res = await listAnnouncements({ page: 1, page_size: 20 })
@@ -159,6 +180,7 @@ export default {
       openAnnouncementCreate,
       openAnnouncementList,
       editAnnouncement,
+      removeAnnouncement,
       announcements,
       total
     }

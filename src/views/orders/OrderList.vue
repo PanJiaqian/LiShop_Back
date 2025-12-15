@@ -7,9 +7,9 @@
         <div class="tab-item" :class="{ active: activeTab === 'all' }" @click="activeTab = 'all'">全部订单</div>
         <div class="tab-item" :class="{ active: activeTab === 'unpaid' }" @click="activeTab = 'unpaid'">待付款</div>
         <div class="tab-item" :class="{ active: activeTab === 'unshipped' }" @click="activeTab = 'unshipped'">待发货</div>
-        <div class="tab-item" :class="{ active: activeTab === 'shipped' }" @click="activeTab = 'shipped'">已发货</div>
-        <div class="tab-item" :class="{ active: activeTab === 'completed' }" @click="activeTab = 'completed'">已完成</div>
-        <div class="tab-item" :class="{ active: activeTab === 'closed' }" @click="activeTab = 'closed'">已关闭</div>
+        <div class="tab-item" :class="{ active: activeTab === 'shipped' }" @click="activeTab = 'shipped'">待收货</div>
+        <div class="tab-item" :class="{ active: activeTab === 'completed' }" @click="activeTab = 'completed'">已收货</div>
+        <div class="tab-item" :class="{ active: activeTab === 'closed' }" @click="activeTab = 'closed'">已取消</div>
       </div>
       <div class="filter-bar">
         <input type="text" class="form-input" placeholder="订单号/买家姓名/手机号" v-model="filter.keyword" />
@@ -26,12 +26,14 @@
         <thead>
           <tr>
             <th>订单号</th>
-            <th>买家</th>
+            <th>用户ID</th>
             <th>订单金额</th>
             <th>下单时间</th>
             <th>状态</th>
-            <th>支付方式</th>
-            <th width="150">操作</th>
+            <th>物流公司</th>
+            <th>运单号</th>
+            <th>备注</th>
+            <th width="180">操作</th>
           </tr>
         </thead>
         <tbody>
@@ -40,26 +42,23 @@
               <div class="order-id">{{ order.id }}</div>
               <div class="order-source" v-if="order.source">{{ order.source }}</div>
             </td>
+            <td>{{ order.user_id }}</td>
             <td>
-              <div class="user-info">
-                <div class="name">{{ order.user }}</div>
-                <div class="phone">{{ order.phone }}</div>
-              </div>
+              <div class="amount">¥ {{ order.total_amount }}</div>
             </td>
-            <td>
-              <div class="amount">¥ {{ order.amount }}</div>
-              <div class="shipping-fee">运费: ¥ {{ order.shipping }}</div>
-            </td>
-            <td>{{ order.time }}</td>
+            <td>{{ order.created_at }}</td>
             <td>
               <span class="badge" :class="getStatusClass(order.status)">{{ order.status }}</span>
             </td>
-            <td>{{ order.payment }}</td>
+            <td>{{ order.logistics_company || '—' }}</td>
+            <td>{{ order.tracking_number || '—' }}</td>
+            <td style="max-width: 240px; overflow: hidden; text-overflow: ellipsis;">{{ order.note || '—' }}</td>
             <td>
               <div class="actions">
-                <button class="btn-link" @click="$router.push(`/orders/detail`)">详情</button>
+                <button class="btn-link" @click="$router.push(`/orders/${order.id}`)">详情</button>
                 <button class="btn-link" v-if="order.status === '待发货'" @click="shipOrder(order)">发货</button>
-                <button class="btn-link danger" v-if="order.status === '待付款'" @click="closeOrder(order)">关闭</button>
+                <button class="btn-link" v-if="order.status === '待收货'" @click="changeTracking(order)">改单号</button>
+                <button class="btn-link danger" v-if="order.status === '待付款'" @click="closeOrder(order)">取消</button>
               </div>
             </td>
           </tr>
@@ -80,12 +79,14 @@
 </template>
 
 <script>
-import { inject, reactive, ref, computed } from 'vue'
+import { inject, reactive, ref, computed, onMounted } from 'vue'
+import { listAdminOrdersDetail, updateOrderStatus, updateTrackingNumber } from '@/api/order.js'
 
 export default {
   name: 'OrderList',
   setup() {
     const showModal = inject('showModal')
+    const showToast = inject('showToast')
     const activeTab = ref('all')
     const filter = reactive({
       keyword: '',
@@ -93,13 +94,43 @@ export default {
       endDate: ''
     })
 
-    const orders = reactive([
-        { id: 'ORD-20251204-001', user: 'Alice Smith', phone: '138****1234', amount: '299.00', shipping: '0.00', time: '2025-12-04 10:30:00', status: '待发货', payment: '微信支付' },
-        { id: 'ORD-20251204-002', user: 'Bob Jones', phone: '139****5678', amount: '599.00', shipping: '10.00', time: '2025-12-04 09:15:20', status: '待付款', payment: '未支付' },
-        { id: 'ORD-20251204-003', user: 'Charlie Brown', phone: '150****9876', amount: '58.00', shipping: '6.00', time: '2025-12-03 18:20:15', status: '已完成', payment: '支付宝' },
-        { id: 'ORD-20251204-004', user: 'David Wilson', phone: '136****4321', amount: '399.00', shipping: '0.00', time: '2025-12-03 14:10:05', status: '已发货', payment: '微信支付' },
-        { id: 'ORD-20251204-005', user: 'Eva Davis', phone: '189****6789', amount: '99.00', shipping: '0.00', time: '2025-12-03 11:05:00', status: '已关闭', payment: '未支付' }
-    ])
+    const orders = reactive([])
+
+    const normalizeStatus = (s) => {
+      const k = String(s || '').toUpperCase()
+      const map = {
+        PENDING: '待付款',
+        CONFIRMED: '待发货',
+        SHIPPED: '待收货',
+        COMPLETED: '已收货',
+        CANCELLED: '已取消'
+      }
+      return map[k] || s
+    }
+
+    const fetchOrders = async () => {
+      try {
+        const res = await listAdminOrdersDetail({ order_id: '', page: 1, page_size: 20, sort_by: 'price', sort_order: 'desc' })
+        const items = (res && res.data && Array.isArray(res.data.orders)) ? res.data.orders : []
+        const mapped = items.map(e => {
+          const o = e.order || {}
+          return {
+            id: o.order_id,
+            user_id: o.user_id || '',
+            address_id: o.address_id || '',
+            total_amount: (o.total_amount != null ? Number(o.total_amount).toFixed(2) : '0.00'),
+            created_at: (o.created_at ? String(o.created_at).replace('T', ' ').split('.')[0] : ''),
+            status: normalizeStatus(o.status),
+            tracking_number: o.tracking_number,
+            logistics_company: o.logistics_company,
+            note: o.note || ''
+          }
+        })
+        orders.splice(0, orders.length, ...mapped)
+      } catch (e) {
+        showToast('获取订单失败')
+      }
+    }
 
     const filteredOrders = computed(() => {
       let res = orders
@@ -107,15 +138,15 @@ export default {
         const statusMap = {
           'unpaid': '待付款',
           'unshipped': '待发货',
-          'shipped': '已发货',
-          'completed': '已完成',
-          'closed': '已关闭'
+          'shipped': '待收货',
+          'completed': '已收货',
+          'closed': '已取消'
         }
         res = res.filter(o => o.status === statusMap[activeTab.value])
       }
       // Simple keyword filter
       if (filter.keyword) {
-        res = res.filter(o => o.id.includes(filter.keyword) || o.user.includes(filter.keyword))
+        res = res.filter(o => o.id.includes(filter.keyword) || (o.user_id || '').includes(filter.keyword))
       }
       return res
     })
@@ -124,15 +155,15 @@ export default {
       const map = {
         '待付款': 'warning',
         '待发货': 'info',
-        '已发货': 'primary',
-        '已完成': 'success',
-        '已关闭': 'gray'
+        '待收货': 'primary',
+        '已收货': 'success',
+        '已取消': 'gray'
       }
       return map[status] || 'gray'
     }
 
     const handleSearch = () => {
-      console.log('Search:', filter)
+      fetchOrders()
     }
 
     const exportOrders = () => {
@@ -151,16 +182,57 @@ export default {
         type: 'form',
         title: '订单发货',
         fields: {
-          logisticsCompany: { label: '物流公司', type: 'select', value: '顺丰速运', options: [
-            { label: '顺丰速运', value: '顺丰速运' },
-            { label: '中通快递', value: '中通快递' },
-            { label: '圆通速递', value: '圆通速递' }
+          logisticsCompany: { label: '物流公司', type: 'select', value: 'zhongtong', options: [
+            { label: '中通快递', value: 'zhongtong' },
+            { label: '顺丰速运', value: 'sf_express' },
+            { label: '顺丰快运', value: 'sf_fast' }
           ]},
-          trackingNumber: { label: '物流单号', type: 'text', value: '' }
+          trackingNumber: { label: '物流单号', type: 'text', value: '' },
+          fromRegion: { label: '寄件地区', type: 'text', value: '' },
+          toRegion: { label: '收件地区', type: 'text', value: '' },
+          senderPhone: { label: '寄件人手机号', type: 'text', value: '' }
         },
-        onConfirm: (fields) => {
-          order.status = '已发货'
-          console.log('Shipped:', fields)
+        onConfirm: async (fields) => {
+          try {
+            if (!fields.trackingNumber.value) {
+              showToast('请填写运单号')
+              return
+            }
+            const fd = new FormData()
+            fd.append('order_id', order.id)
+            fd.append('tracking_number', fields.trackingNumber.value)
+            fd.append('status', 'SHIPPED')
+            if (fields.logisticsCompany.value) fd.append('logistics_company_code', fields.logisticsCompany.value)
+            if (fields.fromRegion.value) fd.append('from_region', fields.fromRegion.value)
+            if (fields.toRegion.value) fd.append('to_region', fields.toRegion.value)
+            if (fields.senderPhone.value) fd.append('sender_phone', fields.senderPhone.value)
+            const res = await updateOrderStatus(fd)
+            showToast((res && res.message) || '发货成功')
+            order.status = '待收货'
+          } catch (e) {
+            showToast('发货失败')
+          }
+        }
+      })
+    }
+
+    const changeTracking = (order) => {
+      showModal({
+        type: 'form',
+        title: '修改运单号',
+        fields: {
+          trackingNumber: { label: '新运单号', type: 'text', value: '' }
+        },
+        onConfirm: async (fields) => {
+          try {
+            const fd = new FormData()
+            fd.append('order_id', order.id)
+            fd.append('tracking_number', fields.trackingNumber.value)
+            const res = await updateTrackingNumber(fd)
+            showToast((res && res.message) || '修改成功')
+          } catch (e) {
+            showToast('修改失败')
+          }
         }
       })
     }
@@ -168,13 +240,17 @@ export default {
     const closeOrder = (order) => {
       showModal({
         type: 'confirm',
-        title: '关闭订单',
-        message: '确定要关闭该订单吗？关闭后无法恢复。',
+        title: '取消订单',
+        message: '确定要取消该订单吗？取消后无法恢复。',
         onConfirm: () => {
-          order.status = '已关闭'
+          order.status = '已取消'
         }
       })
     }
+
+    onMounted(() => {
+      fetchOrders()
+    })
 
     return {
       activeTab,
@@ -185,7 +261,8 @@ export default {
       handleSearch,
       exportOrders,
       shipOrder,
-      closeOrder
+      closeOrder,
+      changeTracking
     }
   }
 }

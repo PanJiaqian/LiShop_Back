@@ -29,3 +29,11 @@ export const importUsersExcel = (file) => {
     }
   }).then(res => res.data)
 }
+
+export const deleteUser = (formData) => {
+  return api.post('/admin/users/delete', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  }).then(res => res.data)
+}

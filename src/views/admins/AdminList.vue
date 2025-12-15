@@ -1,7 +1,8 @@
 <template>
   <div>
     <div class="page-title">管理员列表</div>
-    
+
+
     <div class="card" style="margin-bottom: 24px;">
       <div class="filter-bar">
         <input type="text" class="form-input" placeholder="用户名/姓名" v-model="filter.keyword" />
@@ -26,8 +27,8 @@
             <th>手机号</th>
             <th>角色</th>
             <th>状态</th>
-            <th>创建时间</th>
-            <th width="150">操作</th>
+          <th>创建时间</th>
+            <th width="220">操作</th>
           </tr>
         </thead>
         <tbody>
@@ -44,11 +45,12 @@
             </td>
             <td>{{ admin.created_at }}</td>
             <td>
-              <div class="actions">
-                <button class="btn-link" @click="viewAdmin(admin)">详情</button>
-                <button class="btn-link" @click="editAdmin(admin)">编辑</button>
-                <!-- <button class="btn-link danger" v-if="admin.id !== 1" @click="deleteAdmin(admin)">删除</button> -->
-              </div>
+            <div class="actions">
+              <button class="btn-link" @click="viewAdmin(admin)">详情</button>
+              <button class="btn-link" @click="editAdmin(admin)">编辑</button>
+              <button class="btn-link" @click="editPermissions(admin)">权限</button>
+              <button class="btn-link danger" v-if="admin.id !== 1" @click="deleteAdmin(admin)">删除</button>
+            </div>
             </td>
           </tr>
         </tbody>
@@ -68,7 +70,7 @@
 
 <script setup>
 import { ref, inject, onMounted } from 'vue'
-import { listAdmins, createAdmin, updateAdmin, updateAdminStatus, updateAdminPermissions, useAuthStore } from '@/api/admin.js'
+import { listAdmins, createAdmin, updateAdmin, updateAdminStatus, updateAdminPermissions, useAuthStore, deleteAdmin as deleteAdminApi } from '@/api/admin.js'
 
 const showModal = inject('showModal')
 const showToast = inject('showToast')
@@ -80,6 +82,65 @@ const filter = ref({
 })
 
 const admins = ref([])
+const permissionCount = ref(42)
+
+const ALL_PERMISSIONS = [
+  // 管理员管理
+  { value: 'admin.list', label: '管理员列表' },
+  { value: 'admin.create', label: '创建管理员' },
+  { value: 'admin.message_update', label: '更新管理员基础信息' },
+  { value: 'admin.update', label: '更新管理员权限集合' },
+  { value: 'admin.status_update', label: '更改管理员启用状态' },
+  // 用户管理
+  { value: 'user.list', label: '用户列表' },
+  { value: 'user.create', label: '创建用户' },
+  { value: 'user.update', label: '更新用户信息' },
+  { value: 'user.update_status', label: '更新用户状态' },
+  // 商品管理（母商品）
+  { value: 'products.list', label: '在售商品列表' },
+  { value: 'products.create', label: '创建在售商品' },
+  { value: 'products.update', label: '更新在售商品' },
+  { value: 'products.publish', label: '上/下架在售商品' },
+  // 明细商品（子商品）
+  { value: 'product_details.create', label: '创建明细商品' },
+  { value: 'product_details.update', label: '更新明细商品' },
+  { value: 'product_details.status', label: '更改明细商品状态' },
+  // 分类管理
+  { value: 'categories.list', label: '分类列表' },
+  { value: 'categories.create', label: '创建分类' },
+  { value: 'categories.update', label: '更新分类' },
+  { value: 'categories.status', label: '更改分类状态' },
+  // 价格策略
+  { value: 'prices.view', label: '查看价格策略' },
+  { value: 'prices.create', label: '创建价格策略' },
+  { value: 'prices.update', label: '更新价格策略' },
+  { value: 'prices.status', label: '更改价格策略状态' },
+  // 订单管理
+  { value: 'orders.detail', label: '订单详情/订单列表' },
+  { value: 'orders.update_status', label: '更新订单状态' },
+  { value: 'orders.update_logistics', label: '更新订单物流' },
+  { value: 'orders.export', label: '导出订单' },
+  // 客服与工单
+  { value: 'customer_service.create', label: '创建客服账号' },
+  { value: 'customer_service.update', label: '更新客服信息' },
+  { value: 'customer_service.update_status', label: '更改客服状态' },
+  { value: 'customer_service.list', label: '客服列表' },
+  { value: 'work_orders.update', label: '更新工单标题' },
+  // 公告管理
+  { value: 'announcements.list', label: '公告列表' },
+  { value: 'announcements.create', label: '发布公告' },
+  { value: 'announcements.update', label: '更新公告' },
+  { value: 'announcements.status', label: '更改公告状态' },
+  // 轮播与推荐
+  { value: 'banners.create', label: '创建轮播内容' },
+  { value: 'banners.update', label: '更新轮播内容状态' },
+  { value: 'banners.list', label: '轮播内容列表' },
+  { value: 'available_products.create', label: '创建推荐内容' },
+  { value: 'available_products.update', label: '更新推荐状态' },
+  { value: 'available_products.list', label: '推荐内容列表' }
+]
+
+permissionCount.value = ALL_PERMISSIONS.length // 展示实际数量
 
 const auth = useAuthStore()
 
@@ -205,8 +266,37 @@ const deleteAdmin = (admin) => {
   confirmDialog({
     title: '确认删除',
     content: `确定要删除管理员 "${admin.username}" 吗？`,
-    onConfirm: () => {
-      showToast('管理员已删除')
+    onConfirm: async () => {
+      try {
+        const res = await deleteAdminApi({ admin_id: admin.admins_id })
+        const msg = (res && res.message) || '删除管理员成功'
+        showToast(msg)
+        await fetchAdmins()
+      } catch (e) {
+        showToast('删除管理员失败')
+      }
+    }
+  })
+}
+
+const editPermissions = (admin) => {
+  const initial = Array.isArray(admin.permissions) ? [...admin.permissions] : []
+  showModal({
+    type: 'form',
+    title: '编辑管理员权限',
+    fields: {
+      admins_id: { label: '管理员ID', type: 'text', value: admin.admins_id },
+      permissions: { label: '权限集合', type: 'checkbox-group', value: initial, options: ALL_PERMISSIONS }
+    },
+    onConfirm: async (fields) => {
+      try {
+        const res = await updateAdminPermissions({ admin_id: fields.admins_id.value, permissions: fields.permissions.value })
+        const msg = (res && res.message) || '权限更新成功'
+        showToast(msg)
+        await fetchAdmins()
+      } catch (e) {
+        showToast('权限更新失败')
+      }
     }
   })
 }

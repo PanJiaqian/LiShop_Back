@@ -31,3 +31,9 @@ export const updateRecommendationStatus = (payload) => {
 export const listRecommendations = (params) => {
   return api.get('/admin/recommendation/list', { params }).then(res => res.data)
 }
+
+export const deleteRecommendation = (formData) => {
+  return api.post('/admin/recommendation/delete', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }).then(res => res.data)
+}

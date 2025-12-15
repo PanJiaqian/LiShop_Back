@@ -20,3 +20,9 @@ export const listPriceStrategies = (params) => {
     .then(res => res.data)
 }
 
+export const deletePriceStrategy = (formData) => {
+  return api.post('/admin/prices/delete', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }).then(res => res.data)
+}
+

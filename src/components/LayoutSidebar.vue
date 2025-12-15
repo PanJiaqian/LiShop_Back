@@ -45,12 +45,6 @@
             <span class="text">管理员</span>
           </a>
         </router-link>
-        <router-link to="/admins/roles" custom v-slot="{ navigate, href, isActive }">
-          <a :class="['menu-item', { 'router-link-active': isActive }]" :href="href" @click="handleLink($event, navigate)">
-            <span class="icon">🔑</span>
-            <span class="text">角色权限</span>
-          </a>
-        </router-link>
       </div>
       <div class="menu-group">
         <div class="menu-group-title">营销</div>

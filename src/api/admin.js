@@ -110,3 +110,5 @@ export const listAdmins = params => api.get('/admin/admins', { params }).then(r 
 const authInit = useAuthStore()
 authInit.ensureTimer()
 
+export const deleteAdmin = body => api.post('/admin/admins/delete', body).then(r => r.data)
+

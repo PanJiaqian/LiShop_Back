@@ -18,7 +18,6 @@ const router = createRouter({
         { path: 'orders/:id', name: 'order-detail', component: () => import('@/views/orders/OrderDetail.vue') },
         { path: 'users', name: 'users', component: () => import('@/views/users/UserList.vue') },
         { path: 'admins', name: 'admins', component: () => import('@/views/admins/AdminList.vue') },
-        { path: 'admins/roles', name: 'roles', component: () => import('@/views/admins/RoleList.vue') },
         { path: 'pricing/strategies', name: 'pricing-strategies', component: () => import('@/views/pricing/PricingStrategy.vue') },
         { path: 'content/carousel', name: 'carousel', component: () => import('@/views/content/CarouselAdmin.vue') },
         { path: 'content/recommendations', name: 'recommendations', component: () => import('@/views/content/RecommendationAdmin.vue') },

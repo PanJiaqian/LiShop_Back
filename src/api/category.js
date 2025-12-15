@@ -19,3 +19,11 @@ export const updateCategoryStatus = (data) => {
   return api.post('/admin/categories/status', data)
     .then(res => res.data)
 }
+
+export const deleteCategory = (formData) => {
+  return api.post('/admin/categories/delete', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  }).then(res => res.data)
+}

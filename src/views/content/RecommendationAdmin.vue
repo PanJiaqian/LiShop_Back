@@ -36,6 +36,7 @@
               <div class="actions">
                 <button class="btn-link" @click="publish(item)">上架</button>
                 <button class="btn-link danger" @click="unpublish(item)">下架</button>
+                <button class="btn-link danger" @click="remove(item)">删除</button>
               </div>
             </td>
           </tr>
@@ -55,7 +56,7 @@
 
 <script>
 import { inject, ref, onMounted } from 'vue'
-import { createRecommendation, updateRecommendationStatus, listRecommendations } from '@/api/recommendation'
+import { createRecommendation, updateRecommendationStatus, listRecommendations, deleteRecommendation } from '@/api/recommendation'
 
 export default {
   name: 'RecommendationAdmin',
@@ -134,6 +135,26 @@ export default {
       }
     }
 
+    const remove = async (item) => {
+      showModal({
+        type: 'confirm',
+        title: '删除推荐',
+        message: '确定删除该推荐内容吗？',
+        onConfirm: async () => {
+          try {
+            const fd = new FormData()
+            fd.append('recommendation_id', item.recommendation_id)
+            const res = await deleteRecommendation(fd)
+            const msg = (res && res.message) || '删除成功'
+            showToast(msg)
+            await fetchList()
+          } catch (e) {
+            showToast('删除失败')
+          }
+        }
+      })
+    }
+
     onMounted(() => {
       fetchList()
     })
@@ -144,7 +165,8 @@ export default {
       openCreateModal,
       fetchList,
       publish,
-      unpublish
+      unpublish,
+      remove
     }
   }
 }

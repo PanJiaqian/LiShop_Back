@@ -20,9 +20,15 @@
             {{ modal.message }}
           </div>
           <div v-else-if="modal.type === 'detail'" class="modal-detail">
-            <div v-for="(item, idx) in modal.data" :key="idx" class="detail-row">
-              <div class="detail-label">{{ item.label }}</div>
-              <div class="detail-value">{{ item.value }}</div>
+            <div v-for="(item, idx) in modal.data" :key="idx">
+              <div v-if="item && item.type === 'image'" class="detail-image">
+                <div v-if="item.label" class="detail-label">{{ item.label }}</div>
+                <img :src="item.src || item.value" alt="preview" />
+              </div>
+              <div v-else class="detail-row">
+                <div class="detail-label">{{ item.label }}</div>
+                <div class="detail-value">{{ item.value }}</div>
+              </div>
             </div>
           </div>
           <div v-else-if="modal.type === 'form'" class="modal-form">
@@ -45,6 +51,23 @@
               <select v-else-if="field.type === 'select'" v-model="field.value" class="form-select">
                 <option v-for="opt in field.options" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
               </select>
+              <div v-else-if="field.type === 'checkbox-group'" class="checkbox-group">
+                <label v-for="opt in field.options" :key="opt.value" class="checkbox-item">
+                  <input type="checkbox"
+                         :value="opt.value"
+                         :checked="Array.isArray(field.value) && field.value.includes(opt.value)"
+                         @change="(e) => {
+                           const v = opt.value
+                           const arr = Array.isArray(field.value) ? [...field.value] : []
+                           if (e.target.checked) { if (!arr.includes(v)) arr.push(v) }
+                           else { const i = arr.indexOf(v); if (i >= 0) arr.splice(i, 1) }
+                           field.value = arr
+                         }"
+                  />
+                  {{ opt.label }}
+                </label>
+              </div>
+              <div v-if="field.hint" class="field-hint">{{ field.hint }}</div>
             </div>
           </div>
         </div>
@@ -621,6 +644,17 @@ body {
     flex: 1;
     word-break: break-all;
   }
+  .detail-image {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+  }
+  .detail-image img {
+    max-width: 100%;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+  }
   
   .form-group {
     margin-bottom: 16px;
@@ -632,6 +666,23 @@ body {
       font-weight: 500;
       color: #374151;
     }
+    .field-hint {
+      margin-top: 4px;
+      font-size: 12px;
+      color: #f5222d;
+    }
+  }
+  .checkbox-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 12px;
+  }
+  .checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #374151;
   }
 }
 

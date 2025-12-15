@@ -38,6 +38,7 @@
                 <button class="btn-link" @click="viewStrategy(s)">详情</button>
                 <button class="btn-link" @click="updateStrategy(s)">编辑</button>
                 <!-- <button class="btn-link danger" @click="resetStrategy(s)">重置</button> -->
+                <button class="btn-link danger" @click="removeStrategy(s)">删除</button>
               </div>
             </td>
           </tr>
@@ -52,7 +53,7 @@
 
 <script setup>
 import { ref, inject, onMounted } from 'vue'
-import { listPriceStrategies, createPriceStrategy, updatePriceStrategy, resetPriceStrategy } from '@/api/prices'
+import { listPriceStrategies, createPriceStrategy, updatePriceStrategy, resetPriceStrategy, deletePriceStrategy } from '@/api/prices'
 
 const showModal = inject('showModal')
 const showToast = inject('showToast')
@@ -145,6 +146,26 @@ const resetStrategy = async (s) => {
     const res = await resetPriceStrategy({ strategy_id: s.strategy_id || s.id })
     if (res && res.success) { showToast(res.message || '重置成功'); await loadStrategies() } else { showToast('重置失败') }
   } catch (e) { showToast('请求失败') }
+}
+
+const removeStrategy = (s) => {
+  showModal({
+    type: 'confirm',
+    title: '删除价格策略',
+    message: '确定删除该策略吗？',
+    onConfirm: async () => {
+      try {
+        const fd = new FormData()
+        fd.append('strategy_id', s.strategy_id || s.id)
+        const res = await deletePriceStrategy(fd)
+        const msg = (res && res.message) || '删除成功'
+        showToast(msg)
+        await loadStrategies()
+      } catch (e) {
+        showToast('删除失败')
+      }
+    }
+  })
 }
 
 onMounted(() => { loadStrategies() })

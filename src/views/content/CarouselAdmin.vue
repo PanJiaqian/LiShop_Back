@@ -41,6 +41,7 @@
               <div class="actions">
                 <button class="btn-link" @click="publish(item)">上架</button>
                 <button class="btn-link danger" @click="unpublish(item)">下架</button>
+                <button class="btn-link danger" @click="remove(item)">删除</button>
               </div>
             </td>
           </tr>
@@ -60,7 +61,7 @@
 
 <script>
 import { inject, ref, onMounted } from 'vue'
-import { createCarousel, updateCarouselStatus, listCarousel } from '@/api/carousel'
+import { createCarousel, updateCarouselStatus, listCarousel, deleteCarousel } from '@/api/carousel'
 
 export default {
   name: 'CarouselAdmin',
@@ -136,6 +137,26 @@ export default {
       }
     }
 
+    const remove = async (item) => {
+      showModal({
+        type: 'confirm',
+        title: '删除轮播',
+        message: '确定删除该轮播内容吗？',
+        onConfirm: async () => {
+          try {
+            const fd = new FormData()
+            fd.append('carousel_id', item.carousel_id)
+            const res = await deleteCarousel(fd)
+            const msg = (res && res.message) || '删除成功'
+            showToast(msg)
+            await fetchList()
+          } catch (e) {
+            showToast('删除失败')
+          }
+        }
+      })
+    }
+
     const onImgError = (e) => {
       const svg = encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="100%" height="100%" fill="#f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="10" fill="#9ca3af">No Image</text></svg>')
       e.target.src = `data:image/svg+xml,${svg}`
@@ -152,6 +173,7 @@ export default {
       fetchList,
       publish,
       unpublish,
+      remove,
       onImgError
     }
   }
