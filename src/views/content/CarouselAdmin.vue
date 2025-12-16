@@ -5,6 +5,7 @@
       <div class="filter-bar">
         <button class="btn-sm primary" @click="openCreateModal">创建轮播</button>
         <select class="form-select" v-model="listType" @change="fetchList">
+          <option value="全部">全部</option>
           <option value="商品">商品</option>
           <option value="图片">图片</option>
         </select>
@@ -72,19 +73,23 @@ export default {
     const items = ref([])
 
     const openCreateModal = () => {
+      const isImage = listType.value === '图片'
+      const fields = {
+        carousel_type: { label: '类型', type: 'select', options: [{ value: '商品', label: '商品' }, { value: '图片', label: '图片' }], value: listType.value || '商品' },
+        image: { label: '图片', type: 'file', multiple: false, files: null }
+      }
+      if (!isImage) {
+        fields.available_product_id = { label: '商品ID', type: 'text', value: '' }
+      }
       showModal({
         type: 'form',
         title: '创建轮播',
-        fields: {
-          carousel_type: { label: '类型', type: 'select', options: [{ value: '商品', label: '商品' }, { value: '图片', label: '图片' }], value: '商品' },
-          available_product_id: { label: '商品ID', type: 'text', value: '' },
-          image: { label: '图片', type: 'file', value: null }
-        },
+        fields,
         onConfirm: async (fields) => {
           const fd = new FormData()
           fd.append('carousel_type', fields.carousel_type.value)
-          if (fields.available_product_id.value) fd.append('available_product_id', fields.available_product_id.value)
-          if (fields.image.value) fd.append('image', fields.image.value)
+          if (fields.available_product_id && fields.available_product_id.value) fd.append('available_product_id', fields.available_product_id.value)
+          if (fields.image.files && fields.image.files[0]) fd.append('image', fields.image.files[0])
 
           try {
             const res = await createCarousel(fd)
@@ -101,8 +106,18 @@ export default {
 
     const fetchList = async () => {
       try {
-        const res = await listCarousel({ carousel_type: listType.value })
-        items.value = (res && res.data && res.data.items) || []
+        if (listType.value === '全部') {
+          const [res1, res2] = await Promise.all([
+            listCarousel({ carousel_type: '商品' }),
+            listCarousel({ carousel_type: '图片' })
+          ])
+          const items1 = (res1 && res1.data && res1.data.items) || []
+          const items2 = (res2 && res2.data && res2.data.items) || []
+          items.value = [...items1, ...items2]
+        } else {
+          const res = await listCarousel({ carousel_type: listType.value })
+          items.value = (res && res.data && res.data.items) || []
+        }
       } catch (e) {
         items.value = []
         showToast('获取列表失败')

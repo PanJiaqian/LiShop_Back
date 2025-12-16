@@ -154,6 +154,8 @@ export default {
       }
     }
 
+    const applyFilters = () => {}
+
     watch(activeTab, () => {
       queryId.value = ''
       result.value = {}
@@ -164,7 +166,7 @@ export default {
       fetchStats()
     })
 
-    return { activeTab, queryId, start, end, sortType, result, fetchStats }
+    return { activeTab, queryId, start, end, sortType, result, fetchStats, applyFilters }
   }
 }
 </script>

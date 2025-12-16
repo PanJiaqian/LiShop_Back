@@ -5,7 +5,12 @@
     <div class="card" style="margin-bottom: 24px;">
       <div class="filter-bar">
         <input type="text" class="form-input" placeholder="策略ID/关键词" v-model="filter.keyword" />
-        <button class="btn-sm primary" @click="loadStrategies">查询</button>
+        <select class="form-select" v-model="filter.status">
+          <option value="">全部状态</option>
+          <option value="1">启用</option>
+          <option value="0">停用</option>
+        </select>
+        <button class="btn-sm primary" @click="handleSearch">查询</button>
         <button class="btn-sm" @click="addStrategy">新增策略</button>
       </div>
     </div>
@@ -26,7 +31,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="s in strategies" :key="s.strategy_id || s.id">
+          <tr v-for="s in filteredStrategies" :key="s.strategy_id || s.id">
             <td>{{ s.strategy_id || s.id }}</td>
             <td>{{ s.name || '-' }}</td>
             <td>{{ s.type || '-' }}</td>
@@ -52,13 +57,13 @@
 </template>
 
 <script setup>
-import { ref, inject, onMounted } from 'vue'
+import { ref, inject, onMounted, computed } from 'vue'
 import { listPriceStrategies, createPriceStrategy, updatePriceStrategy, resetPriceStrategy, deletePriceStrategy } from '@/api/prices'
 
 const showModal = inject('showModal')
 const showToast = inject('showToast')
 
-const filter = ref({ keyword: '' })
+const filter = ref({ keyword: '', status: '' })
 const strategies = ref([])
 
 const loadStrategies = async () => {
@@ -74,6 +79,21 @@ const loadStrategies = async () => {
     showToast('获取价格策略失败')
   }
 }
+
+const handleSearch = () => {}
+
+const filteredStrategies = computed(() => {
+  let arr = strategies.value || []
+  const kw = String(filter.value.keyword || '').trim()
+  if (kw) {
+    arr = arr.filter(s => String(s.strategy_id || '').includes(kw) || String(s.name || '').includes(kw))
+  }
+  const st = filter.value.status
+  if (st !== '' && st != null) {
+    arr = arr.filter(s => String(s.status) === String(st))
+  }
+  return arr
+})
 
 const viewStrategy = (s) => {
   const rows = []
@@ -99,16 +119,48 @@ const viewStrategy = (s) => {
 }
 
 const addStrategy = () => {
+  const tokenOptions = [
+    { label: '+', value: ' + ' },
+    { label: '-', value: ' - ' },
+    { label: '*', value: ' * ' },
+    { label: '/', value: ' / ' },
+    { label: 'unit_price', value: 'unit_price' },
+    { label: 'length', value: 'length' },
+    { label: 'additional_price', value: 'additional_price' },
+    { label: 'quantity', value: 'quantity' },
+    { label: '(', value: '(' },
+    { label: ')', value: ')' }
+  ]
+  const parts = {}
+  for (let i = 1; i <= 10; i++) {
+    parts[`p${i}`] = { label: `片段${i}`, type: 'select', value: '', options: tokenOptions }
+  }
   showModal({
     type: 'form',
     title: '新增价格策略',
     fields: {
-      payload: { label: '参数(JSON)', type: 'text', value: '{}' }
+      name: { label: '策略名称', type: 'text', value: '' },
+            description: { label: '描述', type: 'text', value: '根据基础价格、长度、附加价格和数量计算' },
+      status: { label: '状态', type: 'select', value: '1', options: [{ label: '启用', value: '1' }, { label: '停用', value: '0' }] },
+      formula: { label: '公式（请在下面选择）', type: 'text', value: '', disabled: true, placeholder: '请在下面选择' },
+
+      ...parts
     },
     onConfirm: async (fields) => {
       try {
-        let body
-        try { body = JSON.parse(fields.payload.value || '{}') } catch { body = {} }
+        const seq = []
+        for (let i = 1; i <= 10; i++) {
+          const key = `p${i}`
+          if (fields[key] && fields[key].value) seq.push(fields[key].value)
+        }
+        const built = seq.join('')
+        const formula = fields.formula.value || built || '(unit_price * length + additional_price) * quantity'
+        const body = {
+          name: fields.name.value,
+          formula,
+          description: fields.description.value,
+          status: parseInt(fields.status.value)
+        }
         const res = await createPriceStrategy(body)
         if (res && res.success) {
           showToast(res.message || '创建成功')

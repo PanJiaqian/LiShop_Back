@@ -6,6 +6,11 @@
     <div class="card" style="margin-bottom: 24px;">
       <div class="filter-bar">
         <input type="text" class="form-input" placeholder="用户名/手机号/邮箱" v-model="filter.user_id" />
+        <select class="form-select" v-model="filter.status">
+          <option value="">全部状态</option>
+          <option value="1">正常</option>
+          <option value="0">禁用</option>
+        </select>
         <select class="form-select" v-model="filter.sort_order">
           <option value="desc">注册时间倒序</option>
           <option value="asc">注册时间正序</option>
@@ -46,7 +51,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="user in users" :key="user.user_id">
+          <tr v-for="user in displayUsers" :key="user.user_id">
             <!-- <td><input type="checkbox" /></td> -->
             <td>
               <div class="user-cell">
@@ -81,7 +86,7 @@
 
       <!-- 分页 -->
       <div class="pagination">
-        <span class="page-info">共 {{ total }} 条记录</span>
+        <span class="page-info">共 {{ displayUsers.length }} 条记录</span>
         <div class="page-btns">
           <button class="btn-sm" :disabled="page === 1" @click="changePage(page - 1)">上一页</button>
           <span style="margin: 0 10px;">{{ page }}</span>
@@ -93,7 +98,7 @@
 </template>
 
 <script>
-import { inject, reactive, ref, onMounted } from 'vue'
+import { inject, reactive, ref, onMounted, computed } from 'vue'
 import { listUsers, createUser, updateUser, updateUserStatus, importUsersExcel, deleteUser } from '@/api/user.js'
 
 export default {
@@ -104,11 +109,20 @@ export default {
     
     const filter = reactive({
       user_id: '',
+      status: '',
       sort_by: 'id',
       sort_order: 'desc'
     })
 
     const users = ref([])
+    const displayUsers = computed(() => {
+      let arr = users.value || []
+      const st = filter.status
+      if (st !== '' && st != null) {
+        arr = arr.filter(u => String(u.status) === String(st))
+      }
+      return arr
+    })
     const total = ref(0)
     const page = ref(1)
     const pageSize = ref(20)
@@ -152,11 +166,11 @@ export default {
 
     const handleSearch = () => {
       page.value = 1
-      fetchUsers()
     }
 
     const resetFilter = () => {
       filter.user_id = ''
+      filter.status = ''
       filter.sort_order = 'desc'
       handleSearch()
     }
@@ -315,6 +329,7 @@ export default {
     return {
       filter,
       users,
+      displayUsers,
       total,
       page,
       pageSize,

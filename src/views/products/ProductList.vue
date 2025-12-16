@@ -13,6 +13,10 @@
     <div class="card" style="margin-bottom: 24px;">
       <div class="filter-bar">
         <input type="text" class="form-input" placeholder="搜索商品名称..." v-model="filter.keyword" />
+        <select class="form-select" v-model="filter.category">
+          <option value="">所有分类</option>
+          <option v-for="opt in categoryOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+        </select>
         <select class="form-select" v-model="filter.status">
           <option value="">所有状态</option>
           <option>上架</option>
@@ -39,7 +43,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="item in (products || [])" :key="item.available_product_id">
+          <tr v-for="item in (displayProducts || [])" :key="item.available_product_id">
             <td>
               <div class="product-thumb">
                 <img 
@@ -97,7 +101,7 @@
 </template>
 
 <script>
-import { inject, reactive, onMounted, ref } from 'vue'
+import { inject, reactive, onMounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
   createAvailableProduct, 
@@ -133,6 +137,7 @@ export default {
     })
     
     const categoriesMap = ref({})
+    const categoryOptions = ref([])
     const loadCategoriesMap = async () => {
       try {
         const res = await listCategories({ page: 1, page_size: 500 })
@@ -144,8 +149,11 @@ export default {
           if (id) map[id] = name
         })
         categoriesMap.value = map
+        const opts = items.map(c => ({ label: c.name || c.category_name || '', value: c.name || c.category_name || '' }))
+        categoryOptions.value = opts
       } catch (e) {
         categoriesMap.value = {}
+        categoryOptions.value = []
       }
     }
     const getCategoryName = (id) => {
@@ -164,6 +172,7 @@ export default {
         }
         if (filter.keyword) params.keyword = filter.keyword
         if (filter.status) params.status = filter.status === '上架' ? 1 : (filter.status === '下架' ? 0 : undefined)
+        if (filter.category) params.category_name = filter.category
         
         const res = await listAvailableProducts(params)
         if (res.success) {
@@ -177,6 +186,22 @@ export default {
       }
     }
 
+    const displayProducts = computed(() => {
+      let arr = products.value || []
+      const kw = String(filter.keyword || '').trim()
+      if (kw) {
+        arr = arr.filter(it => String(it.name || '').includes(kw) || String(it.available_product_id || '').includes(kw))
+      }
+      if (filter.category) {
+        arr = arr.filter(it => getCategoryName(it.category_id) === filter.category)
+      }
+      if (filter.status) {
+        const target = filter.status === '上架' ? '1' : (filter.status === '下架' ? '0' : '')
+        if (target) arr = arr.filter(it => String(it.status) === target)
+      }
+      return arr
+    })
+
     onMounted(() => {
       loadCategoriesMap()
       fetchProducts()
@@ -184,7 +209,6 @@ export default {
 
     const handleSearch = () => {
        pagination.page = 1
-       fetchProducts()
     }
 
     const resetFilter = () => {
@@ -469,27 +493,29 @@ export default {
       showModal({ type: 'detail', title: '商品详情', data })
     }
 
-    return {
-      loading,
-      products,
-      pagination,
-      filter,
-      fetchProducts,
-      handleSearch,
-      resetFilter,
-      changePage,
-      handleCreateProduct,
-      handleImportExcel,
-      handleImportImages,
-      handleImportVideos,
-      viewDetail,
-      editProduct,
-      toggleStatus,
-      deleteProduct,
-      goToDetail,
-      getCategoryName,
-      previewImage
-    }
+      return {
+        loading,
+        products,
+        displayProducts,
+        pagination,
+        filter,
+        fetchProducts,
+        handleSearch,
+        resetFilter,
+        changePage,
+        handleCreateProduct,
+        handleImportExcel,
+        handleImportImages,
+        handleImportVideos,
+        viewDetail,
+        editProduct,
+        toggleStatus,
+        deleteProduct,
+        goToDetail,
+        getCategoryName,
+        previewImage,
+        categoryOptions
+      }
   }
 }
 </script>

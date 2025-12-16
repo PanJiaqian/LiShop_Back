@@ -19,6 +19,11 @@
     <div class="card" style="margin-bottom: 24px;">
       <div class="filter-bar">
         <input type="text" class="form-input" placeholder="搜索明细商品..." v-model="filter.keyword" />
+        <select class="form-select" v-model="filter.status">
+          <option value="">所有状态</option>
+          <option value="1">上架</option>
+          <option value="0">下架</option>
+        </select>
         <button class="btn-sm primary" @click="handleSearch">查询</button>
         <button class="btn-sm" @click="resetFilter">重置</button>
       </div>
@@ -43,7 +48,7 @@
           <tr v-if="products.length === 0">
             <td colspan="9" style="text-align: center; padding: 20px; color: #999;">暂无明细数据</td>
           </tr>
-          <tr v-for="item in products" :key="item.product_id">
+          <tr v-for="item in displayProducts" :key="item.product_id">
             <td>
               <div class="product-thumb">
                 <img v-if="getImageUrl(item)" :src="getImageUrl(item)" alt="" @click="previewImage(getImageUrl(item))" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; cursor: pointer;">
@@ -92,7 +97,7 @@
 </template>
 
 <script>
-import { inject, reactive, onMounted, ref } from 'vue'
+import { inject, reactive, onMounted, ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { 
   createProduct, 
@@ -120,7 +125,8 @@ export default {
     })
 
     const filter = reactive({
-      keyword: ''
+      keyword: '',
+      status: ''
     })
     
     // Get available_product_id from route params
@@ -135,6 +141,7 @@ export default {
           available_product_id: availableProductId, // Filter by parent ID
           keyword: filter.keyword
         }
+        if (filter.status !== '') params.status = filter.status
         
         const res = await listProducts(params)
         if (res.success) {
@@ -164,8 +171,21 @@ export default {
 
     const resetFilter = () => {
       filter.keyword = ''
+      filter.status = ''
       handleSearch()
     }
+
+    const displayProducts = computed(() => {
+      let arr = products.value || []
+      const kw = String(filter.keyword || '').trim()
+      if (kw) {
+        arr = arr.filter(it => String(it.name || '').includes(kw) || String(it.product_id || '').includes(kw))
+      }
+      if (filter.status !== '' && filter.status != null) {
+        arr = arr.filter(it => String(it.status) === String(filter.status))
+      }
+      return arr
+    })
     
     const changePage = (page) => {
       pagination.page = page
@@ -550,6 +570,7 @@ export default {
     return {
       loading,
       products,
+      displayProducts,
       pagination,
       filter,
       handleSearch,

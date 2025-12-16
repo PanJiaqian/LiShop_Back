@@ -77,7 +77,7 @@ export default {
         title: '发布公告',
         fields: {
           title: { label: '标题', type: 'text', value: '' },
-          content: { label: '内容', type: 'textarea', value: '' },
+          content: { label: '内容', type: 'text', value: '' },
           status: { label: '状态', type: 'select', options: [{ value: 1, label: '启用' }, { value: 0, label: '停用' }], value: 1 }
         },
         onConfirm: async (fields) => {
@@ -107,20 +107,19 @@ export default {
         fields: {
           announcement_id: { label: '公告ID', type: 'text', value: ann.announcement_id || ann.id, disabled: true },
           title: { label: '标题', type: 'text', value: ann.title },
+          content: { label: '内容', type: 'text', value: ann.content || '' },
           status: { label: '状态', type: 'select', options: [{ value: 1, label: '启用' }, { value: 0, label: '停用' }], value: ann.status }
         },
         onConfirm: async (fields) => {
           try {
-            // Update status explicitly as requested
             const statusRes = await updateAnnouncementStatus({
               announcement_id: fields.announcement_id.value,
               status: Number(fields.status.value)
             })
-
-            // Update other fields
             const payload = {
               announcement_id: fields.announcement_id.value,
-              title: fields.title.value
+              title: fields.title.value,
+              content: fields.content.value
             }
             const res = await updateAnnouncement(payload)
 

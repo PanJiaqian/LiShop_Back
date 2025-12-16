@@ -81,15 +81,15 @@
           <div class="info-list">
             <div class="info-item">
               <span class="label">收货人：</span>
-              <span class="value">Alice Smith</span>
+              <span class="value">{{ order.user_id }}</span>
             </div>
-            <div class="info-item">
+            <!-- <div class="info-item">
               <span class="label">联系电话：</span>
               <span class="value">138****1234</span>
-            </div>
+            </div> -->
             <div class="info-item">
               <span class="label">收货地址：</span>
-              <span class="value">北京市 朝阳区 建国路88号 SOHO现代城 A座 1201</span>
+              <span class="value">{{ order.address_id }}</span>
             </div>
           </div>
         </div>
@@ -228,11 +228,11 @@
     </div>
 
     <!-- 底部操作栏 -->
-    <div class="action-footer">
+    <!-- <div class="action-footer">
       <button class="btn-sm">打印订单</button>
       <button class="btn-sm">修改备注</button>
       <button class="btn-sm primary">发货</button>
-    </div>
+    </div> -->
   </div>
 </template>
 

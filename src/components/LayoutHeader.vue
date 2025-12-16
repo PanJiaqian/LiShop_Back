@@ -5,7 +5,7 @@
      <img style="height: 25px;width: 130px;" mode="aspectFit" src="/logo.png" alt="">
     <div class="header-spacer"></div>
     <div class="actions">
-      <input class="search" type="text" placeholder="搜索" />
+      <!-- <input class="search" type="text" placeholder="搜索" /> -->
       <button v-if="!isLoggedIn" class="login-text-btn" @click="openLogin">登录</button>
       <div v-else class="avatar-wrapper">
         <div class="avatar" @click="toggleDropdown">A</div>

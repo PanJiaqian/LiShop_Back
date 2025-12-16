@@ -69,8 +69,8 @@
         <div class="page-btns">
           <button class="btn-sm" disabled>上一页</button>
           <button class="btn-sm active">1</button>
-          <button class="btn-sm">2</button>
-          <button class="btn-sm">3</button>
+          <!-- <button class="btn-sm">2</button>
+          <button class="btn-sm">3</button> -->
           <button class="btn-sm">下一页</button>
         </div>
       </div>
@@ -136,17 +136,27 @@ export default {
       let res = orders
       if (activeTab.value !== 'all') {
         const statusMap = {
-          'unpaid': '待付款',
-          'unshipped': '待发货',
-          'shipped': '待收货',
-          'completed': '已收货',
-          'closed': '已取消'
+          unpaid: '待付款',
+          unshipped: '待发货',
+          shipped: '待收货',
+          completed: '已收货',
+          closed: '已取消'
         }
         res = res.filter(o => o.status === statusMap[activeTab.value])
       }
-      // Simple keyword filter
       if (filter.keyword) {
         res = res.filter(o => o.id.includes(filter.keyword) || (o.user_id || '').includes(filter.keyword))
+      }
+      const start = filter.startDate
+      const end = filter.endDate
+      if (start || end) {
+        res = res.filter(o => {
+          const t = o.created_at || ''
+          const d = t.split(' ')[0]
+          if (start && d < start) return false
+          if (end && d > end) return false
+          return true
+        })
       }
       return res
     })
@@ -162,9 +172,7 @@ export default {
       return map[status] || 'gray'
     }
 
-    const handleSearch = () => {
-      fetchOrders()
-    }
+    const handleSearch = () => {}
 
     const exportOrders = () => {
       showModal({

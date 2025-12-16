@@ -8,9 +8,8 @@
         <input type="text" class="form-input" placeholder="用户名/姓名" v-model="filter.keyword" />
         <select class="form-select" v-model="filter.role">
           <option value="">所属角色</option>
-          <option value="admin">超级管理员</option>
-          <option value="editor">内容编辑</option>
-          <option value="service">客服专员</option>
+          <option value="SUPER">超级管理员</option>
+          <option value="SUB">子管理员</option>
         </select>
         <button class="btn-sm primary" @click="handleSearch">查询</button>
         <button class="btn-sm primary" style="margin-left: auto;" @click="addAdmin">添加管理员</button>
@@ -32,7 +31,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="admin in admins" :key="admin.id">
+          <tr v-for="admin in filteredAdmins" :key="admin.id">
             <td>{{ admin.admins_id }}</td>
             <td>{{ admin.username }}</td>
             <td>{{ admin.name }}</td>
@@ -57,7 +56,7 @@
       </table>
       
       <div class="pagination">
-        <span class="page-info">共 {{ admins.length }} 条记录</span>
+        <span class="page-info">共 {{ filteredAdmins.length }} 条记录</span>
         <div class="page-btns">
           <button class="btn-sm" disabled>上一页</button>
           <button class="btn-sm active">1</button>
@@ -69,7 +68,7 @@
 </template>
 
 <script setup>
-import { ref, inject, onMounted } from 'vue'
+import { ref, inject, onMounted, computed } from 'vue'
 import { listAdmins, createAdmin, updateAdmin, updateAdminStatus, updateAdminPermissions, useAuthStore, deleteAdmin as deleteAdminApi } from '@/api/admin.js'
 
 const showModal = inject('showModal')
@@ -82,6 +81,18 @@ const filter = ref({
 })
 
 const admins = ref([])
+const filteredAdmins = computed(() => {
+  const kw = String(filter.value.keyword || '').trim()
+  const role = String(filter.value.role || '').trim()
+  let arr = admins.value || []
+  if (kw) {
+    arr = arr.filter(a => String(a.username || '').includes(kw) || String(a.name || '').includes(kw))
+  }
+  if (role) {
+    arr = arr.filter(a => String(a.role || '').toLowerCase().includes(role.toLowerCase()))
+  }
+  return arr
+})
 const permissionCount = ref(42)
 
 const ALL_PERMISSIONS = [
@@ -172,9 +183,7 @@ const fetchAdmins = async () => {
   }
 }
 
-const handleSearch = async () => {
-  await fetchAdmins()
-}
+const handleSearch = async () => {}
 
 const viewAdmin = (admin) => {
   const rows = [
