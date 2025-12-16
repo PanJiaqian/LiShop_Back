@@ -278,11 +278,12 @@ export default {
 
           try {
             const res = await createProduct(formData)
-            if (res.success) {
+            if (res && res.success) {
               showToast('创建明细商品成功')
               fetchProducts()
             } else {
-              showToast('创建失败: ' + (res.message || '未知错误'))
+              const msg = (res && (res.data || res.message)) || '创建失败'
+              showToast(String(msg))
             }
           } catch (e) {
             showToast('创建失败: ' + (e.message || '网络错误'))
@@ -307,14 +308,15 @@ export default {
           formData.append('file', fields.file.files[0])
           try {
             const res = await importProductsExcel(formData)
-            if (res.success) {
+            if (res && res.success) {
                showToast('导入成功')
                if (res.data && res.data.success) {
                  showToast(`成功导入 ${res.data.success_count} 条`)
                }
                fetchProducts()
             } else {
-              showToast('导入失败: ' + (res.message || '未知错误'))
+              const msg = (res && (res.data || res.message)) || '导入失败'
+              showToast(String(msg))
             }
           } catch (e) {
             showToast('导入请求失败')
@@ -339,11 +341,12 @@ export default {
           formData.append('zip_file', fields.zip_file.files[0])
           try {
             const res = await importProductsImagesZip(formData)
-            if (res.success) {
+            if (res && res.success) {
               showToast('批量上传明细图片完成')
               fetchProducts()
             } else {
-              showToast('上传失败: ' + (res.message || '未知错误'))
+              const msg = (res && (res.data || res.message)) || '上传失败'
+              showToast(String(msg))
             }
           } catch (e) {
             showToast('上传请求失败')
@@ -414,14 +417,15 @@ export default {
 
             try {
                 const res = await updateProduct(formData)
-                if (res.success) {
+                if (res && res.success) {
                     showToast('更新明细商品成功')
                     try {
                       await updateProductStatus({ product_id: fields.product_id.value, status: fields.status.value })
                     } catch (e) {}
                     fetchProducts()
                 } else {
-                    showToast('更新失败: ' + (res.message || '未知错误'))
+                    const msg = (res && (res.data || res.message)) || '更新失败'
+                    showToast(String(msg))
                 }
             } catch (e) {
                 showToast('更新请求失败')
@@ -527,11 +531,12 @@ export default {
 
             try {
                 const res = await updateProduct(formData)
-                if (res.success) {
+                if (res && res.success) {
                     showToast('更新明细商品成功')
                     fetchProducts()
                 } else {
-                    showToast('更新失败: ' + (res.message || '未知错误'))
+                    const msg = (res && (res.data || res.message)) || '更新失败'
+                    showToast(String(msg))
                 }
             } catch (e) {
                 showToast('更新请求失败')
@@ -554,11 +559,12 @@ export default {
               product_id: fields.product_id.value,
               status: fields.status.value
             })
-            if (res.success) {
+            if (res && res.success) {
               showToast('更改明细商品状态成功')
               fetchProducts()
             } else {
-              showToast('更改失败: ' + (res.message || '未知错误'))
+              const msg = (res && (res.data || res.message)) || '更改失败'
+              showToast(String(msg))
             }
           } catch (e) {
             showToast('更改请求失败')

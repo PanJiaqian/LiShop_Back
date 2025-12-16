@@ -165,19 +165,25 @@ const formatTime = (t) => {
 const fetchAdmins = async () => {
   try {
     const res = await listAdmins({ admin_id: '', page: 1, page_size: 20, sort_by: 'id', sort_order: '' })
-    const items = (res && res.data && res.data.items) || []
-    admins.value = items.map((it, idx) => ({
-      id: idx + 1,
-      admins_id: it.admins_id,
-      username: it.username,
-      name: it.real_name,
-      role: it.role, // raw role code
-      role_display: it.role === 'SUB' ? '子管理员' : (it.role === 'SUPER' ? '超级管理员' : it.role),
-      created_at: formatTime(it.created_at),
-      status: it.status,
-      phone: it.phone,
-      permissions: it.permissions || []
-    }))
+    if (res && res.success) {
+      const items = (res && res.data && res.data.items) || []
+      admins.value = items.map((it, idx) => ({
+        id: idx + 1,
+        admins_id: it.admins_id,
+        username: it.username,
+        name: it.real_name,
+        role: it.role,
+        role_display: it.role === 'SUB' ? '子管理员' : (it.role === 'SUPER' ? '超级管理员' : it.role),
+        created_at: formatTime(it.created_at),
+        status: it.status,
+        phone: it.phone,
+        permissions: it.permissions || []
+      }))
+    } else {
+      const msg = (res && (res.data || res.message)) || '获取管理员列表失败'
+      showToast(String(msg))
+      admins.value = []
+    }
   } catch (e) {
     showToast('获取管理员列表失败')
   }
@@ -223,9 +229,14 @@ const addAdmin = () => {
           role: fields.role.value,
           permissions: ['user.create', 'categories.update', 'user.list'] // Default permissions
         })
-        const msg = (res && res.message) || '管理员添加成功'
-        showToast(msg)
-        await fetchAdmins()
+        if (res && res.success) {
+          const msg = (res && res.message) || '管理员添加成功'
+          showToast(msg)
+          await fetchAdmins()
+        } else {
+          const msg = (res && (res.data || res.message)) || '管理员添加失败'
+          showToast(String(msg))
+        }
       } catch (e) {
         showToast('管理员添加失败')
       }
@@ -259,11 +270,14 @@ const editAdmin = (admin) => {
           admin_id: fields.admins_id.value,
           status: fields.status.value
         })
-        // Permissions update can be added if we have a permission selector
-        
-        const msg = (res && res.message) || (statusRes && statusRes.message) || '管理员信息已更新'
-        showToast(msg)
-        await fetchAdmins()
+        if ((res && res.success) && (statusRes && statusRes.success)) {
+          const msg = (res && res.message) || (statusRes && statusRes.message) || '管理员信息已更新'
+          showToast(msg)
+          await fetchAdmins()
+        } else {
+          const msg = (!res?.success ? (res?.data || res?.message) : (!statusRes?.success ? (statusRes?.data || statusRes?.message) : '管理员更新失败'))
+          showToast(String(msg))
+        }
       } catch (e) {
         showToast('管理员更新失败')
       }
@@ -278,9 +292,14 @@ const deleteAdmin = (admin) => {
     onConfirm: async () => {
       try {
         const res = await deleteAdminApi({ admin_id: admin.admins_id })
-        const msg = (res && res.message) || '删除管理员成功'
-        showToast(msg)
-        await fetchAdmins()
+        if (res && res.success) {
+          const msg = (res && res.message) || '删除管理员成功'
+          showToast(msg)
+          await fetchAdmins()
+        } else {
+          const msg = (res && (res.data || res.message)) || '删除管理员失败'
+          showToast(String(msg))
+        }
       } catch (e) {
         showToast('删除管理员失败')
       }
@@ -300,9 +319,14 @@ const editPermissions = (admin) => {
     onConfirm: async (fields) => {
       try {
         const res = await updateAdminPermissions({ admin_id: fields.admins_id.value, permissions: fields.permissions.value })
-        const msg = (res && res.message) || '权限更新成功'
-        showToast(msg)
-        await fetchAdmins()
+        if (res && res.success) {
+          const msg = (res && res.message) || '权限更新成功'
+          showToast(msg)
+          await fetchAdmins()
+        } else {
+          const msg = (res && (res.data || res.message)) || '权限更新失败'
+          showToast(String(msg))
+        }
       } catch (e) {
         showToast('权限更新失败')
       }

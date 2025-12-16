@@ -146,8 +146,14 @@ export default {
         } else {
           res = await getProductSalesStats({ product_id: queryId.value, start_time: start.value, end_time: end.value, sort_type: sortType.value })
         }
-        result.value = (res && res.data) || {}
-        showToast('查询成功')
+        if (res && res.success) {
+          result.value = (res && res.data) || {}
+          showToast('查询成功')
+        } else {
+          result.value = {}
+          const msg = (res && (res.data || res.message)) || '获取统计失败'
+          showToast(String(msg))
+        }
       } catch (e) {
         result.value = {}
         showToast('获取统计失败')

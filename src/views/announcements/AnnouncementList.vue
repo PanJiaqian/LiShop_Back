@@ -91,7 +91,8 @@ export default {
               showToast(res.message || '发布公告成功')
               openAnnouncementList()
             } else {
-              showToast('发布公告失败')
+              const msg = (res && (res.data || res.message)) || '发布公告失败'
+              showToast(String(msg))
             }
           } catch (e) {
             showToast('请求失败')
@@ -127,7 +128,8 @@ export default {
               showToast('更新公告成功')
               openAnnouncementList()
             } else {
-              showToast('更新失败')
+              const msg = (!res?.success ? (res?.data || res?.message) : (!statusRes?.success ? (statusRes?.data || statusRes?.message) : '更新失败'))
+              showToast(String(msg))
             }
           } catch (e) {
             showToast('请求失败')
@@ -146,9 +148,14 @@ export default {
             const fd = new FormData()
             fd.append('announcement_id', ann.announcement_id || ann.id)
             const res = await deleteAnnouncement(fd)
-            const msg = (res && res.message) || '删除成功'
-            showToast(msg)
-            await openAnnouncementList()
+            if (res && res.success) {
+              const msg = (res && res.message) || '删除成功'
+              showToast(msg)
+              await openAnnouncementList()
+            } else {
+              const msg = (res && (res.data || res.message)) || '删除失败'
+              showToast(String(msg))
+            }
           } catch (e) {
             showToast('删除失败')
           }
@@ -164,7 +171,8 @@ export default {
           announcements.value = items
           total.value = (res.data && res.data.total) || res.total || items.length
         } else {
-          showToast('获取公告列表失败')
+          const msg = (res && (res.data || res.message)) || '获取公告列表失败'
+          showToast(String(msg))
         }
       } catch (e) {
         showToast('请求失败')

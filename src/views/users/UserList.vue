@@ -191,7 +191,7 @@ export default {
         },
         onConfirm: async (fields) => {
           try {
-            await createUser({
+            const res = await createUser({
               username: fields.username.value,
               phone: fields.phone.value,
               password: fields.password.value,
@@ -202,8 +202,13 @@ export default {
               level: parseInt(fields.level.value) || 1,
               parent_id: 0
             })
-            showToast('用户添加成功')
-            fetchUsers()
+            if (res && res.success) {
+              showToast(res.message || '用户添加成功')
+              fetchUsers()
+            } else {
+              const msg = (res && (res.data || res.message)) || '用户添加失败'
+              showToast(String(msg))
+            }
           } catch (e) {
             showToast('用户添加失败')
           }
@@ -231,7 +236,8 @@ export default {
           showToast(msg)
           fetchUsers()
         } else {
-          showToast('导入失败')
+          const msg = (res && (res.data || res.message)) || '导入失败'
+          showToast(String(msg))
         }
       } catch (e) {
         showToast('导入出错')
@@ -279,7 +285,7 @@ export default {
         },
         onConfirm: async (fields) => {
           try {
-            await updateUser({
+            const res1 = await updateUser({
               user_id: user.user_id,
               username: fields.username.value,
               email: fields.email.value,
@@ -289,12 +295,17 @@ export default {
               region: fields.region.value,
               level: parseInt(fields.level.value) || 1
             })
-            await updateUserStatus({
+            const res2 = await updateUserStatus({
               user_id: user.user_id,
               status: fields.status.value
             })
-            showToast('修改成功')
-            fetchUsers()
+            if ((res1 && res1.success) && (res2 && res2.success)) {
+              showToast('修改成功')
+              fetchUsers()
+            } else {
+              const msg = (!res1?.success ? (res1?.data || res1?.message) : (res2?.data || res2?.message)) || '修改失败'
+              showToast(String(msg))
+            }
           } catch (e) {
             showToast('修改失败')
           }
@@ -312,9 +323,14 @@ export default {
             const fd = new FormData()
             fd.append('user_id', user.user_id)
             const res = await deleteUser(fd)
-            const msg = (res && res.message) || '删除用户成功'
-            showToast(msg)
-            fetchUsers()
+            if (res && res.success) {
+              const msg = (res && res.message) || '删除用户成功'
+              showToast(msg)
+              fetchUsers()
+            } else {
+              const msg = (res && (res.data || res.message)) || '删除用户失败'
+              showToast(String(msg))
+            }
           } catch (e) {
             showToast('删除用户失败')
           }

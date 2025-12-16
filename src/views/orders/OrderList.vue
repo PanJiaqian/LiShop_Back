@@ -108,29 +108,35 @@ export default {
       return map[k] || s
     }
 
-    const fetchOrders = async () => {
-      try {
-        const res = await listAdminOrdersDetail({ order_id: '', page: 1, page_size: 20, sort_by: 'price', sort_order: 'desc' })
-        const items = (res && res.data && Array.isArray(res.data.orders)) ? res.data.orders : []
-        const mapped = items.map(e => {
-          const o = e.order || {}
-          return {
-            id: o.order_id,
-            user_id: o.user_id || '',
-            address_id: o.address_id || '',
-            total_amount: (o.total_amount != null ? Number(o.total_amount).toFixed(2) : '0.00'),
-            created_at: (o.created_at ? String(o.created_at).replace('T', ' ').split('.')[0] : ''),
-            status: normalizeStatus(o.status),
-            tracking_number: o.tracking_number,
-            logistics_company: o.logistics_company,
-            note: o.note || ''
-          }
-        })
-        orders.splice(0, orders.length, ...mapped)
-      } catch (e) {
-        showToast('获取订单失败')
-      }
+const fetchOrders = async () => {
+  try {
+    const res = await listAdminOrdersDetail({ order_id: '', page: 1, page_size: 20, sort_by: 'price', sort_order: 'desc' })
+    if (res && res.success) {
+      const items = (res && res.data && Array.isArray(res.data.orders)) ? res.data.orders : []
+      const mapped = items.map(e => {
+        const o = e.order || {}
+        return {
+          id: o.order_id,
+          user_id: o.user_id || '',
+          address_id: o.address_id || '',
+          total_amount: (o.total_amount != null ? Number(o.total_amount).toFixed(2) : '0.00'),
+          created_at: (o.created_at ? String(o.created_at).replace('T', ' ').split('.')[0] : ''),
+          status: normalizeStatus(o.status),
+          tracking_number: o.tracking_number,
+          logistics_company: o.logistics_company,
+          note: o.note || ''
+        }
+      })
+      orders.splice(0, orders.length, ...mapped)
+    } else {
+      orders.splice(0, orders.length)
+      const msg = (res && (res.data || res.message)) || '获取订单失败'
+      showToast(String(msg))
     }
+  } catch (e) {
+    showToast('获取订单失败')
+  }
+}
 
     const filteredOrders = computed(() => {
       let res = orders
@@ -214,9 +220,14 @@ export default {
             if (fields.fromRegion.value) fd.append('from_region', fields.fromRegion.value)
             if (fields.toRegion.value) fd.append('to_region', fields.toRegion.value)
             if (fields.senderPhone.value) fd.append('sender_phone', fields.senderPhone.value)
-            const res = await updateOrderStatus(fd)
-            showToast((res && res.message) || '发货成功')
-            order.status = '待收货'
+        const res = await updateOrderStatus(fd)
+        if (res && res.success) {
+          showToast((res && res.message) || '发货成功')
+          order.status = '待收货'
+        } else {
+          const msg = (res && (res.data || res.message)) || '发货失败'
+          showToast(String(msg))
+        }
           } catch (e) {
             showToast('发货失败')
           }
@@ -236,8 +247,13 @@ export default {
             const fd = new FormData()
             fd.append('order_id', order.id)
             fd.append('tracking_number', fields.trackingNumber.value)
-            const res = await updateTrackingNumber(fd)
-            showToast((res && res.message) || '修改成功')
+        const res = await updateTrackingNumber(fd)
+        if (res && res.success) {
+          showToast((res && res.message) || '修改成功')
+        } else {
+          const msg = (res && (res.data || res.message)) || '修改失败'
+          showToast(String(msg))
+        }
           } catch (e) {
             showToast('修改失败')
           }

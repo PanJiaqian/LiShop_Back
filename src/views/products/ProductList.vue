@@ -175,9 +175,14 @@ export default {
         if (filter.category) params.category_name = filter.category
         
         const res = await listAvailableProducts(params)
-        if (res.success) {
+        if (res && res.success) {
           products.value = res.data.items
           pagination.total = res.data.total
+        } else {
+          const msg = (res && (res.data || res.message)) || '获取商品列表失败'
+          showToast(String(msg))
+          products.value = []
+          pagination.total = 0
         }
       } catch (e) {
         showToast('获取商品列表失败')
@@ -271,11 +276,12 @@ export default {
 
           try {
             const res = await createAvailableProduct(formData)
-            if (res.success) {
+            if (res && res.success) {
               showToast('新建商品成功')
               fetchProducts()
             } else {
-              showToast('新建失败: ' + (res.message || '未知错误'))
+              const msg = (res && (res.data || res.message)) || '新建失败'
+              showToast(String(msg))
             }
           } catch (e) {
             showToast('新建失败: ' + (e.message || '网络错误'))
@@ -300,14 +306,15 @@ export default {
           formData.append('file', fields.file.files[0])
           try {
             const res = await importAvailableProductsExcel(formData)
-            if (res.success) {
+            if (res && res.success) {
                showToast('导入成功')
                if (res.data && res.data.success) {
                  showToast(`成功导入 ${res.data.success_count} 条`)
                }
                fetchProducts() // Refresh list immediately
             } else {
-              showToast('导入失败: ' + (res.message || '未知错误'))
+              const msg = (res && (res.data || res.message)) || '导入失败'
+              showToast(String(msg))
             }
           } catch (e) {
             showToast('导入请求失败')
@@ -332,11 +339,12 @@ export default {
           formData.append('zip_file', fields.zip_file.files[0])
           try {
             const res = await importAvailableProductsImagesZip(formData)
-            if (res.success) {
+            if (res && res.success) {
               showToast('批量上传图片完成')
               fetchProducts() // Refresh list immediately
             } else {
-              showToast('上传失败: ' + (res.message || '未知错误'))
+              const msg = (res && (res.data || res.message)) || '上传失败'
+              showToast(String(msg))
             }
           } catch (e) {
             showToast('上传请求失败')
@@ -361,11 +369,12 @@ export default {
           formData.append('zip_file', fields.zip_file.files[0])
           try {
             const res = await importAvailableProductsVideosZip(formData)
-            if (res.success) {
+            if (res && res.success) {
               showToast('批量上传视频完成')
               fetchProducts() // Refresh list immediately
             } else {
-              showToast('上传失败: ' + (res.message || '未知错误'))
+              const msg = (res && (res.data || res.message)) || '上传失败'
+              showToast(String(msg))
             }
           } catch (e) {
             showToast('上传请求失败')
@@ -428,11 +437,12 @@ export default {
 
           try {
             const res = await updateAvailableProduct(formData)
-            if (res.success) {
+            if (res && res.success) {
               showToast('更新商品成功')
               fetchProducts()
             } else {
-              showToast('更新失败: ' + (res.message || '未知错误'))
+              const msg = (res && (res.data || res.message)) || '更新失败'
+              showToast(String(msg))
             }
           } catch (e) {
             showToast('更新失败: ' + (e.message || '网络错误'))
@@ -448,11 +458,12 @@ export default {
           product_id: item.available_product_id,
           status: String(newStatus)
         })
-        if (res.success) {
+        if (res && res.success) {
           showToast('状态更新成功')
           item.status = newStatus
         } else {
-          showToast('状态更新失败')
+          const msg = (res && (res.data || res.message)) || '状态更新失败'
+          showToast(String(msg))
         }
       } catch (e) {
         showToast('状态更新请求失败')

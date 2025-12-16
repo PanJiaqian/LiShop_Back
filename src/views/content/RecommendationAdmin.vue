@@ -83,9 +83,14 @@ export default {
 
           try {
             const res = await createRecommendation(fd)
-            const msg = (res && res.message) || '创建成功'
-            showToast(msg)
-            await fetchList()
+            if (res && res.success) {
+              const msg = (res && res.message) || '创建成功'
+              showToast(msg)
+              await fetchList()
+            } else {
+              const msg = (res && (res.data || res.message)) || '创建失败'
+              showToast(String(msg))
+            }
           } catch (e) {
             showToast('创建失败')
           }
@@ -96,8 +101,15 @@ export default {
     const fetchList = async () => {
       try {
         const res = await listRecommendations({})
-        items.value = (res && res.data && res.data.items) || []
-        total.value = (res && res.data && res.data.total) || items.value.length
+        if (res && res.success) {
+          items.value = (res && res.data && res.data.items) || []
+          total.value = (res && res.data && res.data.total) || items.value.length
+        } else {
+          items.value = []
+          total.value = 0
+          const msg = (res && (res.data || res.message)) || '获取列表失败'
+          showToast(String(msg))
+        }
       } catch (e) {
         items.value = []
         total.value = 0
@@ -111,10 +123,14 @@ export default {
       fd.append('status', '1')
       try {
         const res = await updateRecommendationStatus(fd)
-        const msg = (res && res.message) || '更新成功'
-        showToast(msg)
-        // Optimistic update or refresh
-        item.status = 1
+        if (res && res.success) {
+          const msg = (res && res.message) || '更新成功'
+          showToast(msg)
+          item.status = 1
+        } else {
+          const msg = (res && (res.data || res.message)) || '更新失败'
+          showToast(String(msg))
+        }
       } catch (e) {
         showToast('更新失败')
       }
@@ -126,10 +142,14 @@ export default {
       fd.append('status', '0')
       try {
         const res = await updateRecommendationStatus(fd)
-        const msg = (res && res.message) || '更新成功'
-        showToast(msg)
-        // Optimistic update or refresh
-        item.status = 0
+        if (res && res.success) {
+          const msg = (res && res.message) || '更新成功'
+          showToast(msg)
+          item.status = 0
+        } else {
+          const msg = (res && (res.data || res.message)) || '更新失败'
+          showToast(String(msg))
+        }
       } catch (e) {
         showToast('更新失败')
       }
@@ -145,9 +165,14 @@ export default {
             const fd = new FormData()
             fd.append('recommendation_id', item.recommendation_id)
             const res = await deleteRecommendation(fd)
-            const msg = (res && res.message) || '删除成功'
-            showToast(msg)
-            await fetchList()
+            if (res && res.success) {
+              const msg = (res && res.message) || '删除成功'
+              showToast(msg)
+              await fetchList()
+            } else {
+              const msg = (res && (res.data || res.message)) || '删除失败'
+              showToast(String(msg))
+            }
           } catch (e) {
             showToast('删除失败')
           }

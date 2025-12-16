@@ -107,19 +107,18 @@ const activeCategory = ref(null)
 const fetchCategories = async () => {
   try {
     const res = await listCategories({ page: 1, page_size: 100, sort_by: 'sort_order', sort_order: 'asc' })
-    if (res.success) {
+    if (res && res.success) {
       const items = res.data.items.map(item => ({
         ...item,
-        id: item.categories_id, // Map categories_id to id
+        id: item.categories_id,
         expanded: false,
         children: [],
-        attributes: item.attributes || [] // Preserve if exists, else empty
+        attributes: item.attributes || []
       }))
       flatCategories.value = items
       categories.value = buildTree(items)
       sortTree(categories.value)
       
-      // Refresh active category if it exists
       if (activeCategory.value) {
         const found = items.find(c => c.id === activeCategory.value.id)
         if (found) {
@@ -128,6 +127,11 @@ const fetchCategories = async () => {
           activeCategory.value = null
         }
       }
+    } else {
+      flatCategories.value = []
+      categories.value = []
+      const msg = (res && (res.data || res.message)) || '获取类目列表失败'
+      showToast(String(msg))
     }
   } catch (e) {
     showToast('获取类目列表失败')
@@ -202,14 +206,19 @@ const handleAddCategory = () => {
     },
     onConfirm: async (fields) => {
       try {
-        await createCategory({
+        const res = await createCategory({
           name: fields.name.value,
           parent_id: resolveParentId(fields.parent_id.value),
           sort_order: parseInt(fields.sort_order.value),
           status: parseInt(fields.status.value)
         })
-        showToast('创建分类成功')
-        await fetchCategories()
+        if (res && res.success) {
+          showToast('创建分类成功')
+          await fetchCategories()
+        } else {
+          const msg = (res && (res.data || res.message)) || '创建分类失败'
+          showToast(String(msg))
+        }
       } catch (e) {
         showToast('创建分类失败')
       }
@@ -226,10 +235,15 @@ const deleteCategory = (cat) => {
         const fd = new FormData()
         fd.append('category_id', cat.id)
         const res = await deleteCategoryApi(fd)
-        const msg = (res && res.message) || '删除分类成功'
-        showToast(msg)
-        activeCategory.value = null
-        await fetchCategories()
+        if (res && res.success) {
+          const msg = (res && res.message) || '删除分类成功'
+          showToast(msg)
+          activeCategory.value = null
+          await fetchCategories()
+        } else {
+          const msg = (res && (res.data || res.message)) || '删除分类失败'
+          showToast(String(msg))
+        }
       } catch (e) {
         showToast('删除分类失败')
       }
@@ -241,20 +255,23 @@ const saveCategory = async () => {
   if (!activeCategory.value) return
   
   try {
-    await updateCategory({
+    const res1 = await updateCategory({
       category_id: activeCategory.value.id,
       name: activeCategory.value.name,
       parent_id: resolveParentId(activeCategory.value.parent_id),
       sort_order: parseInt(activeCategory.value.sort_order)
     })
-    
-    await updateCategoryStatus({
+    const res2 = await updateCategoryStatus({
       category_id: activeCategory.value.id,
       status: String(activeCategory.value.status)
     })
-    
-    showToast('保存成功')
-    await fetchCategories()
+    if ((res1 && res1.success) && (res2 && res2.success)) {
+      showToast('保存成功')
+      await fetchCategories()
+    } else {
+      const msg = (!res1?.success ? (res1?.data || res1?.message) : (!res2?.success ? (res2?.data || res2?.message) : '保存失败'))
+      showToast(String(msg))
+    }
   } catch (e) {
     showToast('保存失败')
   }

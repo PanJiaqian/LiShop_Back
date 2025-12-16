@@ -73,6 +73,8 @@ const loadStrategies = async () => {
       strategies.value = res.data.items
     } else {
       strategies.value = []
+      const msg = (res && (res.data || res.message)) || '获取价格策略失败'
+      showToast(String(msg))
     }
   } catch (e) {
     strategies.value = []
@@ -166,7 +168,8 @@ const addStrategy = () => {
           showToast(res.message || '创建成功')
           await loadStrategies()
         } else {
-          showToast('创建失败')
+          const msg = (res && (res.data || res.message)) || '创建失败'
+          showToast(String(msg))
         }
       } catch (e) { showToast('请求失败') }
     }
@@ -187,7 +190,7 @@ const updateStrategy = (s) => {
         try { body = JSON.parse(fields.payload.value || '{}') } catch { body = {} }
         body.strategy_id = fields.strategy_id.value
         const res = await updatePriceStrategy(body)
-        if (res && res.success) { showToast(res.message || '更新成功'); await loadStrategies() } else { showToast('更新失败') }
+        if (res && res.success) { showToast(res.message || '更新成功'); await loadStrategies() } else { const msg = (res && (res.data || res.message)) || '更新失败'; showToast(String(msg)) }
       } catch (e) { showToast('请求失败') }
     }
   })
@@ -196,7 +199,7 @@ const updateStrategy = (s) => {
 const resetStrategy = async (s) => {
   try {
     const res = await resetPriceStrategy({ strategy_id: s.strategy_id || s.id })
-    if (res && res.success) { showToast(res.message || '重置成功'); await loadStrategies() } else { showToast('重置失败') }
+    if (res && res.success) { showToast(res.message || '重置成功'); await loadStrategies() } else { const msg = (res && (res.data || res.message)) || '重置失败'; showToast(String(msg)) }
   } catch (e) { showToast('请求失败') }
 }
 
@@ -210,9 +213,14 @@ const removeStrategy = (s) => {
         const fd = new FormData()
         fd.append('strategy_id', s.strategy_id || s.id)
         const res = await deletePriceStrategy(fd)
-        const msg = (res && res.message) || '删除成功'
-        showToast(msg)
-        await loadStrategies()
+        if (res && res.success) {
+          const msg = (res && res.message) || '删除成功'
+          showToast(msg)
+          await loadStrategies()
+        } else {
+          const msg = (res && (res.data || res.message)) || '删除失败'
+          showToast(String(msg))
+        }
       } catch (e) {
         showToast('删除失败')
       }
