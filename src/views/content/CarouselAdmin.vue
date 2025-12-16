@@ -5,7 +5,6 @@
       <div class="filter-bar">
         <button class="btn-sm primary" @click="openCreateModal">创建轮播</button>
         <select class="form-select" v-model="listType" @change="fetchList">
-          <option value="全部">全部</option>
           <option value="商品">商品</option>
           <option value="图片">图片</option>
         </select>
@@ -30,8 +29,8 @@
             <td>{{ item.available_product_id }}</td>
             <td>
               <div class="product-thumb">
-                <img :src="item.image_url" @error="onImgError($event)" alt="carousel"
-                  style="width: 64px; height: 64px; object-fit: cover; border-radius: 8px; border: 1px solid #e5e7eb;" />
+                <img :src="getImageUrl(item)" @error="onImgError($event)" @click="previewImage(getImageUrl(item))" alt="carousel"
+                  style="cursor: pointer; width: 64px; height: 64px; object-fit: cover; border-radius: 8px; border: 1px solid #e5e7eb;" />
               </div>
             </td>
             <td>
@@ -88,7 +87,13 @@ export default {
         onConfirm: async (fields) => {
           const fd = new FormData()
           fd.append('carousel_type', fields.carousel_type.value)
-          if (fields.available_product_id && fields.available_product_id.value) fd.append('available_product_id', fields.available_product_id.value)
+          if (String(fields.carousel_type.value) === '商品') {
+            if (!fields.available_product_id || !fields.available_product_id.value) {
+              showToast('请填写商品ID')
+              return
+            }
+            fd.append('available_product_id', fields.available_product_id.value)
+          }
           if (fields.image.files && fields.image.files[0]) fd.append('image', fields.image.files[0])
 
           try {
@@ -106,18 +111,8 @@ export default {
 
     const fetchList = async () => {
       try {
-        if (listType.value === '全部') {
-          const [res1, res2] = await Promise.all([
-            listCarousel({ carousel_type: '商品' }),
-            listCarousel({ carousel_type: '图片' })
-          ])
-          const items1 = (res1 && res1.data && res1.data.items) || []
-          const items2 = (res2 && res2.data && res2.data.items) || []
-          items.value = [...items1, ...items2]
-        } else {
-          const res = await listCarousel({ carousel_type: listType.value })
-          items.value = (res && res.data && res.data.items) || []
-        }
+        const res = await listCarousel({ carousel_type: listType.value })
+        items.value = (res && res.data && res.data.items) || []
       } catch (e) {
         items.value = []
         showToast('获取列表失败')
@@ -172,6 +167,22 @@ export default {
       })
     }
 
+    const getImageUrl = (item) => {
+      const u = item && (item.image_url || item.image || item.imageUrl)
+      if (!u) return ''
+      let s = String(u).trim()
+      s = s.replace(/^`+|`+$/g, '')
+      s = s.replace(/^"+|"+$/g, '')
+      s = s.replace(/^'+|'+$/g, '')
+      return s
+    }
+
+    const previewImage = (url) => {
+      const u = String(url || '').trim()
+      if (!u) return
+      showModal({ type: 'detail', title: '图片预览', data: [{ label: '', value: u, type: 'image' }] })
+    }
+
     const onImgError = (e) => {
       const svg = encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="100%" height="100%" fill="#f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="10" fill="#9ca3af">No Image</text></svg>')
       e.target.src = `data:image/svg+xml,${svg}`
@@ -189,6 +200,8 @@ export default {
       publish,
       unpublish,
       remove,
+      getImageUrl,
+      previewImage,
       onImgError
     }
   }
