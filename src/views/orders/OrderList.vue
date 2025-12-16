@@ -56,6 +56,7 @@
             <td>
               <div class="actions">
                 <button class="btn-link" @click="$router.push(`/orders/${order.id}`)">详情</button>
+                <button class="btn-link" @click="editStatus(order)">编辑状态</button>
                 <button class="btn-link" v-if="order.status === '待发货'" @click="shipOrder(order)">发货</button>
                 <button class="btn-link" v-if="order.status === '待收货'" @click="changeTracking(order)">改单号</button>
                 <button class="btn-link danger" v-if="order.status === '待付款'" @click="closeOrder(order)">取消</button>
@@ -191,6 +192,62 @@ const fetchOrders = async () => {
       })
     }
 
+    const editStatus = (order) => {
+      const statusMap = [
+        { label: '待付款', value: 'PENDING' },
+        { label: '待发货', value: 'CONFIRMED' },
+        { label: '待收货', value: 'SHIPPED' },
+        { label: '已收货', value: 'COMPLETED' },
+        { label: '已取消', value: 'CANCELLED' }
+      ]
+      const invert = {
+        '待付款': 'PENDING',
+        '待发货': 'CONFIRMED',
+        '待收货': 'SHIPPED',
+        '已收货': 'COMPLETED',
+        '已取消': 'CANCELLED'
+      }
+      const fields = {
+        status: { label: '状态', type: 'select', value: invert[order.status] || 'PENDING', options: statusMap },
+        trackingNumber: { label: '运单号', type: 'text', value: '', hidden: true }
+      }
+      fields.trackingNumber.hidden = (fields.status.value !== 'SHIPPED')
+      fields.status.onChange = (e) => {
+        const v = e.target.value
+        fields.trackingNumber.hidden = (v !== 'SHIPPED')
+      }
+      showModal({
+        type: 'form',
+        title: '编辑订单状态',
+        fields,
+        onConfirm: async (fields) => {
+          try {
+            const status = fields.status.value
+            if (status === 'SHIPPED' && !fields.trackingNumber.value) {
+              showToast('请填写运单号')
+              return
+            }
+            const fd = new FormData()
+            fd.append('order_id', order.id)
+            fd.append('status', status)
+            if (status === 'SHIPPED') {
+              fd.append('tracking_number', fields.trackingNumber.value)
+            }
+            const res = await updateOrderStatus(fd)
+            if (res && res.success) {
+              showToast((res && res.message) || '状态更新成功')
+              order.status = normalizeStatus(status)
+            } else {
+              const msg = (res && (res.data || res.message)) || '修改失败'
+              showToast(String(msg))
+            }
+          } catch (e) {
+            showToast('修改失败')
+          }
+        }
+      })
+    }
+
     const shipOrder = (order) => {
       showModal({
         type: 'form',
@@ -286,7 +343,8 @@ const fetchOrders = async () => {
       exportOrders,
       shipOrder,
       closeOrder,
-      changeTracking
+      changeTracking,
+      editStatus
     }
   }
 }

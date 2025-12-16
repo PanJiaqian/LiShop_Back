@@ -133,30 +133,19 @@ const addStrategy = () => {
     { label: '(', value: '(' },
     { label: ')', value: ')' }
   ]
-  const parts = {}
-  for (let i = 1; i <= 10; i++) {
-    parts[`p${i}`] = { label: `片段${i}`, type: 'select', value: '', options: tokenOptions }
-  }
   showModal({
     type: 'form',
     title: '新增价格策略',
     fields: {
       name: { label: '策略名称', type: 'text', value: '' },
-            description: { label: '描述', type: 'text', value: '根据基础价格、长度、附加价格和数量计算' },
+      description: { label: '描述', type: 'text', value: '根据基础价格、长度、附加价格和数量计算' },
       status: { label: '状态', type: 'select', value: '1', options: [{ label: '启用', value: '1' }, { label: '停用', value: '0' }] },
-      formula: { label: '公式（请在下面选择）', type: 'text', value: '', disabled: true, placeholder: '请在下面选择' },
-
-      ...parts
+      formula: { label: '公式', type: 'text', value: '', hint: '点击下方片段自动组合；未填写时按默认' },
+      formula_tokens: { label: '片段选择', type: 'append-to-field', target: 'formula', value: [], options: tokenOptions }
     },
     onConfirm: async (fields) => {
       try {
-        const seq = []
-        for (let i = 1; i <= 10; i++) {
-          const key = `p${i}`
-          if (fields[key] && fields[key].value) seq.push(fields[key].value)
-        }
-        const built = seq.join('')
-        const formula = fields.formula.value || built || '(unit_price * length + additional_price) * quantity'
+        const formula = fields.formula.value || '(unit_price * length + additional_price) * quantity'
         const body = {
           name: fields.name.value,
           formula,
@@ -177,18 +166,39 @@ const addStrategy = () => {
 }
 
 const updateStrategy = (s) => {
+  const tokenOptions = [
+    { label: '+', value: ' + ' },
+    { label: '-', value: ' - ' },
+    { label: '*', value: ' * ' },
+    { label: '/', value: ' / ' },
+    { label: 'unit_price', value: 'unit_price' },
+    { label: 'length', value: 'length' },
+    { label: 'additional_price', value: 'additional_price' },
+    { label: 'quantity', value: 'quantity' },
+    { label: '(', value: '(' },
+    { label: ')', value: ')' }
+  ]
   showModal({
     type: 'form',
     title: '更新价格策略',
     fields: {
       strategy_id: { label: '策略ID', type: 'text', value: s.strategy_id || s.id || '' },
-      payload: { label: '参数(JSON)', type: 'text', value: '{}' }
+      name: { label: '策略名称', type: 'text', value: s.name || '' },
+      description: { label: '描述', type: 'text', value: s.description || '' },
+      status: { label: '状态', type: 'select', value: String(s.status || 1), options: [{ label: '启用', value: '1' }, { label: '停用', value: '0' }] },
+      formula: { label: '公式', type: 'text', value: s.formula || '', hint: '点击下方片段自动组合；未填写时按默认' },
+      formula_tokens: { label: '片段选择', type: 'append-to-field', target: 'formula', value: [], options: tokenOptions }
     },
     onConfirm: async (fields) => {
       try {
-        let body
-        try { body = JSON.parse(fields.payload.value || '{}') } catch { body = {} }
-        body.strategy_id = fields.strategy_id.value
+        const formula = fields.formula.value || s.formula || ''
+        const body = {
+          strategy_id: fields.strategy_id.value,
+          name: fields.name.value,
+          description: fields.description.value,
+          status: parseInt(fields.status.value),
+          formula
+        }
         const res = await updatePriceStrategy(body)
         if (res && res.success) { showToast(res.message || '更新成功'); await loadStrategies() } else { const msg = (res && (res.data || res.message)) || '更新失败'; showToast(String(msg)) }
       } catch (e) { showToast('请求失败') }

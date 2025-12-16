@@ -72,14 +72,13 @@ export default {
         title: '创建推荐',
         fields: {
           carousel_type: { label: '类型', type: 'select', options: [{ value: '商品', label: '商品' }], value: '商品' },
-          available_product_id: { label: '商品ID', type: 'text', value: '' },
-          image: { label: '图片', type: 'file', value: null }
+          available_product_id: { label: '商品ID', type: 'text', value: '' }
         },
         onConfirm: async (fields) => {
           const fd = new FormData()
           fd.append('carousel_type', fields.carousel_type.value)
           if (fields.available_product_id.value) fd.append('available_product_id', fields.available_product_id.value)
-          if (fields.image.value) fd.append('image', fields.image.value)
+          
 
           try {
             const res = await createRecommendation(fd)

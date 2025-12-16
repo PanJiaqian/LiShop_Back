@@ -170,7 +170,7 @@ const buildTree = (items) => {
 
 const sortTree = (nodes) => {
   if (!Array.isArray(nodes)) return
-  nodes.sort((a, b) => (parseInt(a.sort_order || 0) - parseInt(b.sort_order || 0)))
+  nodes.sort((a, b) => (parseInt(b.sort_order || 0) - parseInt(a.sort_order || 0)))
   nodes.forEach(n => sortTree(n.children))
 }
 
@@ -188,9 +188,15 @@ const toggleExpand = (cat) => {
 
 const handleAddCategory = () => {
   const options = [{ label: '一级类目', value: '无' }]
-  flatCategories.value.forEach(c => {
-    options.push({ label: c.name, value: c.name })
-  })
+  const pushOpts = (nodes, prefix) => {
+    (nodes || []).forEach(n => {
+      options.push({ label: `${prefix}${n.name}`, value: n.name })
+      if (Array.isArray(n.children) && n.children.length) {
+        pushOpts(n.children, `${prefix}— `)
+      }
+    })
+  }
+  pushOpts(categories.value || [], '')
 
   showModal({
     type: 'form',

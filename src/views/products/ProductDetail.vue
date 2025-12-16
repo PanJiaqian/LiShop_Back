@@ -8,9 +8,9 @@
         <!-- <span>商品明细</span> -->
       </div>
       <div class="actions">
-        <button class="btn-sm secondary" @click="handleImportDetailExcel">导入明细Excel</button>
-        <button class="btn-sm secondary" @click="handleImportDetailImages">导入明细图片Zip</button>
-        <button class="btn-sm secondary" @click="handleCreateDetailProduct">新建明细商品</button>
+        <button class="btn-sm primary" @click="handleImportDetailExcel">导入明细Excel</button>
+        <button class="btn-sm primary" @click="handleImportDetailImages">导入明细图片Zip</button>
+        <button class="btn-sm primary" @click="handleCreateDetailProduct">新建明细商品</button>
         <!-- <button class="btn-sm secondary" @click="handleUpdateDetailProduct">更新明细商品</button> -->
         <!-- <button class="btn-sm secondary" @click="handleToggleDetailStatus">更改明细商品状态</button> -->
       </div>
@@ -114,6 +114,7 @@ export default {
   setup() {
     const showModal = inject('showModal')
     const showToast = inject('showToast')
+    const hideToast = inject('hideToast')
     const route = useRoute()
     
     const loading = ref(false)
@@ -300,7 +301,9 @@ export default {
           file: { label: '选择Excel文件', type: 'file', multiple: false, files: null }
         },
         onConfirm: async (fields) => {
+          const loading = showToast({ text: '正在导入...', persist: true })
           if (!fields.file.files || !fields.file.files[0]) {
+            hideToast(loading)
             showToast('请选择文件')
             return
           }
@@ -309,6 +312,7 @@ export default {
           try {
             const res = await importProductsExcel(formData)
             if (res && res.success) {
+               hideToast(loading)
                showToast('导入成功')
                if (res.data && res.data.success) {
                  showToast(`成功导入 ${res.data.success_count} 条`)
@@ -316,9 +320,11 @@ export default {
                fetchProducts()
             } else {
               const msg = (res && (res.data || res.message)) || '导入失败'
+              hideToast(loading)
               showToast(String(msg))
             }
           } catch (e) {
+            hideToast(loading)
             showToast('导入请求失败')
           }
         }
@@ -333,7 +339,9 @@ export default {
           zip_file: { label: '选择Zip文件', type: 'file', multiple: false, files: null }
         },
         onConfirm: async (fields) => {
+          const loading = showToast({ text: '正在导入...', persist: true })
           if (!fields.zip_file.files || !fields.zip_file.files[0]) {
+            hideToast(loading)
             showToast('请选择文件')
             return
           }
@@ -342,14 +350,17 @@ export default {
           try {
             const res = await importProductsImagesZip(formData)
             if (res && res.success) {
-              showToast('批量上传明细图片完成')
+              hideToast(loading)
+              showToast('导入成功')
               fetchProducts()
             } else {
               const msg = (res && (res.data || res.message)) || '上传失败'
+              hideToast(loading)
               showToast(String(msg))
             }
           } catch (e) {
-            showToast('上传请求失败')
+            hideToast(loading)
+            showToast('导入请求失败')
           }
         }
       })

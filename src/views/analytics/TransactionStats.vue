@@ -16,6 +16,12 @@
           >
             子商品销量
           </button>
+          <button 
+            :class="['tab-btn', { active: activeTab === 'orders' }]" 
+            @click="activeTab = 'orders'"
+          >
+            成交情况
+          </button>
         </div>
       </div>
       <div class="filter-bar" style="margin-top: 16px;">
@@ -23,11 +29,15 @@
           type="text" 
           class="form-input" 
           v-model="queryId" 
-          :placeholder="activeTab === 'mother' ? 'aprodXXXXXXXXXXXX' : 'productXXXXXXXXXXXX'" 
+          :placeholder="activeTab === 'mother' ? 'aprodXXXXXXXXXXXX' : (activeTab === 'child' ? 'productXXXXXXXXXXXX' : '订单视图无需填写')" 
         />
         <input type="date" class="form-input" v-model="start" />
         <span class="separator">-</span>
         <input type="date" class="form-input" v-model="end" />
+        <select class="form-select" v-if="activeTab === 'orders'" v-model="viewType">
+          <option value="下单量">下单量</option>
+          <option value="成交量">成交量</option>
+        </select>
         <select class="form-select" v-model="sortType">
           <option value="销量">销量</option>
           <option value="金额">金额</option>
@@ -50,12 +60,12 @@
           <div class="stat-value">{{ queryId || '-' }}</div>
         </div>
         <div class="stat-card">
-          <div class="stat-title">总销量</div>
-          <div class="stat-value">{{ result.total_sales_volume || 0 }}</div>
+          <div class="stat-title">{{ activeTab === 'orders' ? '总笔数' : '总销量' }}</div>
+          <div class="stat-value">{{ activeTab === 'orders' ? (result.total_count || 0) : (result.total_sales_volume || 0) }}</div>
         </div>
         <div class="stat-card">
           <div class="stat-title">总金额</div>
-          <div class="stat-value">{{ result.total_sales_amount || 0 }}</div>
+          <div class="stat-value">{{ activeTab === 'orders' ? (result.total_amount || 0) : (result.total_sales_amount || 0) }}</div>
         </div>
       </div>
       <div style="padding: 16px;">
@@ -90,7 +100,7 @@
           </tbody>
         </table>
 
-        <table class="data-table" v-else>
+        <table class="data-table" v-else-if="activeTab === 'child'">
           <thead>
             <tr>
               <th>子商品ID</th>
@@ -113,6 +123,33 @@
             </tr>
           </tbody>
         </table>
+        <table class="data-table" v-else>
+          <thead>
+            <tr>
+              <th>订单号</th>
+              <th>母商品名称</th>
+              <th>子商品名称</th>
+              <th>数量</th>
+              <th>长度</th>
+              <th>金额</th>
+              <th>时间</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="it in (result.items || [])" :key="it.order_id">
+              <td>{{ it.order_id }}</td>
+              <td>{{ it.available_product_name }}</td>
+              <td>{{ it.product_name }}</td>
+              <td>{{ it.quantity }}</td>
+              <td>{{ it.length }}</td>
+              <td>{{ it.amount }}</td>
+              <td>{{ (it.time || '').replace('T',' ').split('.')[0] }}</td>
+            </tr>
+            <tr v-if="!(result.items && result.items.length)">
+              <td colspan="7" style="text-align:center;color:#999;">暂无数据</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -120,7 +157,7 @@
 
 <script>
 import { inject, ref, watch, onMounted } from 'vue'
-import { getAvailableProductSalesStats, getProductSalesStats } from '@/api/stats'
+import { getAvailableProductSalesStats, getProductSalesStats, getOrderStats } from '@/api/stats'
 
 export default {
   name: 'TransactionStats',
@@ -136,6 +173,7 @@ export default {
     const start = ref(startDefault)
     const end = ref(endDefault)
     const sortType = ref('金额')
+    const viewType = ref('下单量')
     const result = ref({})
 
     const fetchStats = async () => {
@@ -143,8 +181,10 @@ export default {
         let res
         if (activeTab.value === 'mother') {
           res = await getAvailableProductSalesStats({ available_product_id: queryId.value, start_time: start.value, end_time: end.value, sort_type: sortType.value })
-        } else {
+        } else if (activeTab.value === 'child') {
           res = await getProductSalesStats({ product_id: queryId.value, start_time: start.value, end_time: end.value, sort_type: sortType.value })
+        } else {
+          res = await getOrderStats({ start_time: start.value, end_time: end.value, view_type: viewType.value, sort_type: sortType.value })
         }
         if (res && res.success) {
           result.value = (res && res.data) || {}
@@ -172,7 +212,7 @@ export default {
       fetchStats()
     })
 
-    return { activeTab, queryId, start, end, sortType, result, fetchStats, applyFilters }
+    return { activeTab, queryId, start, end, sortType, viewType, result, fetchStats, applyFilters }
   }
 }
 </script>

@@ -3,9 +3,9 @@
     <div class="page-title">
       <span>商品列表</span>
       <div class="actions">
-        <button class="btn-sm secondary" @click="handleImportExcel">导入Excel</button>
-        <button class="btn-sm secondary" @click="handleImportImages">导入图片Zip</button>
-        <button class="btn-sm secondary" @click="handleImportVideos">导入视频Zip</button>
+        <button class="btn-sm primary" @click="handleImportExcel">导入Excel</button>
+        <button class="btn-sm primary" @click="handleImportImages">导入图片Zip</button>
+        <button class="btn-sm primary" @click="handleImportVideos">导入视频Zip</button>
         <button class="btn-sm primary" @click="handleCreateProduct">+ 新建商品</button>
       </div>
     </div>
@@ -120,6 +120,7 @@ export default {
   setup() {
     const showModal = inject('showModal')
     const showToast = inject('showToast')
+    const hideToast = inject('hideToast')
     const router = useRouter()
     
     const loading = ref(false)
@@ -247,9 +248,9 @@ export default {
           is_free_shipping: { label: '包邮', type: 'select', value: '1', options: [{label:'是', value:'1'}, {label:'否', value:'0'}] },
           shipping_time_hours: { label: '发货时效(小时)', type: 'number', value: '24' },
           support_no_reason_return_7d: { label: '七天无理由', type: 'select', value: '1', options: [{label:'支持', value:'1'}, {label:'不支持', value:'0'}] },
-          main_image: { label: '主图', type: 'file', multiple: false, files: null },
-          images: { label: '轮播图', type: 'file', multiple: true, files: null },
-          video_url: { label: '视频', type: 'file', multiple: false, files: null }
+          main_image: { label: '主图', type: 'file', multiple: true, files: [], maxFiles: 6, hint: '主图最多选择6个文件' },
+          images: { label: '轮播图', type: 'file', multiple: true, files: [], maxFiles: 6, hint: '轮播图最多选择6个文件' },
+          video_url: { label: '视频', type: 'file', multiple: true, files: [], maxFiles: 2, hint: '视频最多选择2个文件' }
         },
         onConfirm: async (fields) => {
           const formData = new FormData()
@@ -262,16 +263,17 @@ export default {
           formData.append('shipping_time_hours', fields.shipping_time_hours.value)
           formData.append('support_no_reason_return_7d', fields.support_no_reason_return_7d.value)
           
-          if (fields.main_image.files && fields.main_image.files[0]) {
-            formData.append('main_image', fields.main_image.files[0])
+          if (fields.main_image.files) {
+            const files = Array.from(fields.main_image.files)
+            files.forEach(f => formData.append('main_image', f))
           }
           if (fields.images.files) {
-            for (let i = 0; i < fields.images.files.length; i++) {
-              formData.append('images', fields.images.files[i])
-            }
+            const files = Array.from(fields.images.files)
+            files.forEach(f => formData.append('images', f))
           }
-          if (fields.video_url.files && fields.video_url.files[0]) {
-            formData.append('video_url', fields.video_url.files[0])
+          if (fields.video_url.files) {
+            const files = Array.from(fields.video_url.files)
+            files.forEach(f => formData.append('video_url', f))
           }
 
           try {
@@ -298,7 +300,9 @@ export default {
           file: { label: '选择Excel文件', type: 'file', multiple: false, files: null }
         },
         onConfirm: async (fields) => {
+          const loading = showToast({ text: '正在导入...', persist: true })
           if (!fields.file.files || !fields.file.files[0]) {
+            hideToast(loading)
             showToast('请选择文件')
             return
           }
@@ -307,6 +311,7 @@ export default {
           try {
             const res = await importAvailableProductsExcel(formData)
             if (res && res.success) {
+               hideToast(loading)
                showToast('导入成功')
                if (res.data && res.data.success) {
                  showToast(`成功导入 ${res.data.success_count} 条`)
@@ -314,9 +319,11 @@ export default {
                fetchProducts() // Refresh list immediately
             } else {
               const msg = (res && (res.data || res.message)) || '导入失败'
+              hideToast(loading)
               showToast(String(msg))
             }
           } catch (e) {
+            hideToast(loading)
             showToast('导入请求失败')
           }
         }
@@ -331,7 +338,9 @@ export default {
           zip_file: { label: '选择Zip文件', type: 'file', multiple: false, files: null }
         },
         onConfirm: async (fields) => {
+          const loading = showToast({ text: '正在导入...', persist: true })
           if (!fields.zip_file.files || !fields.zip_file.files[0]) {
+            hideToast(loading)
             showToast('请选择文件')
             return
           }
@@ -340,14 +349,17 @@ export default {
           try {
             const res = await importAvailableProductsImagesZip(formData)
             if (res && res.success) {
-              showToast('批量上传图片完成')
+              hideToast(loading)
+              showToast('导入成功')
               fetchProducts() // Refresh list immediately
             } else {
               const msg = (res && (res.data || res.message)) || '上传失败'
+              hideToast(loading)
               showToast(String(msg))
             }
           } catch (e) {
-            showToast('上传请求失败')
+            hideToast(loading)
+            showToast('导入请求失败')
           }
         }
       })
@@ -361,7 +373,9 @@ export default {
           zip_file: { label: '选择Zip文件', type: 'file', multiple: false, files: null }
         },
         onConfirm: async (fields) => {
+          const loading = showToast({ text: '正在导入...', persist: true })
           if (!fields.zip_file.files || !fields.zip_file.files[0]) {
+            hideToast(loading)
             showToast('请选择文件')
             return
           }
@@ -370,14 +384,17 @@ export default {
           try {
             const res = await importAvailableProductsVideosZip(formData)
             if (res && res.success) {
-              showToast('批量上传视频完成')
+              hideToast(loading)
+              showToast('导入成功')
               fetchProducts() // Refresh list immediately
             } else {
               const msg = (res && (res.data || res.message)) || '上传失败'
+              hideToast(loading)
               showToast(String(msg))
             }
           } catch (e) {
-            showToast('上传请求失败')
+            hideToast(loading)
+            showToast('导入请求失败')
           }
         }
       })
@@ -403,15 +420,29 @@ export default {
           category_name: { label: '分类名称', type: 'select', value: categoryOptions.find(o => o.label === String(item.category_id))?.value || (categoryOptions[0]?.value || ''), options: categoryOptions },
           sort_order: { label: '推荐值', type: 'number', value: item.sort_order },
           shipping_origin: { label: '发货地', type: 'text', value: item.shipping_origin },
-          main_image: { label: '主图(修改则上传)', type: 'file', multiple: false, files: null },
-          images: { label: '轮播图(修改则上传)', type: 'file', multiple: true, files: null },
-          video_url: { label: '视频(修改则上传)', type: 'file', multiple: false, files: null },
+          main_image: { label: '主图(修改则上传)', type: 'file', multiple: true, files: [], maxFiles: 6, hint: '主图最多选择6个文件' },
+          images: { label: '轮播图(修改则上传)', type: 'file', multiple: true, files: [], maxFiles: 6, hint: '轮播图最多选择6个文件' },
+          video_url: { label: '视频(修改则上传)', type: 'file', multiple: true, files: [], maxFiles: 2, hint: '视频最多选择2个文件' },
           status: { label: '状态', type: 'select', value: String(item.status), options: [{label:'上架', value:'1'}, {label:'下架', value:'0'}] },
           is_free_shipping: { label: '包邮', type: 'select', value: String(item.is_free_shipping), options: [{label:'是', value:'1'}, {label:'否', value:'0'}] },
           shipping_time_hours: { label: '发货时效(小时)', type: 'number', value: item.shipping_time_hours },
           support_no_reason_return_7d: { label: '七天无理由', type: 'select', value: String(item.support_no_reason_return_7d), options: [{label:'支持', value:'1'}, {label:'不支持', value:'0'}] }
         },
         onConfirm: async (fields) => {
+          // Validation
+          if (fields.main_image.files && fields.main_image.files.length > 6) {
+            showToast('主图最多选择6个文件，请删除多余文件')
+            return
+          }
+          if (fields.images.files && fields.images.files.length > 6) {
+            showToast('轮播图最多选择6个文件，请删除多余文件')
+            return
+          }
+          if (fields.video_url.files && fields.video_url.files.length > 2) {
+            showToast('视频最多选择2个文件，请删除多余文件')
+            return
+          }
+
           const formData = new FormData()
           formData.append('product_id', item.available_product_id)
           formData.append('name', fields.name.value)
@@ -423,16 +454,17 @@ export default {
           formData.append('shipping_time_hours', fields.shipping_time_hours.value)
           formData.append('support_no_reason_return_7d', fields.support_no_reason_return_7d.value)
           
-          if (fields.main_image.files && fields.main_image.files[0]) {
-            formData.append('main_image', fields.main_image.files[0])
+          if (fields.main_image.files) {
+            const files = Array.from(fields.main_image.files)
+            files.forEach(f => formData.append('main_image', f))
           }
           if (fields.images.files) {
-            for (let i = 0; i < fields.images.files.length; i++) {
-              formData.append('images', fields.images.files[i])
-            }
+            const files = Array.from(fields.images.files)
+            files.forEach(f => formData.append('images', f))
           }
-          if (fields.video_url.files && fields.video_url.files[0]) {
-            formData.append('video_url', fields.video_url.files[0])
+          if (fields.video_url.files) {
+            const files = Array.from(fields.video_url.files)
+            files.forEach(f => formData.append('video_url', f))
           }
 
           try {

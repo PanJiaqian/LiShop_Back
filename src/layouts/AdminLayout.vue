@@ -33,7 +33,7 @@
           </div>
           <div v-else-if="modal.type === 'form'" class="modal-form">
             <!-- Dynamic form fields based on modal.fields -->
-            <div v-for="(field, key) in modal.fields" :key="key" class="form-group">
+            <div v-for="(field, key) in modal.fields" :key="key" class="form-group" v-if="!(field && field.hidden)">
               <label>{{ field.label }}</label>
               <input 
                 v-if="field.type === 'text' || field.type === 'number' || field.type === 'password' || field.type === 'email'" 
@@ -41,14 +41,35 @@
                 v-model="field.value" 
                 class="form-input" 
               />
-              <input 
-                v-else-if="field.type === 'file'" 
-                type="file" 
-                :multiple="field.multiple"
-                @change="(e) => { field.files = e.target.files; if(field.onChange) field.onChange(e) }"
-                class="form-input" 
-              />
-              <select v-else-if="field.type === 'select'" v-model="field.value" class="form-select">
+              <div v-else-if="field.type === 'file'" class="file-input-wrapper">
+                <input 
+                  type="file" 
+                  :multiple="field.multiple"
+                  @change="(e) => { 
+                    const newFiles = Array.from(e.target.files || [])
+                    const existing = Array.isArray(field.files) ? field.files : []
+                    const max = Number(field.maxFiles || field.max || 0)
+                    if (max > 0 && (existing.length + newFiles.length) > max) {
+                      const msg = `最多选择${max}个文件`
+                      showToast(msg)
+                      e.target.value = ''
+                      if(field.onChange) field.onChange(e)
+                      return
+                    }
+                    field.files = [...existing, ...newFiles]
+                    e.target.value = ''
+                    if(field.onChange) field.onChange(e) 
+                  }"
+                  class="form-input" 
+                />
+                <div v-if="Array.isArray(field.files) && field.files.length" class="file-list">
+                  <div v-for="(f, i) in field.files" :key="i" class="file-item">
+                    <span class="file-name">{{ f.name }}</span>
+                    <span class="file-remove" @click="field.files.splice(i, 1)">&times;</span>
+                  </div>
+                </div>
+              </div>
+              <select v-else-if="field.type === 'select'" v-model="field.value" class="form-select" @change="(e) => { if(field.onChange) field.onChange(e) }">
                 <option v-for="opt in field.options" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
               </select>
               <div v-else-if="field.type === 'checkbox-group'" class="checkbox-group">
@@ -67,7 +88,12 @@
                   {{ opt.label }}
                 </label>
               </div>
-              <div v-if="field.hint" class="field-hint">{{ field.hint }}</div>
+              <div v-if="field.type === 'append-to-field'" class="token-list">
+      <button v-for="opt in field.options" :key="opt.value" class="token-btn" @click="modal.fields[field.target].value += opt.value">
+        {{ opt.label }}
+      </button>
+    </div>
+    <div v-if="field.hint" class="field-hint">{{ field.hint }}</div>
             </div>
           </div>
         </div>
@@ -132,14 +158,23 @@ export default {
 
     provide('showModal', showModal)
     const toasts = reactive([])
-    const showToast = (msg) => {
-      const m = String(msg || '')
-      if (!m) return
+    const showToast = (arg) => {
+      const isObj = typeof arg === 'object' && arg !== null
+      const m = String(isObj ? (arg.text || arg.message || arg.msg || '') : (arg || ''))
+      if (!m) return ''
       toasts.push(m)
-      setTimeout(() => {
-        const i = toasts.indexOf(m)
-        if (i >= 0) toasts.splice(i, 1)
-      }, 2000)
+      const persist = isObj && !!arg.persist
+      if (!persist) {
+        setTimeout(() => {
+          const i = toasts.indexOf(m)
+          if (i >= 0) toasts.splice(i, 1)
+        }, 2000)
+      }
+      return m
+    }
+    const hideToast = (m) => {
+      const i = toasts.indexOf(m)
+      if (i >= 0) toasts.splice(i, 1)
     }
     const confirmDialog = (options) => {
       showModal({
@@ -151,13 +186,15 @@ export default {
       })
     }
     provide('showToast', showToast)
+    provide('hideToast', hideToast)
     provide('confirmDialog', confirmDialog)
 
     return {
       modal,
       closeModal,
       confirmModal,
-      toasts
+      toasts,
+      showToast
     }
   },
   methods: {
@@ -712,6 +749,51 @@ body {
   border-radius: 8px;
   box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
   font-size: 13px;
+}
+
+.file-list {
+  margin-top: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 8px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+.file-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+  background: #f9fafb;
+  margin-bottom: 4px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+.file-remove {
+  cursor: pointer;
+  color: #ef4444;
+  font-weight: bold;
+  margin-left: 8px;
+}
+.token-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.token-btn {
+  padding: 4px 12px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  border-radius: 16px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.token-btn:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
 }
 </style>
 .modal-container.login-modal {
