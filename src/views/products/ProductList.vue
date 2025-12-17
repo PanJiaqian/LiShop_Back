@@ -110,7 +110,8 @@ import {
   importAvailableProductsImagesZip,
   updateAvailableProduct,
   updateAvailableProductStatus,
-  listAvailableProducts
+  listAvailableProducts,
+  searchAvailableProducts
 } from '@/api/available_product'
 import { getOrderStats, getAvailableProductSalesStats } from '@/api/stats'
 import { listCategories } from '@/api/category'
@@ -132,6 +133,11 @@ export default {
     })
 
     const filter = reactive({
+      keyword: '',
+      category: '',
+      status: ''
+    })
+    const applied = reactive({
       keyword: '',
       category: '',
       status: ''
@@ -165,17 +171,25 @@ export default {
     const fetchProducts = async () => {
       loading.value = true
       try {
-        const params = {
+        const baseParams = {
           page: pagination.page,
           page_size: pagination.page_size,
           sort_by: 'created_at',
           sort_order: 'desc'
         }
-        if (filter.keyword) params.keyword = filter.keyword
-        if (filter.status) params.status = filter.status === '上架' ? 1 : (filter.status === '下架' ? 0 : undefined)
-        if (filter.category) params.category_name = filter.category
-        
-        const res = await listAvailableProducts(params)
+        const statusNum = applied.status ? (applied.status === '上架' ? 1 : (applied.status === '下架' ? 0 : undefined)) : undefined
+        const shouldSearch = !!(applied.keyword || applied.category || (statusNum !== undefined))
+        let res
+        if (shouldSearch) {
+          const params = {
+            content: applied.keyword || '',
+            category_name: applied.category || '',
+            status: statusNum
+          }
+          res = await searchAvailableProducts(params)
+        } else {
+          res = await listAvailableProducts(baseParams)
+        }
         if (res && res.success) {
           products.value = res.data.items
           pagination.total = res.data.total
@@ -194,15 +208,15 @@ export default {
 
     const displayProducts = computed(() => {
       let arr = products.value || []
-      const kw = String(filter.keyword || '').trim()
+      const kw = String(applied.keyword || '').trim()
       if (kw) {
         arr = arr.filter(it => String(it.name || '').includes(kw) || String(it.available_product_id || '').includes(kw))
       }
-      if (filter.category) {
-        arr = arr.filter(it => getCategoryName(it.category_id) === filter.category)
+      if (applied.category) {
+        arr = arr.filter(it => getCategoryName(it.category_id) === applied.category)
       }
-      if (filter.status) {
-        const target = filter.status === '上架' ? '1' : (filter.status === '下架' ? '0' : '')
+      if (applied.status) {
+        const target = applied.status === '上架' ? '1' : (applied.status === '下架' ? '0' : '')
         if (target) arr = arr.filter(it => String(it.status) === target)
       }
       return arr
@@ -214,7 +228,11 @@ export default {
     })
 
     const handleSearch = () => {
+       applied.keyword = filter.keyword
+       applied.category = filter.category
+       applied.status = filter.status
        pagination.page = 1
+       fetchProducts()
     }
 
     const resetFilter = () => {

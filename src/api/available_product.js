@@ -47,3 +47,7 @@ export const updateAvailableProductStatus = (data) => {
 export const listAvailableProducts = (params) => {
   return api.get('/admin/available_products', { params }).then(res => res.data)
 }
+
+export const searchAvailableProducts = (params) => {
+  return api.get('/admin/available_products/search', { params }).then(res => res.data)
+}

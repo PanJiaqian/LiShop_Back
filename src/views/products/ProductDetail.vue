@@ -105,7 +105,8 @@ import {
   importProductsImagesZip, 
   updateProduct, 
   updateProductStatus,
-  listProducts
+  listProducts,
+  searchProducts
 } from '@/api/product'
  
 
@@ -129,6 +130,10 @@ export default {
       keyword: '',
       status: ''
     })
+    const applied = reactive({
+      keyword: '',
+      status: ''
+    })
     
     // Get available_product_id from route params
     const availableProductId = route.params.id
@@ -136,15 +141,22 @@ export default {
     const fetchProducts = async () => {
       loading.value = true
       try {
-        const params = {
-          page: pagination.page,
-          page_size: pagination.page_size,
-          available_product_id: availableProductId, // Filter by parent ID
-          keyword: filter.keyword
+        const statusSet = applied.status !== '' && applied.status != null
+        const shouldSearch = !!(String(applied.keyword || '').trim() || statusSet)
+        let res
+        if (shouldSearch) {
+          const params = { content: String(applied.keyword || '').trim(), status: statusSet ? applied.status : undefined }
+          res = await searchProducts(params)
+        } else {
+          const params = {
+            page: pagination.page,
+            page_size: pagination.page_size,
+            available_product_id: availableProductId,
+            keyword: applied.keyword
+          }
+          if (statusSet) params.status = applied.status
+          res = await listProducts(params)
         }
-        if (filter.status !== '') params.status = filter.status
-        
-        const res = await listProducts(params)
         if (res.success) {
           products.value = res.data.items || []
           pagination.total = res.data.total || 0
@@ -166,6 +178,8 @@ export default {
     })
 
     const handleSearch = () => {
+       applied.keyword = filter.keyword
+       applied.status = filter.status
        pagination.page = 1
        fetchProducts()
     }
@@ -178,12 +192,12 @@ export default {
 
     const displayProducts = computed(() => {
       let arr = products.value || []
-      const kw = String(filter.keyword || '').trim()
+      const kw = String(applied.keyword || '').trim()
       if (kw) {
         arr = arr.filter(it => String(it.name || '').includes(kw) || String(it.product_id || '').includes(kw))
       }
-      if (filter.status !== '' && filter.status != null) {
-        arr = arr.filter(it => String(it.status) === String(filter.status))
+      if (applied.status !== '' && applied.status != null) {
+        arr = arr.filter(it => String(it.status) === String(applied.status))
       }
       return arr
     })
@@ -227,6 +241,7 @@ export default {
           length_unit: { label: '长度单位', type: 'select', value: 'm', options: [
             { label: 'cm', value: 'cm' },
             { label: 'mm', value: 'mm' },
+            { label: 'dm', value: 'dm' },
             { label: 'm', value: 'm' }
           ] },
           color_temperature: { label: '色温', type: 'text', value: '' },
@@ -383,6 +398,7 @@ export default {
           length_unit: { label: '长度单位', type: 'select', value: item.length_unit || 'm', options: [
             { label: 'cm', value: 'cm' },
             { label: 'mm', value: 'mm' },
+            { label: 'dm', value: 'dm' },
             { label: 'm', value: 'm' }
           ] },
           color_temperature: { label: '色温', type: 'text', value: item.color_temperature },
@@ -497,6 +513,7 @@ export default {
          length_unit: { label: '长度单位', type: 'select', value: 'm', options: [
            { label: 'cm', value: 'cm' },
            { label: 'mm', value: 'mm' },
+           { label: 'dm', value: 'dm' },
            { label: 'm', value: 'm' }
          ] },
          color_temperature: { label: '色温', type: 'text', value: '' },

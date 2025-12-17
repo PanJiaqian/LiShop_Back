@@ -10,6 +10,7 @@
         <div class="tab-item" :class="{ active: activeTab === 'shipped' }" @click="activeTab = 'shipped'">待收货</div>
         <div class="tab-item" :class="{ active: activeTab === 'completed' }" @click="activeTab = 'completed'">已收货</div>
         <div class="tab-item" :class="{ active: activeTab === 'closed' }" @click="activeTab = 'closed'">已取消</div>
+        <div class="tab-item" :class="{ active: activeTab === 'abnormal' }" @click="activeTab = 'abnormal'">异常订单</div>
       </div>
       <div class="filter-bar">
         <input type="text" class="form-input" placeholder="订单号/买家姓名/手机号" v-model="filter.keyword" />
@@ -21,7 +22,7 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card" v-if="activeTab !== 'abnormal'">
       <table class="data-table">
         <thead>
           <tr>
@@ -76,12 +77,42 @@
         </div>
       </div>
     </div>
+    <div class="card" v-else>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>订单号</th>
+            <th>用户名</th>
+            <th>手机号</th>
+            <th>错误信息</th>
+            <th width="180">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="o in abnormalOrders" :key="o.order_id">
+            <td>{{ o.order_id }}</td>
+            <td>{{ o.user_name }}</td>
+            <td>{{ o.user_phone }}</td>
+            <td style="max-width: 360px; overflow: hidden; text-overflow: ellipsis;">{{ o.error_message }}</td>
+            <td>
+              <div class="actions">
+                <button class="btn-link" @click="viewAbnormalDetail(o)">详情</button>
+                <button class="btn-link primary" @click="retrySubscribe(o)">重新订阅</button>
+              </div>
+            </td>
+          </tr>
+          <tr v-if="!(abnormalOrders && abnormalOrders.length)">
+            <td colspan="5" style="text-align:center;color:#999;">暂无异常订单</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
 
 <script>
-import { inject, reactive, ref, computed, onMounted } from 'vue'
-import { listAdminOrdersDetail, updateOrderStatus, updateTrackingNumber } from '@/api/order.js'
+import { inject, reactive, ref, computed, onMounted, watch } from 'vue'
+import { listAdminOrdersDetail, updateOrderStatus, updateTrackingNumber, listAbnormalOrders, subscribeRetry } from '@/api/order.js'
 
 export default {
   name: 'OrderList',
@@ -96,6 +127,7 @@ export default {
     })
 
     const orders = reactive([])
+    const abnormalOrders = ref([])
 
     const normalizeStatus = (s) => {
       const k = String(s || '').toUpperCase()
@@ -136,6 +168,29 @@ const fetchOrders = async () => {
     }
   } catch (e) {
     showToast('获取订单失败')
+  }
+}
+
+const fetchAbnormalOrders = async () => {
+  try {
+    const res = await listAbnormalOrders({})
+    if (res && res.success) {
+      const arr = (res && res.data && Array.isArray(res.data.orders)) ? res.data.orders : []
+      abnormalOrders.value = arr.map(o => ({
+        order_id: o.order_id,
+        user_name: o.user_name,
+        user_phone: o.user_phone,
+        order_items: Array.isArray(o.order_items) ? o.order_items : [],
+        error_message: o.error_message || ''
+      }))
+    } else {
+      abnormalOrders.value = []
+      const msg = (res && (res.data || res.message)) || '获取异常订单失败'
+      showToast(String(msg))
+    }
+  } catch (e) {
+    abnormalOrders.value = []
+    showToast('获取异常订单失败')
   }
 }
 
@@ -301,6 +356,99 @@ const fetchOrders = async () => {
       })
     }
 
+    const viewAbnormalDetail = (o) => {
+      const base = [
+        { label: '订单号', value: String(o.order_id || '') },
+        { label: '用户名', value: String(o.user_name || '') },
+        { label: '手机号', value: String(o.user_phone || '') },
+        { label: '错误信息', value: String(o.error_message || '') }
+      ]
+      const items = Array.isArray(o.order_items) ? o.order_items : []
+      const itemLines = items.map((it, idx) => {
+        const parts = [
+          `母商品名称: ${it.available_product_name || '-'}`,
+          `子商品名称: ${it.product_name || '-'}`,
+          `单位: ${it.unit || '-'}`,
+          `长度: ${it.length != null ? it.length : '-'}`,
+          `数量: ${it.quantity != null ? it.quantity : '-'}`,
+          `色温: ${it.color_temperature || '-'}`,
+          `单价: ${it.unit_price != null ? it.unit_price : '-'}`,
+          `小计: ${it.detail_total_price != null ? it.detail_total_price : '-'}`,
+          `型号: ${it.model || '-'}`,
+          `房间名称: ${it.room_name || '-'}`,
+          `备注: ${it.note || ''}`
+        ]
+        return `明细${idx + 1}: ` + parts.join(' / ')
+      })
+      const data = [...base]
+      if (itemLines.length) {
+        itemLines.forEach(line => data.push({ label: '明细', value: line }))
+      }
+      showModal({ type: 'detail', title: '异常订单详情', data })
+    }
+
+    const retrySubscribe = (o) => {
+      const statusOptions = [
+        { label: '待付款', value: 'PENDING' },
+        { label: '待发货', value: 'CONFIRMED' },
+        { label: '待收货', value: 'SHIPPED' },
+        { label: '已签收', value: 'COMPLETED' },
+        { label: '已取消', value: 'CANCELLED' }
+      ]
+      const fields = {
+        status: { label: '状态', type: 'select', value: 'SHIPPED', options: statusOptions, onChange: (e) => {
+          const v = e && e.target ? e.target.value : 'SHIPPED'
+          const needShip = String(v).toUpperCase() === 'SHIPPED'
+          fields.trackingNumber.hidden = !needShip
+          fields.logisticsCompany.hidden = !needShip
+          fields.fromRegion.hidden = !needShip
+          fields.toRegion.hidden = !needShip
+          fields.senderPhone.hidden = !needShip
+        } },
+        trackingNumber: { label: '物流单号', type: 'text', value: '' },
+        logisticsCompany: { label: '物流公司代码', type: 'text', value: '', link: '/company.xlsx', linkText: '公司代码列表' },
+        fromRegion: { label: '寄件地区', type: 'text', value: '', tooltip: '模板:广东省广州市黄埔区' },
+        toRegion: { label: '收件地区', type: 'text', value: '', tooltip: '模板:广东省广州市黄埔区' },
+        senderPhone: { label: '寄件人手机号', type: 'text', value: '', tooltip: '1、座机号码：如有分机号，无需传入分机号。\n\n2、电商虚拟号码：需传入“-”后的后四位数字。\n\n3、手机号验证：建议通过微信小程序验证号码是否正确。\n座机 0755-81234567 可传入：075581234567、81234567 或 4567\n手机 13801380000 可传入：13801380000 或 8000\n带分机号的手机 13801380000-1234 可传入：138013800001234 或 1234' }
+      }
+      // Initialize hidden state for non-SHIPPED default if needed
+      const initNeedShip = String(fields.status.value).toUpperCase() === 'SHIPPED'
+      fields.trackingNumber.hidden = !initNeedShip
+      fields.logisticsCompany.hidden = !initNeedShip
+      fields.fromRegion.hidden = !initNeedShip
+      fields.toRegion.hidden = !initNeedShip
+      fields.senderPhone.hidden = !initNeedShip
+      showModal({
+        type: 'form',
+        title: '异常订单重新订阅',
+        fields,
+        onConfirm: async (f) => {
+          try {
+            const fd = new FormData()
+            fd.append('order_id', o.order_id)
+            const status = f.status.value
+            fd.append('status', status)
+            if (String(status).toUpperCase() === 'SHIPPED') {
+              if (f.trackingNumber.value) fd.append('tracking_number', f.trackingNumber.value)
+              if (f.logisticsCompany.value) fd.append('logistics_company_code', f.logisticsCompany.value)
+              if (f.fromRegion.value) fd.append('from_region', f.fromRegion.value)
+              if (f.toRegion.value) fd.append('to_region', f.toRegion.value)
+              if (f.senderPhone.value) fd.append('sender_phone', f.senderPhone.value)
+            }
+            const res = await subscribeRetry(fd)
+            if (res && res.success) {
+              showToast((res && res.message) || '重新订阅成功')
+            } else {
+              const msg = (res && (res.data || res.message)) || '重新订阅失败'
+              showToast(String(msg))
+            }
+          } catch (e) {
+            showToast('重新订阅失败')
+          }
+        }
+      })
+    }
+
     const closeOrder = (order) => {
       showModal({
         type: 'confirm',
@@ -316,19 +464,26 @@ const fetchOrders = async () => {
       fetchOrders()
     })
 
-    return {
-      activeTab,
-      filter,
-      orders,
-      filteredOrders,
-      getStatusClass,
-      handleSearch,
-      exportOrders,
-      shipOrder,
-      closeOrder,
-      changeTracking,
-      editStatus
-    }
+    watch(activeTab, (val) => {
+      if (val === 'abnormal') fetchAbnormalOrders()
+    })
+
+      return {
+        activeTab,
+        filter,
+        orders,
+        abnormalOrders,
+        filteredOrders,
+        getStatusClass,
+        handleSearch,
+        exportOrders,
+        shipOrder,
+        closeOrder,
+        changeTracking,
+        editStatus,
+        viewAbnormalDetail,
+        retrySubscribe
+      }
   }
 }
 </script>

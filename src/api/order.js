@@ -19,3 +19,15 @@ export const updateTrackingNumber = (formData) => {
     }
   }).then(res => res.data)
 }
+
+export const listAbnormalOrders = (params) => {
+  return api.get('/admin/orders/logistics_abnormal', { params }).then(res => res.data)
+}
+
+export const subscribeRetry = (formData) => {
+  return api.post('/admin/orders/subscribe_retry', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  }).then(res => res.data)
+}

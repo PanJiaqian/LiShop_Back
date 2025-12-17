@@ -76,7 +76,7 @@
         <div class="card mb-4">
           <div class="card-header">
             <h3>收货人信息</h3>
-            <button class="btn-link">修改</button>
+            <!-- <button class="btn-link">修改</button> -->
           </div>
           <div class="info-list">
             <div class="info-item">

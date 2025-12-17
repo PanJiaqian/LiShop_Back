@@ -39,3 +39,7 @@ export const updateProductStatus = (data) => {
 export const listProducts = (params) => {
   return api.get('/admin/products', { params }).then(res => res.data)
 }
+
+export const searchProducts = (params) => {
+  return api.get('/admin/products/search', { params }).then(res => res.data)
+}
