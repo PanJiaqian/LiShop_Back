@@ -196,43 +196,27 @@ const fetchOrders = async () => {
       const statusMap = [
         { label: '待付款', value: 'PENDING' },
         { label: '待发货', value: 'CONFIRMED' },
-        { label: '待收货', value: 'SHIPPED' },
         { label: '已收货', value: 'COMPLETED' },
         { label: '已取消', value: 'CANCELLED' }
       ]
       const invert = {
         '待付款': 'PENDING',
         '待发货': 'CONFIRMED',
-        '待收货': 'SHIPPED',
         '已收货': 'COMPLETED',
         '已取消': 'CANCELLED'
-      }
-      const fields = {
-        status: { label: '状态', type: 'select', value: invert[order.status] || 'PENDING', options: statusMap },
-        trackingNumber: { label: '运单号', type: 'text', value: '', hidden: true }
-      }
-      fields.trackingNumber.hidden = (fields.status.value !== 'SHIPPED')
-      fields.status.onChange = (e) => {
-        const v = e.target.value
-        fields.trackingNumber.hidden = (v !== 'SHIPPED')
       }
       showModal({
         type: 'form',
         title: '编辑订单状态',
-        fields,
+        fields: {
+          status: { label: '状态', type: 'select', value: invert[order.status] || 'PENDING', options: statusMap }
+        },
         onConfirm: async (fields) => {
           try {
             const status = fields.status.value
-            if (status === 'SHIPPED' && !fields.trackingNumber.value) {
-              showToast('请填写运单号')
-              return
-            }
             const fd = new FormData()
             fd.append('order_id', order.id)
             fd.append('status', status)
-            if (status === 'SHIPPED') {
-              fd.append('tracking_number', fields.trackingNumber.value)
-            }
             const res = await updateOrderStatus(fd)
             if (res && res.success) {
               showToast((res && res.message) || '状态更新成功')
@@ -253,22 +237,13 @@ const fetchOrders = async () => {
         type: 'form',
         title: '订单发货',
         fields: {
-          logisticsCompany: { label: '物流公司', type: 'select', value: 'zhongtong', options: [
-            { label: '中通快递', value: 'zhongtong' },
-            { label: '顺丰速运', value: 'sf_express' },
-            { label: '顺丰快运', value: 'sf_fast' }
-          ]},
+          logisticsCompany: { label: '物流公司代码', type: 'text', value: '', link: '/company.xlsx', linkText: '公司代码列表' },
           trackingNumber: { label: '物流单号', type: 'text', value: '' },
-          fromRegion: { label: '寄件地区', type: 'text', value: '' },
-          toRegion: { label: '收件地区', type: 'text', value: '' },
-          senderPhone: { label: '寄件人手机号', type: 'text', value: '' }
-        },
+          fromRegion: { label: '寄件地区', type: 'text', value: '', tooltip: '模板:广东省广州市黄埔区' },
+          toRegion: { label: '收件地区', type: 'text', value: '', tooltip: '模板:广东省广州市黄埔区' },
+          senderPhone: { label: '寄件人手机号', type: 'text', value: '', tooltip: '注意事项：\n 1.座机号码：如有分机号，无需传入分机号。\n 2.电商虚拟号码：需传入“-”后的后四位数字。\n 3.手机号验证：建议通过微信小程序验证号码是否正确。\n 例：\n 1.座机 0755-81234567 可传入：075581234567、81234567 或 4567\n 2.电商虚拟号码 13801380000-1234 可传入：1234\n 3.手机号 13801380000 可传入：13801380000 或 8000' }},
         onConfirm: async (fields) => {
           try {
-            if (!fields.trackingNumber.value) {
-              showToast('请填写运单号')
-              return
-            }
             const fd = new FormData()
             fd.append('order_id', order.id)
             fd.append('tracking_number', fields.trackingNumber.value)
@@ -277,14 +252,14 @@ const fetchOrders = async () => {
             if (fields.fromRegion.value) fd.append('from_region', fields.fromRegion.value)
             if (fields.toRegion.value) fd.append('to_region', fields.toRegion.value)
             if (fields.senderPhone.value) fd.append('sender_phone', fields.senderPhone.value)
-        const res = await updateOrderStatus(fd)
-        if (res && res.success) {
-          showToast((res && res.message) || '发货成功')
-          order.status = '待收货'
-        } else {
-          const msg = (res && (res.data || res.message)) || '发货失败'
-          showToast(String(msg))
-        }
+            const res = await updateOrderStatus(fd)
+            if (res && res.success) {
+              showToast((res && res.message) || '发货成功')
+              order.status = '待收货'
+            } else {
+              const msg = (res && (res.data || res.message)) || '发货失败'
+              showToast(String(msg))
+            }
           } catch (e) {
             showToast('发货失败')
           }
@@ -297,20 +272,28 @@ const fetchOrders = async () => {
         type: 'form',
         title: '修改运单号',
         fields: {
-          trackingNumber: { label: '新运单号', type: 'text', value: '' }
+          trackingNumber: { label: '新运单号', type: 'text', value: '' },
+          logisticsCompany: { label: '物流公司代码', type: 'text', value: '', link: '/company.xlsx', linkText: '公司代码列表' },
+          fromRegion: { label: '寄件地区', type: 'text', value: '', tooltip: '模板:广东省广州市黄埔区' },
+          toRegion: { label: '收件地区', type: 'text', value: '', tooltip: '模板:广东省广州市黄埔区' },
+          senderPhone: { label: '寄件人手机号', type: 'text', value: '', tooltip: '注意事项：\n 1.座机号码：如有分机号，无需传入分机号。\n 2.电商虚拟号码：需传入“-”后的后四位数字。\n 3.手机号验证：建议通过微信小程序验证号码是否正确。\n 例：\n 1.座机 0755-81234567 可传入：075581234567、81234567 或 4567\n 2.电商虚拟号码 13801380000-1234 可传入：1234\n 3.手机号 13801380000 可传入：13801380000 或 8000' }
         },
         onConfirm: async (fields) => {
           try {
             const fd = new FormData()
             fd.append('order_id', order.id)
             fd.append('tracking_number', fields.trackingNumber.value)
-        const res = await updateTrackingNumber(fd)
-        if (res && res.success) {
-          showToast((res && res.message) || '修改成功')
-        } else {
-          const msg = (res && (res.data || res.message)) || '修改失败'
-          showToast(String(msg))
-        }
+            if (fields.logisticsCompany.value) fd.append('logistics_company_code', fields.logisticsCompany.value)
+            if (fields.fromRegion.value) fd.append('from_region', fields.fromRegion.value)
+            if (fields.toRegion.value) fd.append('to_region', fields.toRegion.value)
+            if (fields.senderPhone.value) fd.append('sender_phone', fields.senderPhone.value)
+            const res = await updateTrackingNumber(fd)
+            if (res && res.success) {
+              showToast((res && res.message) || '修改成功')
+            } else {
+              const msg = (res && (res.data || res.message)) || '修改失败'
+              showToast(String(msg))
+            }
           } catch (e) {
             showToast('修改失败')
           }

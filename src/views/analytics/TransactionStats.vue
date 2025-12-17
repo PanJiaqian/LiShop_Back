@@ -136,15 +136,17 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="it in (result.items || [])" :key="it.order_id">
-              <td>{{ it.order_id }}</td>
-              <td>{{ it.available_product_name }}</td>
-              <td>{{ it.product_name }}</td>
-              <td>{{ it.quantity }}</td>
-              <td>{{ it.length }}</td>
-              <td>{{ it.amount }}</td>
-              <td>{{ (it.time || '').replace('T',' ').split('.')[0] }}</td>
-            </tr>
+            <template v-for="(group, gi) in groupedOrders" :key="group.order_id + '-' + gi">
+              <tr v-for="(it, idx) in group.items" :key="group.order_id + '-' + idx">
+                <td v-if="idx === 0" :rowspan="group.items.length" style="text-align:center;">{{ group.order_id }}</td>
+                <td>{{ it.available_product_name }}</td>
+                <td>{{ it.product_name }}</td>
+                <td>{{ it.quantity }}</td>
+                <td>{{ it.length }}</td>
+                <td>{{ it.amount }}</td>
+                <td>{{ (it.time || '').replace('T',' ').split('.')[0] }}</td>
+              </tr>
+            </template>
             <tr v-if="!(result.items && result.items.length)">
               <td colspan="7" style="text-align:center;color:#999;">暂无数据</td>
             </tr>
@@ -175,6 +177,7 @@ export default {
     const sortType = ref('金额')
     const viewType = ref('下单量')
     const result = ref({})
+    const groupedOrders = ref([])
 
     const fetchStats = async () => {
       try {
@@ -188,9 +191,27 @@ export default {
         }
         if (res && res.success) {
           result.value = (res && res.data) || {}
+          if (activeTab.value === 'orders') {
+            const items = Array.isArray(result.value.items) ? result.value.items : []
+            const groups = []
+            const map = new Map()
+            items.forEach(it => {
+              const k = it.order_id
+              if (!map.has(k)) {
+                const g = { order_id: k, items: [] }
+                map.set(k, g)
+                groups.push(g)
+              }
+              map.get(k).items.push(it)
+            })
+            groupedOrders.value = groups
+          } else {
+            groupedOrders.value = []
+          }
           showToast('查询成功')
         } else {
           result.value = {}
+          groupedOrders.value = []
           const msg = (res && (res.data || res.message)) || '获取统计失败'
           showToast(String(msg))
         }
@@ -212,7 +233,7 @@ export default {
       fetchStats()
     })
 
-    return { activeTab, queryId, start, end, sortType, viewType, result, fetchStats, applyFilters }
+    return { activeTab, queryId, start, end, sortType, viewType, result, groupedOrders, fetchStats, applyFilters }
   }
 }
 </script>

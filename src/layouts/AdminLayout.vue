@@ -34,7 +34,11 @@
           <div v-else-if="modal.type === 'form'" class="modal-form">
             <!-- Dynamic form fields based on modal.fields -->
             <div v-for="(field, key) in modal.fields" :key="key" class="form-group" v-if="!(field && field.hidden)">
-              <label>{{ field.label }}</label>
+              <div class="label-row">
+                <label>{{ field.label }}</label>
+                <span v-if="field.tooltip" class="hint-icon" :title="field.tooltip">!</span>
+                <a v-if="field.link" :href="field.link" target="_blank" class="field-link">{{ field.linkText || '查看公司列表' }}</a>
+              </div>
               <input 
                 v-if="field.type === 'text' || field.type === 'number' || field.type === 'password' || field.type === 'email'" 
                 :type="field.type" 
@@ -775,6 +779,9 @@ body {
   font-weight: bold;
   margin-left: 8px;
 }
+.label-row { display: flex; align-items: center; gap: 8px; }
+.hint-icon { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: #fef3c7; color: #b45309; font-weight: 700; font-size: 12px; cursor: help; }
+.field-link { font-size: 12px; color: #2563eb; text-decoration: underline; }
 .token-list {
   display: flex;
   flex-wrap: wrap;
