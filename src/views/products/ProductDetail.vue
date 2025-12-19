@@ -51,7 +51,7 @@
           <tr v-for="item in displayProducts" :key="item.product_id">
             <td>
               <div class="product-thumb">
-                <img v-if="getImageUrl(item)" :src="getImageUrl(item)" alt="" @click="previewImage(getImageUrl(item))" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; cursor: pointer;">
+                <img v-if="getImageUrl(item)" :src="getImageUrl(item)" alt="" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;">
                 <span v-else>📷</span>
               </div>
             </td>
@@ -97,7 +97,7 @@
 </template>
 
 <script>
-import { inject, reactive, onMounted, ref, computed } from 'vue'
+import { inject, reactive, onMounted, ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { 
   createProduct, 
@@ -106,7 +106,8 @@ import {
   updateProduct, 
   updateProductStatus,
   listProducts,
-  searchProducts
+  searchProducts,
+  listProductsByAvailableProduct
 } from '@/api/product'
  
 
@@ -116,6 +117,8 @@ export default {
     const showModal = inject('showModal')
     const showToast = inject('showToast')
     const hideToast = inject('hideToast')
+    const setUploadProgress = inject('setUploadProgress')
+    const endUploadProgress = inject('endUploadProgress')
     const route = useRoute()
     
     const loading = ref(false)
@@ -135,8 +138,7 @@ export default {
       status: ''
     })
     
-    // Get available_product_id from route params
-    const availableProductId = route.params.id
+    const availableProductId = computed(() => route.params.id)
 
     const fetchProducts = async () => {
       loading.value = true
@@ -144,18 +146,28 @@ export default {
         const statusSet = applied.status !== '' && applied.status != null
         const shouldSearch = !!(String(applied.keyword || '').trim() || statusSet)
         let res
-        if (shouldSearch) {
-          const params = { content: String(applied.keyword || '').trim(), status: statusSet ? applied.status : undefined }
-          res = await searchProducts(params)
+        if (!availableProductId.value) {
+          if (shouldSearch) {
+            const params = { content: String(applied.keyword || '').trim(), status: statusSet ? applied.status : undefined }
+            res = await searchProducts(params)
+          } else {
+            const params = {
+              page: pagination.page,
+              page_size: pagination.page_size,
+              keyword: applied.keyword || ''
+            }
+            if (statusSet) params.status = applied.status
+            res = await listProducts(params)
+          }
         } else {
           const params = {
+            product_id: availableProductId.value,
             page: pagination.page,
             page_size: pagination.page_size,
-            available_product_id: availableProductId,
-            keyword: applied.keyword
+            sort_by: 'name',
+            sort_order: 'desc'
           }
-          if (statusSet) params.status = applied.status
-          res = await listProducts(params)
+          res = await listProductsByAvailableProduct(params)
         }
         if (res.success) {
           products.value = res.data.items || []
@@ -174,6 +186,10 @@ export default {
     }
 
     onMounted(() => {
+      fetchProducts()
+    })
+    watch(() => route.params.id, () => {
+      pagination.page = 1
       fetchProducts()
     })
 
@@ -220,6 +236,12 @@ export default {
       s = s.replace(/^"+|"+$/g, '')
       s = s.replace(/^'+|'+$/g, '')
       return s
+    }
+    const getImages = (item) => {
+      const arr = item && (item.images || item.image_list || [])
+      if (Array.isArray(arr) && arr.length) return arr.map(x => String(x))
+      const single = getImageUrl(item)
+      return single ? [single] : []
     }
 
     // --- Operations copied and adapted from ProductList.vue ---
@@ -293,9 +315,10 @@ export default {
           }
 
           try {
-            const res = await createProduct(formData)
+            const res = await createProduct(formData, { onUploadProgress: (e) => setUploadProgress && setUploadProgress(e, '正在上传图片') })
             if (res && res.success) {
               showToast('创建明细商品成功')
+              endUploadProgress && endUploadProgress()
               fetchProducts()
             } else {
               const msg = (res && (res.data || res.message)) || '创建失败'
@@ -303,6 +326,7 @@ export default {
             }
           } catch (e) {
             showToast('创建失败: ' + (e.message || '网络错误'))
+            endUploadProgress && endUploadProgress()
           }
         }
       })
@@ -316,18 +340,19 @@ export default {
           file: { label: '选择Excel文件', type: 'file', multiple: false, files: null }
         },
         onConfirm: async (fields) => {
-          const loading = showToast({ text: '正在导入...', persist: true })
+          const loadingToast = showToast({ text: '开始上传...', persist: true })
           if (!fields.file.files || !fields.file.files[0]) {
-            hideToast(loading)
+            hideToast(loadingToast)
             showToast('请选择文件')
             return
           }
           const formData = new FormData()
           formData.append('file', fields.file.files[0])
           try {
-            const res = await importProductsExcel(formData)
+            const res = await importProductsExcel(formData, { onUploadProgress: (e) => setUploadProgress && setUploadProgress(e, '正在导入Excel') })
             if (res && res.success) {
-               hideToast(loading)
+               hideToast(loadingToast)
+               endUploadProgress && endUploadProgress()
                showToast('导入成功')
                if (res.data && res.data.success) {
                  showToast(`成功导入 ${res.data.success_count} 条`)
@@ -335,11 +360,13 @@ export default {
                fetchProducts()
             } else {
               const msg = (res && (res.data || res.message)) || '导入失败'
-              hideToast(loading)
+              hideToast(loadingToast)
+              endUploadProgress && endUploadProgress()
               showToast(String(msg))
             }
           } catch (e) {
-            hideToast(loading)
+            hideToast(loadingToast)
+            endUploadProgress && endUploadProgress()
             showToast('导入请求失败')
           }
         }
@@ -354,27 +381,30 @@ export default {
           zip_file: { label: '选择Zip文件', type: 'file', multiple: false, files: null }
         },
         onConfirm: async (fields) => {
-          const loading = showToast({ text: '正在导入...', persist: true })
+          const loadingToast = showToast({ text: '开始上传...', persist: true })
           if (!fields.zip_file.files || !fields.zip_file.files[0]) {
-            hideToast(loading)
+            hideToast(loadingToast)
             showToast('请选择文件')
             return
           }
           const formData = new FormData()
           formData.append('zip_file', fields.zip_file.files[0])
           try {
-            const res = await importProductsImagesZip(formData)
+            const res = await importProductsImagesZip(formData, { onUploadProgress: (e) => setUploadProgress && setUploadProgress(e, '正在导入图片Zip') })
             if (res && res.success) {
-              hideToast(loading)
+              hideToast(loadingToast)
+              endUploadProgress && endUploadProgress()
               showToast('导入成功')
               fetchProducts()
             } else {
               const msg = (res && (res.data || res.message)) || '上传失败'
-              hideToast(loading)
+              hideToast(loadingToast)
+              endUploadProgress && endUploadProgress()
               showToast(String(msg))
             }
           } catch (e) {
-            hideToast(loading)
+            hideToast(loadingToast)
+            endUploadProgress && endUploadProgress()
             showToast('导入请求失败')
           }
         }
@@ -443,12 +473,13 @@ export default {
             }
 
             try {
-                const res = await updateProduct(formData)
+                const res = await updateProduct(formData, { onUploadProgress: (e) => setUploadProgress && setUploadProgress(e, '正在上传图片') })
                 if (res && res.success) {
                     showToast('更新明细商品成功')
                     try {
                       await updateProductStatus({ product_id: fields.product_id.value, status: fields.status.value })
                     } catch (e) {}
+                    endUploadProgress && endUploadProgress()
                     fetchProducts()
                 } else {
                     const msg = (res && (res.data || res.message)) || '更新失败'
@@ -456,6 +487,7 @@ export default {
                 }
             } catch (e) {
                 showToast('更新请求失败')
+                endUploadProgress && endUploadProgress()
             }
         }
       })
@@ -486,8 +518,10 @@ export default {
         { label: '状态', value: String(item.status) === '1' ? '上架' : '下架' }
       ]
       const data = []
-      const img = getImageUrl(item)
-      if (img) data.push({ label: '商品图片', value: img, type: 'image' })
+      const imgs = getImages(item)
+      if (imgs.length) {
+        imgs.forEach((src, i) => data.push({ label: i === 0 ? '商品图片' : '', value: src, type: 'image' }))
+      }
       rows.forEach(r => data.push(r))
       showModal({ type: 'detail', title: '明细商品详情', data })
     }
@@ -604,14 +638,15 @@ export default {
     return {
       loading,
       products,
-      displayProducts,
       pagination,
       filter,
+      displayProducts,
       handleSearch,
       resetFilter,
       changePage,
       previewImage,
       getImageUrl,
+      getImages,
       handleCreateDetailProduct,
       handleImportDetailExcel,
       handleImportDetailImages,
@@ -668,5 +703,22 @@ export default {
 }
 .btn-link:hover {
   text-decoration: underline;
+}
+.thumbs-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.thumb-sm {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid #e5e7eb;
+}
+.thumb-more {
+  font-size: 12px;
+  color: #6b7280;
 }
 </style>

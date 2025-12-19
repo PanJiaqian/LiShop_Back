@@ -45,14 +45,10 @@
         <tbody>
           <tr v-for="item in (displayProducts || [])" :key="item.available_product_id">
             <td>
-              <div class="product-thumb">
-                <img 
-                  v-if="item.main_image" 
-                  :src="Array.isArray(item.main_image) ? item.main_image[0] : item.main_image" 
-                  alt="" 
-                  style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; cursor: pointer;" 
-                  @click="previewImage(Array.isArray(item.main_image) ? item.main_image[0] : item.main_image)"
-                >
+              <div class="thumbs-row">
+                <template v-if="getImages(item).length">
+                  <img :src="getImages(item)[0]" alt="" class="thumb-sm">
+                </template>
                 <span v-else>📷</span>
               </div>
             </td>
@@ -122,6 +118,8 @@ export default {
     const showModal = inject('showModal')
     const showToast = inject('showToast')
     const hideToast = inject('hideToast')
+    const setUploadProgress = inject('setUploadProgress')
+    const endUploadProgress = inject('endUploadProgress')
     const router = useRouter()
     
     const loading = ref(false)
@@ -295,9 +293,10 @@ export default {
           }
 
           try {
-            const res = await createAvailableProduct(formData)
+            const res = await createAvailableProduct(formData, { onUploadProgress: (e) => setUploadProgress && setUploadProgress(e, '正在上传商品') })
             if (res && res.success) {
               showToast('新建商品成功')
+              endUploadProgress && endUploadProgress()
               fetchProducts()
             } else {
               const msg = (res && (res.data || res.message)) || '新建失败'
@@ -305,6 +304,7 @@ export default {
             }
           } catch (e) {
             showToast('新建失败: ' + (e.message || '网络错误'))
+            endUploadProgress && endUploadProgress()
           }
         }
       })
@@ -318,18 +318,19 @@ export default {
           file: { label: '选择Excel文件', type: 'file', multiple: false, files: null }
         },
         onConfirm: async (fields) => {
-          const loading = showToast({ text: '正在导入...', persist: true })
+          const loadingToast = showToast({ text: '开始上传...', persist: true })
           if (!fields.file.files || !fields.file.files[0]) {
-            hideToast(loading)
+            hideToast(loadingToast)
             showToast('请选择文件')
             return
           }
           const formData = new FormData()
           formData.append('file', fields.file.files[0])
           try {
-            const res = await importAvailableProductsExcel(formData)
+            const res = await importAvailableProductsExcel(formData, { onUploadProgress: (e) => setUploadProgress && setUploadProgress(e, '正在导入Excel') })
             if (res && res.success) {
-               hideToast(loading)
+               hideToast(loadingToast)
+               endUploadProgress && endUploadProgress()
                showToast('导入成功')
                if (res.data && res.data.success) {
                  showToast(`成功导入 ${res.data.success_count} 条`)
@@ -337,11 +338,13 @@ export default {
                fetchProducts() // Refresh list immediately
             } else {
               const msg = (res && (res.data || res.message)) || '导入失败'
-              hideToast(loading)
+              hideToast(loadingToast)
+              endUploadProgress && endUploadProgress()
               showToast(String(msg))
             }
           } catch (e) {
-            hideToast(loading)
+            hideToast(loadingToast)
+            endUploadProgress && endUploadProgress()
             showToast('导入请求失败')
           }
         }
@@ -356,27 +359,30 @@ export default {
           zip_file: { label: '选择Zip文件', type: 'file', multiple: false, files: null }
         },
         onConfirm: async (fields) => {
-          const loading = showToast({ text: '正在导入...', persist: true })
+          const loadingToast = showToast({ text: '开始上传...', persist: true })
           if (!fields.zip_file.files || !fields.zip_file.files[0]) {
-            hideToast(loading)
+            hideToast(loadingToast)
             showToast('请选择文件')
             return
           }
           const formData = new FormData()
           formData.append('zip_file', fields.zip_file.files[0])
           try {
-            const res = await importAvailableProductsImagesZip(formData)
+            const res = await importAvailableProductsImagesZip(formData, { onUploadProgress: (e) => setUploadProgress && setUploadProgress(e, '正在导入图片Zip') })
             if (res && res.success) {
-              hideToast(loading)
+              hideToast(loadingToast)
+              endUploadProgress && endUploadProgress()
               showToast('导入成功')
               fetchProducts() // Refresh list immediately
             } else {
               const msg = (res && (res.data || res.message)) || '上传失败'
-              hideToast(loading)
+              hideToast(loadingToast)
+              endUploadProgress && endUploadProgress()
               showToast(String(msg))
             }
           } catch (e) {
-            hideToast(loading)
+            hideToast(loadingToast)
+            endUploadProgress && endUploadProgress()
             showToast('导入请求失败')
           }
         }
@@ -391,27 +397,30 @@ export default {
           zip_file: { label: '选择Zip文件', type: 'file', multiple: false, files: null }
         },
         onConfirm: async (fields) => {
-          const loading = showToast({ text: '正在导入...', persist: true })
+          const loadingToast = showToast({ text: '开始上传...', persist: true })
           if (!fields.zip_file.files || !fields.zip_file.files[0]) {
-            hideToast(loading)
+            hideToast(loadingToast)
             showToast('请选择文件')
             return
           }
           const formData = new FormData()
           formData.append('zip_file', fields.zip_file.files[0])
           try {
-            const res = await importAvailableProductsVideosZip(formData)
+            const res = await importAvailableProductsVideosZip(formData, { onUploadProgress: (e) => setUploadProgress && setUploadProgress(e, '正在导入视频Zip') })
             if (res && res.success) {
-              hideToast(loading)
+              hideToast(loadingToast)
+              endUploadProgress && endUploadProgress()
               showToast('导入成功')
               fetchProducts() // Refresh list immediately
             } else {
               const msg = (res && (res.data || res.message)) || '上传失败'
-              hideToast(loading)
+              hideToast(loadingToast)
+              endUploadProgress && endUploadProgress()
               showToast(String(msg))
             }
           } catch (e) {
-            hideToast(loading)
+            hideToast(loadingToast)
+            endUploadProgress && endUploadProgress()
             showToast('导入请求失败')
           }
         }
@@ -419,17 +428,17 @@ export default {
     }
 
     const editProduct = async (item) => {
-      const categoryOptions = []
-      try {
-        const res = await listCategories({ page: 1, page_size: 200 })
-        const items = (res && res.data && res.data.items) || []
-        items.forEach(c => {
-          const label = c.name || c.category_name || String(c.category_id || '')
-          const value = label
-          categoryOptions.push({ label, value })
-        })
-      } catch (e) {}
-      showModal({
+          const categoryOptions = []
+          try {
+            const res = await listCategories({ page: 1, page_size: 200 })
+            const items = (res && res.data && res.data.items) || []
+            items.forEach(c => {
+              const label = c.name || c.category_name || String(c.category_id || '')
+              const value = label
+              categoryOptions.push({ label, value })
+            })
+          } catch (e) {}
+          showModal({
         type: 'form',
         title: '编辑商品',
         fields: {
@@ -486,9 +495,10 @@ export default {
           }
 
           try {
-            const res = await updateAvailableProduct(formData)
+            const res = await updateAvailableProduct(formData, { onUploadProgress: (e) => setUploadProgress && setUploadProgress(e, '正在上传商品') })
             if (res && res.success) {
               showToast('更新商品成功')
+              endUploadProgress && endUploadProgress()
               fetchProducts()
             } else {
               const msg = (res && (res.data || res.message)) || '更新失败'
@@ -496,6 +506,7 @@ export default {
             }
           } catch (e) {
             showToast('更新失败: ' + (e.message || '网络错误'))
+            endUploadProgress && endUploadProgress()
           }
         }
       })
@@ -536,6 +547,12 @@ export default {
       if (!u) return
       showModal({ type: 'detail', title: '图片预览', data: [{ label: '', value: u, type: 'image' }] })
     }
+    const getImages = (item) => {
+      const arr = (Array.isArray(item.images) ? item.images : [])
+      const mains = Array.isArray(item.main_image) ? item.main_image : (item.main_image ? [item.main_image] : [])
+      const list = [...mains, ...arr].map(x => String(x))
+      return list.filter(Boolean)
+    }
 
     const viewDetail = (item) => {
       const rows = [
@@ -548,8 +565,10 @@ export default {
         { label: '创建时间', value: String(item.created_at || '') }
       ]
       const data = []
-      const img = Array.isArray(item.main_image) ? item.main_image[0] : item.main_image
-      if (img) data.push({ label: '商品主图', value: img, type: 'image' })
+      const imgs = getImages(item)
+      if (imgs.length) {
+        imgs.forEach((src, i) => data.push({ label: i === 0 ? '商品图片' : '', value: src, type: 'image' }))
+      }
       rows.forEach(r => data.push(r))
       showModal({ type: 'detail', title: '商品详情', data })
     }
@@ -568,14 +587,15 @@ export default {
         handleImportExcel,
         handleImportImages,
         handleImportVideos,
-        viewDetail,
-        editProduct,
-        toggleStatus,
-        deleteProduct,
-        goToDetail,
-        getCategoryName,
-        previewImage,
-        categoryOptions
+      viewDetail,
+      editProduct,
+      toggleStatus,
+      deleteProduct,
+      goToDetail,
+      getCategoryName,
+      getImages,
+      previewImage,
+      categoryOptions
       }
   }
 }
@@ -635,5 +655,22 @@ export default {
 }
 .btn-link.danger {
   color: #ef4444;
+}
+.thumbs-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.thumb-sm {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid #e5e7eb;
+}
+.thumb-more {
+  font-size: 12px;
+  color: #6b7280;
 }
 </style>

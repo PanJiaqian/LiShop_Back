@@ -9,6 +9,12 @@
             <span class="text">商品列表</span>
           </a>
         </router-link>
+        <router-link to="/products/details" custom v-slot="{ navigate, href, isActive }">
+          <a :class="['menu-item', { 'router-link-active': isActive }]" :href="href" @click="handleLink($event, navigate)">
+            <span class="icon">🧩</span>
+            <span class="text">明细商品</span>
+          </a>
+        </router-link>
         <router-link to="/categories" custom v-slot="{ navigate, href, isActive }">
           <a :class="['menu-item', { 'router-link-active': isActive }]" :href="href" @click="handleLink($event, navigate)">
             <span class="icon">🗂️</span>

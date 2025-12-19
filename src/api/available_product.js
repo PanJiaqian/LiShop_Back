@@ -1,42 +1,47 @@
 import { api } from './admin'
 
-export const createAvailableProduct = (formData) => {
+export const createAvailableProduct = (formData, config = {}) => {
   return api.post('/admin/available_products', formData, {
     headers: {
       'Content-Type': 'multipart/form-data'
-    }
+    },
+    ...config
   }).then(res => res.data)
 }
 
-export const importAvailableProductsExcel = (formData) => {
+export const importAvailableProductsExcel = (formData, config = {}) => {
   return api.post('/admin/available_products/import_excel', formData, {
     headers: {
       'Content-Type': 'multipart/form-data'
-    }
+    },
+    ...config
   }).then(res => res.data)
 }
 
-export const importAvailableProductsVideosZip = (formData) => {
+export const importAvailableProductsVideosZip = (formData, config = {}) => {
   return api.post('/admin/available_products/import_videos_zip', formData, {
     headers: {
       'Content-Type': 'multipart/form-data'
-    }
+    },
+    ...config
   }).then(res => res.data)
 }
 
-export const importAvailableProductsImagesZip = (formData) => {
+export const importAvailableProductsImagesZip = (formData, config = {}) => {
   return api.post('/admin/available_products/import_images_zip', formData, {
     headers: {
       'Content-Type': 'multipart/form-data'
-    }
+    },
+    ...config
   }).then(res => res.data)
 }
 
-export const updateAvailableProduct = (formData) => {
+export const updateAvailableProduct = (formData, config = {}) => {
   return api.post('/admin/available_products/update', formData, {
     headers: {
       'Content-Type': 'multipart/form-data'
-    }
+    },
+    ...config
   }).then(res => res.data)
 }
 

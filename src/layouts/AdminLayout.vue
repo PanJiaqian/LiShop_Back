@@ -8,6 +8,13 @@
       </main>
     </div>
 
+    <div v-if="upload.active" class="upload-progress">
+      <div class="upload-progress-bar">
+        <div class="upload-progress-inner" :style="{ width: upload.percent + '%' }"></div>
+      </div>
+      <div class="upload-progress-text">{{ upload.text }} {{ upload.percent }}%</div>
+    </div>
+
     <!-- Global Modal Component -->
     <div v-if="modal.show" class="modal-overlay" @click="closeModal">
       <div class="modal-container" :class="modal.className" @click.stop>
@@ -20,10 +27,18 @@
             {{ modal.message }}
           </div>
           <div v-else-if="modal.type === 'detail'" class="modal-detail">
-            <div v-for="(item, idx) in modal.data" :key="idx">
+            <div 
+              v-for="(item, idx) in modal.data" 
+              :key="idx" 
+              :class="['detail-item', item && item.type === 'image' ? 'is-image' : (item && item.type === 'video' ? 'is-video' : 'is-row')]"
+            >
               <div v-if="item && item.type === 'image'" class="detail-image">
                 <div v-if="item.label" class="detail-label">{{ item.label }}</div>
-                <img :src="item.src || item.value" alt="preview" />
+                <img :src="item.src || item.value" alt="preview" :class="item.large ? 'detail-image-large' : ''" @click="enlargeDetailImage(item.src || item.value)" />
+              </div>
+              <div v-else-if="item && item.type === 'video'" class="detail-image">
+                <div v-if="item.label" class="detail-label">{{ item.label }}</div>
+                <video :src="item.src || item.value" controls style="max-width: 100%; border-radius: 8px; border: 1px solid #e5e7eb;"></video>
               </div>
               <div v-else class="detail-row">
                 <div class="detail-label">{{ item.label }}</div>
@@ -66,10 +81,23 @@
                   }"
                   class="form-input" 
                 />
-                <div v-if="Array.isArray(field.files) && field.files.length" class="file-list">
-                  <div v-for="(f, i) in field.files" :key="i" class="file-item">
-                    <span class="file-name">{{ f.name }}</span>
-                    <span class="file-remove" @click="field.files.splice(i, 1)">&times;</span>
+                <div v-if="Array.isArray(field.files) && field.files.length" class="file-thumb-list">
+                  <div v-for="(f, i) in field.files" :key="i" class="file-thumb-item">
+                    <div class="thumb" @click="previewSelectedFile(f)">
+                      <div v-if="upload.active" class="thumb-loading">
+                        <div class="thumb-progress">
+                          <div class="thumb-progress-inner" :style="{ width: upload.percent + '%' }"></div>
+                        </div>
+                      </div>
+                      <img v-else-if="String(f.type || '').startsWith('image/')" :src="getFileObjectURL(f)" />
+                      <div v-else class="thumb-file">
+                        <span class="thumb-icon">{{ String(f.type || '').startsWith('video/') ? '🎬' : '📄' }}</span>
+                      </div>
+                    </div>
+                    <div class="thumb-meta">
+                      <span class="thumb-name">{{ f.name }}</span>
+                      <span class="thumb-remove" @click="confirmDeleteFile(field, i)">&times;</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -138,6 +166,12 @@ export default {
       className: ''
     })
 
+    const upload = reactive({
+      active: false,
+      percent: 0,
+      text: ''
+    })
+
     const showModal = (options) => {
       modal.type = options.type || 'confirm'
       modal.title = options.title || '提示'
@@ -192,18 +226,143 @@ export default {
     provide('showToast', showToast)
     provide('hideToast', hideToast)
     provide('confirmDialog', confirmDialog)
+    const setUploadProgress = (e, text) => {
+      if (!e) return
+      const loaded = e.loaded || 0
+      const total = e.total || 0
+      upload.active = true
+      upload.percent = total > 0 ? Math.round(loaded / total * 100) : 0
+      upload.text = text || '正在上传'
+    }
+    const endUploadProgress = () => {
+      upload.percent = 100
+      upload.text = upload.text || '完成'
+      setTimeout(() => {
+        upload.active = false
+        upload.percent = 0
+        upload.text = ''
+      }, 120)
+    }
+    provide('setUploadProgress', setUploadProgress)
+    provide('endUploadProgress', endUploadProgress)
 
     return {
       modal,
       closeModal,
       confirmModal,
       toasts,
-      showToast
+      showToast,
+      upload
     }
   },
   methods: {
     toggleSidebar () {
       this.sidebarCollapsed = !this.sidebarCollapsed
+    },
+    getFileObjectURL (f) {
+      try {
+        const URLRef = (typeof window !== 'undefined' && (window.URL || window.webkitURL)) || null
+        if (!URLRef || typeof URLRef.createObjectURL !== 'function') return ''
+        if (f && typeof f === 'object') {
+          if (f._previewUrl && typeof f._previewUrl === 'string') return f._previewUrl
+          const u = URLRef.createObjectURL(f)
+          try { f._previewUrl = u } catch (e) {}
+          return u
+        }
+        return ''
+      } catch (e) {
+        return ''
+      }
+    },
+    confirmDeleteFile (field, i) {
+      const t = this
+      this.modal.type = 'confirm'
+      this.modal.title = '删除文件'
+      this.modal.message = '确认删除该文件？'
+      this.modal.onConfirm = function () {
+        if (Array.isArray(field.files)) {
+          const removed = field.files.splice(i, 1)[0]
+          const URLRef = (typeof window !== 'undefined' && (window.URL || window.webkitURL)) || null
+          if (removed && removed._previewUrl && URLRef && typeof URLRef.revokeObjectURL === 'function') {
+            try { URLRef.revokeObjectURL(removed._previewUrl) } catch (e) {}
+          }
+        }
+      }
+      this.modal.show = true
+    },
+    previewSelectedFile (f) {
+      let src = ''
+      let isImg = false
+      let isVideo = false
+      try {
+        if (f && typeof f === 'object' && (f instanceof Blob)) {
+          isImg = String(f.type || '').startsWith('image/')
+          isVideo = String(f.type || '').startsWith('video/')
+          src = this.getFileObjectURL(f)
+        } else if (typeof f === 'string') {
+          src = f
+          isImg = true
+        }
+      } catch (e) {
+        src = ''
+      }
+      if (!src) return
+      const item = isImg ? { type: 'image', src, large: true } : (isVideo ? { type: 'video', src } : { type: '', value: (f && f.name) || '' })
+      const backup = {
+        type: this.modal.type,
+        title: this.modal.title,
+        message: this.modal.message,
+        fields: this.modal.fields,
+        data: this.modal.data,
+        onConfirm: this.modal.onConfirm,
+        className: this.modal.className
+      }
+      this.modal.type = 'detail'
+      this.modal.title = '文件预览'
+      this.modal.data = [item]
+      this.modal.onConfirm = () => {
+        setTimeout(() => {
+          this.modal.type = backup.type
+          this.modal.title = backup.title
+          this.modal.message = backup.message
+          this.modal.fields = backup.fields
+          this.modal.data = backup.data
+          this.modal.onConfirm = backup.onConfirm
+          this.modal.className = backup.className
+          this.modal.show = true
+        }, 0)
+        return false
+      }
+      this.modal.show = true
+    },
+    enlargeDetailImage (url) {
+      if (!url) return
+      const backup = {
+        type: this.modal.type,
+        title: this.modal.title,
+        message: this.modal.message,
+        fields: this.modal.fields,
+        data: this.modal.data,
+        onConfirm: this.modal.onConfirm,
+        className: this.modal.className
+      }
+      this.modal.type = 'detail'
+      this.modal.title = '图片预览'
+      this.modal.data = [{ type: 'image', value: url, large: true }]
+      this.modal.onConfirm = () => {
+        setTimeout(() => {
+          this.modal.type = backup.type
+          this.modal.title = backup.title
+          this.modal.message = backup.message
+          this.modal.fields = backup.fields
+          this.modal.data = backup.data
+          this.modal.onConfirm = backup.onConfirm
+          this.modal.className = backup.className
+          this.modal.show = true
+        }, 0)
+        return false
+      }
+      this.modal.show = true
     }
   }
 }
@@ -688,16 +847,35 @@ body {
   .detail-image {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
     align-items: center;
   }
   .detail-image img {
-    max-width: 100%;
-    border-radius: 8px;
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
+    border-radius: 6px;
     border: 1px solid #e5e7eb;
   }
-  
-  .form-group {
+  .modal-detail {
+    display: block;
+  }
+  .modal-detail .detail-item.is-image {
+    display: inline-block;
+    margin: 4px;
+  }
+  .modal-detail .detail-image .detail-label {
+    font-size: 12px;
+    color: #6b7280;
+  }
+  .detail-image img.detail-image-large {
+    width: 100%;
+    height: auto;
+    max-height: 80vh;
+    display: block;
+    border-radius: 8px;
+  }
+.upload-progress {
     margin-bottom: 16px;
     
     label {
@@ -779,6 +957,58 @@ body {
   font-weight: bold;
   margin-left: 8px;
 }
+.file-thumb-list {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+}
+.file-thumb-item {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.file-thumb-item .thumb {
+  width: 100%;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.file-thumb-item .thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.file-thumb-item .thumb-file {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+.file-thumb-item .thumb-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+.file-thumb-item .thumb-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+.file-thumb-item .thumb-remove {
+  cursor: pointer;
+  color: #ef4444;
+  font-weight: bold;
+}
 .label-row { display: flex; align-items: center; gap: 8px; }
 .hint-icon { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: #fef3c7; color: #b45309; font-weight: 700; font-size: 12px; cursor: help; }
 .field-link { font-size: 12px; color: #2563eb; text-decoration: underline; }
@@ -801,6 +1031,37 @@ body {
 .token-btn:hover {
   background: #dbeafe;
   border-color: #93c5fd;
+}
+.upload-progress {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+  border-radius: 12px;
+  padding: 12px 16px;
+  z-index: 1200;
+  min-width: 320px;
+}
+.upload-progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #f3f4f6;
+  border-radius: 99px;
+  overflow: hidden;
+}
+.upload-progress-inner {
+  height: 8px;
+  background: var(--primary-color);
+  width: 0%;
+}
+.upload-progress-text {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #374151;
+  text-align: right;
 }
 </style>
 .modal-container.login-modal {

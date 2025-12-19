@@ -99,13 +99,16 @@
 
 <script>
 import { inject, reactive, ref, onMounted, computed } from 'vue'
-import { listUsers, createUser, updateUser, updateUserStatus, importUsersExcel, deleteUser } from '@/api/user.js'
+import { listUsers, createUser, updateUser, updateUserStatus, importUsersExcel, deleteUser, updateUserAvatar } from '@/api/user.js'
 
 export default {
   name: 'UserList',
   setup() {
     const showModal = inject('showModal')
     const showToast = inject('showToast')
+    const hideToast = inject('hideToast')
+    const setUploadProgress = inject('setUploadProgress')
+    const endUploadProgress = inject('endUploadProgress')
     
     const filter = reactive({
       user_id: '',
@@ -251,6 +254,10 @@ export default {
         type: 'detail',
         title: '用户详情',
         data: [
+          ...(function () {
+            const u = String(user.avatar_url || '').trim().replace(/^`+|`+$/g, '').replace(/^"+|"+$/g, '').replace(/^'+|'+$/g, '')
+            return u ? [{ label: '头像', value: u, type: 'image' }] : []
+          })(),
           { label: '用户ID', value: user.user_id },
           { label: '用户名', value: user.username },
           { label: '手机号', value: user.phone },
@@ -281,7 +288,8 @@ export default {
           status: { label: '状态', type: 'select', value: String(user.status || 1), options: [
             { label: '正常', value: '1' },
             { label: '禁用', value: '0' }
-          ]}
+          ]},
+          avatar: { label: '头像(可选)', type: 'file', multiple: false, files: null }
         },
         onConfirm: async (fields) => {
           try {
@@ -299,7 +307,16 @@ export default {
               user_id: user.user_id,
               status: fields.status.value
             })
-            if ((res1 && res1.success) && (res2 && res2.success)) {
+            let ok = (res1 && res1.success) && (res2 && res2.success)
+            if (fields.avatar.files && fields.avatar.files[0]) {
+              const fd = new FormData()
+              fd.append('user_id', user.user_id)
+              fd.append('avatar', fields.avatar.files[0])
+              const res3 = await updateUserAvatar(fd, { onUploadProgress: (e) => setUploadProgress && setUploadProgress(e, '正在上传头像') })
+              ok = ok && !!(res3 && res3.success)
+              endUploadProgress && endUploadProgress()
+            }
+            if (ok) {
               showToast('修改成功')
               fetchUsers()
             } else {

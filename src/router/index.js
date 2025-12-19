@@ -10,6 +10,7 @@ const router = createRouter({
       children: [
         { path: '', redirect: '/products' },
         { path: 'products', name: 'products', component: () => import('@/views/products/ProductList.vue') },
+        { path: 'products/details', name: 'product-details', component: () => import('@/views/products/ProductDetail.vue') },
         { path: 'products/create', name: 'product-create', component: () => import('@/views/products/ProductCreate.vue') },
         { path: 'products/:id/detail', name: 'product-detail', component: () => import('@/views/products/ProductDetail.vue') },
         { path: 'products/:id/edit', name: 'product-edit', component: () => import('@/views/products/ProductEdit.vue') },
