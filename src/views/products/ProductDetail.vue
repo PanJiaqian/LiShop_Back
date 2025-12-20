@@ -249,6 +249,7 @@ export default {
     const handleCreateDetailProduct = () => {
       showModal({
         type: 'form',
+        className: 'create-detail-modal',
         title: '新建明细商品',
         fields: {
           name: { label: '明细商品名称', type: 'text', value: '' },
@@ -273,7 +274,14 @@ export default {
           min_length: { label: '最小长度', type: 'number', value: '0' },
           length_interval: { label: '长度间隔', type: 'text', value: '无' },
           
-          level_discount: { label: '等级折扣(JSON)', type: 'text', value: '[]' },
+          level_discount: { 
+            label: '等级折扣', 
+            type: 'level-discount', 
+            value: '[]',
+            entries: [],
+            max: 3,
+            display: ''
+          },
           product_category: { label: '产品分类', type: 'text', value: '' },
           specification: { label: '规格', type: 'text', value: '' },
           color: { label: '颜色', type: 'text', value: '' },
@@ -322,6 +330,7 @@ export default {
               fetchProducts()
             } else {
               const msg = (res && (res.data || res.message)) || '创建失败'
+              endUploadProgress && endUploadProgress()
               showToast(String(msg))
             }
           } catch (e) {
@@ -414,11 +423,12 @@ export default {
     const openUpdateModal = (item) => {
         showModal({
         type: 'form',
+        className: 'update-modal',
         title: '更新明细商品',
         fields: {
           product_id: { label: '明细商品ID', type: 'text', value: item.product_id, readonly: true },
           name: { label: '明细商品名称', type: 'text', value: item.name },
-          available_products_name: { label: '关联商品名称', type: 'text', value: item.available_products_name || '' },
+          available_products_name: { label: '关联商品名称', type: 'text', value: item.available_products_id || '' },
           unit: { label: '单位', type: 'text', value: item.unit },
           unit_price: { label: '单价', type: 'number', value: item.unit_price, hint: '该单位价格指代的为1m的价格' },
           additional_price: { label: '附加费', type: 'number', value: item.additional_price },
@@ -436,7 +446,28 @@ export default {
           max_length: { label: '最大长度', type: 'number', value: item.max_length },
           min_length: { label: '最小长度', type: 'number', value: item.min_length },
           length_interval: { label: '长度间隔', type: 'text', value: item.length_interval },
-          level_discount: { label: '等级折扣(JSON)', type: 'text', value: item.level_discount },
+          level_discount: { 
+            label: '等级折扣', 
+            type: 'level-discount', 
+            value: (() => {
+              const raw = String(item.level_discount || '[]').trim().replace(/^`+|`+$/g, '').replace(/^\"+|\"+$/g, '').replace(/^'+|'+$/g, '')
+              return raw
+            })(),
+            entries: (() => {
+              try {
+                const v = JSON.parse(String(item.level_discount || '[]'))
+                return Array.isArray(v) ? v.map(d => ({ level: String(d.level), discount: String(d.discount) })) : []
+              } catch (e) { return [] }
+            })(),
+            max: 3,
+            display: (() => {
+              try {
+                const v = JSON.parse(String(item.level_discount || '[]'))
+                const arr = Array.isArray(v) ? v : []
+                return arr.map(d => `等级${d.level}:${d.discount}`).join('; ')
+              } catch (e) { return '' }
+            })()
+          },
           product_category: { label: '产品分类', type: 'text', value: item.product_category },
           specification: { label: '规格', type: 'text', value: item.specification },
           color: { label: '颜色', type: 'text', value: item.color },
@@ -461,7 +492,7 @@ export default {
             append('max_length')
             append('min_length')
             append('length_interval')
-            append('level_discount')
+            formData.append('level_discount', String(fields.level_discount.value || '[]'))
             append('product_category')
             append('specification')
             append('color')
@@ -483,6 +514,7 @@ export default {
                     fetchProducts()
                 } else {
                     const msg = (res && (res.data || res.message)) || '更新失败'
+                    endUploadProgress && endUploadProgress()
                     showToast(String(msg))
                 }
             } catch (e) {
@@ -497,7 +529,7 @@ export default {
       const rows = [
         { label: '明细商品ID', value: String(item.product_id || '') },
         { label: '明细商品名称', value: String(item.name || '') },
-        { label: '关联商品名称', value: String(item.available_products_name || '') },
+        { label: '关联商品名称', value: String(item.available_products_id || '') },
         { label: '单位', value: String(item.unit || '') },
         { label: '单价', value: String(item.unit_price || '') },
         { label: '附加费', value: String(item.additional_price || '') },

@@ -58,8 +58,33 @@
                 v-if="field.type === 'text' || field.type === 'number' || field.type === 'password' || field.type === 'email'" 
                 :type="field.type" 
                 v-model="field.value" 
-                class="form-input" 
+                class="form-input"
+                @focus="(e) => { if(field.onFocus) field.onFocus(e) }"
+                @click="(e) => { if(field.onClick) field.onClick(e) }"
               />
+              <div v-else-if="field.type === 'level-discount'" class="level-discount-group">
+                <div class="ld-add-row">
+                  <button class="ld-add-btn" 
+                          :disabled="((Array.isArray(field.entries)?field.entries.length:0) + (field.newRows||0)) >= (field.max || 3)"
+                          @click="() => {
+                            const total = (Array.isArray(field.entries)?field.entries.length:0) + (field.newRows||0)
+                            if (total >= (field.max || 3)) { showToast('最多添加三条等级折扣'); return }
+                            field.newRows = (field.newRows || 0) + 1
+                          }">＋</button>
+                </div>
+                <div class="ld-rows">
+                  <div class="ld-row" 
+                       v-for="(row, idx) in ([]).concat(Array.isArray(field.entries)?field.entries:[]).concat(new Array(field.newRows||0).fill(null))" 
+                       :key="idx">
+                    <input class="form-input ld-display" 
+                           :readonly="true" 
+                           :value="row ? (`等级${row.level}:${row.discount}`) : ''" 
+                           :placeholder="row ? '' : '点击设置'" 
+                           @click="() => openLevelDiscountEditor(field, idx, row)" />
+                    <button class="ld-del-btn" @click="() => removeLevelDiscountRow(field, idx)">×</button>
+                  </div>
+                </div>
+              </div>
               <div v-else-if="field.type === 'file'" class="file-input-wrapper">
                 <input 
                   type="file" 
@@ -134,6 +159,28 @@
           <button class="btn-sm primary" @click="confirmModal">确定</button>
         </div>
       </div>
+      <div v-if="sideEditor.visible" class="side-editor" @click.stop>
+        <div class="side-editor-header">等级折扣编辑</div>
+        <div class="side-editor-body">
+          <div class="form-group">
+            <label>等级</label>
+            <select class="form-select" v-model="sideEditor.level">
+              <option value="">选择等级</option>
+              <option value="1">等级1</option>
+              <option value="2">等级2</option>
+              <option value="3">等级3</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>折扣</label>
+            <input class="form-input" placeholder="示例：0.98" v-model="sideEditor.discount" />
+          </div>
+        </div>
+        <div class="side-editor-footer">
+          <button class="btn-sm" @click="cancelLevelDiscountEditor">取消</button>
+          <button class="btn-sm primary" @click="confirmLevelDiscountEditor">确定</button>
+        </div>
+      </div>
     </div>
     <div class="toast-container">
       <div v-for="(t, idx) in toasts" :key="idx" class="toast">{{ t }}</div>
@@ -164,6 +211,14 @@ export default {
       data: [],
       onConfirm: null,
       className: ''
+    })
+
+    const sideEditor = reactive({
+      visible: false,
+      field: null,
+      index: -1,
+      level: '',
+      discount: ''
     })
 
     const upload = reactive({
@@ -226,25 +281,95 @@ export default {
     provide('showToast', showToast)
     provide('hideToast', hideToast)
     provide('confirmDialog', confirmDialog)
+    let progressTimer = null
+    const duringUploadCap = 95
+    const smoothTo = (target, step = 2, done) => {
+      if (progressTimer) {
+        clearInterval(progressTimer)
+        progressTimer = null
+      }
+      progressTimer = setInterval(() => {
+        if (upload.percent >= target) {
+          clearInterval(progressTimer)
+          progressTimer = null
+          if (typeof done === 'function') done()
+          return
+        }
+        const delta = Math.max(1, step)
+        upload.percent = Math.min(target, upload.percent + delta)
+      }, 50)
+    }
     const setUploadProgress = (e, text) => {
       if (!e) return
       const loaded = e.loaded || 0
       const total = e.total || 0
       upload.active = true
-      upload.percent = total > 0 ? Math.round(loaded / total * 100) : 0
       upload.text = text || '正在上传'
+      const raw = total > 0 ? Math.round(loaded / total * 100) : (upload.percent + 1)
+      const target = Math.min(duringUploadCap, Math.max(upload.percent, raw))
+      smoothTo(target, 2)
     }
     const endUploadProgress = () => {
-      upload.percent = 100
       upload.text = upload.text || '完成'
-      setTimeout(() => {
-        upload.active = false
-        upload.percent = 0
-        upload.text = ''
-      }, 120)
+      smoothTo(100, 8, () => {
+        setTimeout(() => {
+          upload.active = false
+          upload.percent = 0
+          upload.text = ''
+        }, 200)
+      })
     }
     provide('setUploadProgress', setUploadProgress)
     provide('endUploadProgress', endUploadProgress)
+
+    const openLevelDiscountEditor = (field, idx, row) => {
+      sideEditor.visible = true
+      sideEditor.field = field
+      sideEditor.index = idx
+      sideEditor.level = row ? String(row.level || '') : ''
+      sideEditor.discount = row ? String(row.discount || '') : ''
+    }
+    const cancelLevelDiscountEditor = () => {
+      sideEditor.visible = false
+      sideEditor.field = null
+      sideEditor.index = -1
+      sideEditor.level = ''
+      sideEditor.discount = ''
+    }
+    const confirmLevelDiscountEditor = () => {
+      const field = sideEditor.field
+      if (!field) return cancelLevelDiscountEditor()
+      const sel = String(sideEditor.level || '').trim()
+      const val = String(sideEditor.discount || '').trim()
+      const arr = Array.isArray(field.entries) ? [...field.entries] : []
+      const isEdit = sideEditor.index < arr.length
+      if (!sel || !val) { showToast('请先选择等级并填写折扣'); return }
+      const dup = arr.some((d, i) => i !== (isEdit ? sideEditor.index : -1) && String(d.level) === sel)
+      if (dup) { showToast('不得重复设定同一等级折扣'); return }
+      if (isEdit) {
+        arr[sideEditor.index] = { level: sel, discount: val }
+      } else {
+        if (arr.length >= (field.max || 3)) { showToast('最多添加三条等级折扣'); return }
+        arr.push({ level: sel, discount: val })
+        field.newRows = Math.max(0, (field.newRows || 0) - 1)
+      }
+      field.entries = arr
+      try { field.value = JSON.stringify(arr) } catch (e) { field.value = '[]' }
+      field.display = arr.map(d => `等级${d.level}:${d.discount}`).join('; ')
+      cancelLevelDiscountEditor()
+    }
+    const removeLevelDiscountRow = (field, idx) => {
+      const arr = Array.isArray(field.entries) ? [...field.entries] : []
+      if (idx < arr.length) {
+        arr.splice(idx, 1)
+        field.entries = arr
+        try { field.value = JSON.stringify(arr) } catch (e) { field.value = '[]' }
+        field.display = arr.map(d => `等级${d.level}:${d.discount}`).join('; ')
+      } else {
+        field.newRows = Math.max(0, (field.newRows || 0) - 1)
+      }
+      if (sideEditor.field === field && sideEditor.index === idx) cancelLevelDiscountEditor()
+    }
 
     return {
       modal,
@@ -252,7 +377,12 @@ export default {
       confirmModal,
       toasts,
       showToast,
-      upload
+      upload,
+      sideEditor,
+      openLevelDiscountEditor,
+      confirmLevelDiscountEditor,
+      cancelLevelDiscountEditor,
+      removeLevelDiscountRow
     }
   },
   methods: {
@@ -1063,7 +1193,122 @@ body {
   color: #374151;
   text-align: right;
 }
+/* Update modal spacing and hint color */
+.modal-container.update-modal .modal-form .form-group {
+  margin-bottom: 24px;
+}
+.modal-container.update-modal .modal-form .field-hint {
+  color: #f59e0b;
+  font-weight: 500;
+}
+/* Level Discount composite input */
+.level-discount-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.level-discount-group .ld-add-row {
+  display: flex;
+  justify-content: flex-end;
+}
+.level-discount-group .ld-add-btn {
+  padding: 6px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #f9fafb;
+  cursor: pointer;
+}
+.level-discount-group .ld-add-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.level-discount-group .ld-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.level-discount-group .ld-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+.level-discount-group .ld-display {
+  flex: 1;
+}
+.level-discount-group .ld-editor {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 0;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 8px;
+  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+}
+.level-discount-group .ld-level {
+  width: 140px;
+}
+.level-discount-group .ld-discount {
+  width: 160px;
+}
+.ld-del-btn {
+  padding: 4px 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+}
+.side-editor {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  width: 360px;
+  max-height: 85vh;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 50%;
+  left: calc(50% + 216px);
+  transform: translateY(-50%);
+  margin-left: 0;
+}
+.side-editor-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  font-weight: 600;
+}
+.side-editor-body {
+  padding: 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+.side-editor-footer {
+  padding: 12px 16px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.modal-container.create-detail-modal .modal-form .form-group {
+  margin-bottom: 24px;
+}
+.modal-container.create-detail-modal .modal-form .field-hint {
+  color: #f59e0b;
+  font-weight: 500;
+}
 </style>
+.modal-container.update-modal .modal-form .form-group {
+  margin-bottom: 18px;
+}
+.modal-container.update-modal .modal-form .field-hint {
+  color: #f59e0b;
+  font-weight: 500;
+}
 .modal-container.login-modal {
   width: 400px;
   border: none;

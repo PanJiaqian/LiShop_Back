@@ -502,6 +502,7 @@ export default {
               fetchProducts()
             } else {
               const msg = (res && (res.data || res.message)) || '更新失败'
+              endUploadProgress && endUploadProgress()
               showToast(String(msg))
             }
           } catch (e) {
