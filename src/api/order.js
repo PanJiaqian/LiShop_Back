@@ -4,6 +4,11 @@ export const listAdminOrdersDetail = (params) => {
   return api.get('/admin/orders/detail', { params }).then(res => res.data)
 }
 
+export const exportOrderDetails = (params, config = {}) => {
+  return api.get('/admin/orders/export_details', { params, responseType: 'blob', ...config })
+    .then(res => res.data)
+}
+
 export const updateOrderStatus = (formData) => {
   return api.post('/admin/orders/status', formData, {
     headers: {

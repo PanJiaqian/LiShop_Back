@@ -26,6 +26,9 @@
       <table class="data-table">
         <thead>
           <tr>
+            <th width="40" style="text-align:center;">
+              <input type="checkbox" :checked="filteredOrders.length && filteredOrders.every(o => !!selected[o.id])" @change="toggleSelectAll" />
+            </th>
             <th>订单号</th>
             <th>用户ID</th>
             <th>订单金额</th>
@@ -39,6 +42,9 @@
         </thead>
         <tbody>
           <tr v-for="order in filteredOrders" :key="order.id">
+            <td style="text-align:center;">
+              <input type="checkbox" :checked="!!selected[order.id]" @change="(e) => { selected[order.id] = e.target.checked }" />
+            </td>
             <td>
               <div class="order-id">{{ order.id }}</div>
               <div class="order-source" v-if="order.source">{{ order.source }}</div>
@@ -112,7 +118,7 @@
 
 <script>
 import { inject, reactive, ref, computed, onMounted, watch } from 'vue'
-import { listAdminOrdersDetail, updateOrderStatus, updateTrackingNumber, listAbnormalOrders, subscribeRetry } from '@/api/order.js'
+import { listAdminOrdersDetail, updateOrderStatus, updateTrackingNumber, listAbnormalOrders, subscribeRetry, exportOrderDetails } from '@/api/order.js'
 
 export default {
   name: 'OrderList',
@@ -128,6 +134,7 @@ export default {
 
     const orders = reactive([])
     const abnormalOrders = ref([])
+    const selected = reactive({})
 
     const normalizeStatus = (s) => {
       const k = String(s || '').toUpperCase()
@@ -237,14 +244,44 @@ const fetchAbnormalOrders = async () => {
     const handleSearch = () => {}
 
     const exportOrders = () => {
+      const ids = Object.keys(selected).filter(k => !!selected[k])
+      if (!ids.length) {
+        showToast('请选择要导出的订单')
+        return
+      }
       showModal({
         type: 'confirm',
         title: '导出订单',
-        message: '确定要导出当前筛选的订单数据吗？',
-        onConfirm: () => {
-          console.log('Exporting...')
+        message: `确定要导出选中的 ${ids.length} 条订单吗？`,
+        onConfirm: async () => {
+          try {
+            const blob = await exportOrderDetails({ order_ids: JSON.stringify(ids) })
+            if (blob) {
+              const dataBlob = blob instanceof Blob ? blob : new Blob([String(blob)], { type: 'application/octet-stream' })
+              const url = URL.createObjectURL(dataBlob)
+              const a = document.createElement('a')
+              const ts = new Date().toISOString().split('T')[0]
+              a.href = url
+              a.download = `orders_export_${ts}.xlsx`
+              document.body.appendChild(a)
+              a.click()
+              a.remove()
+              URL.revokeObjectURL(url)
+              showToast('导出成功')
+            } else {
+              showToast('导出失败')
+            }
+          } catch (e) {
+            showToast('导出失败')
+          }
         }
       })
+    }
+
+    const toggleSelectAll = (e) => {
+      const checked = e && e.target ? e.target.checked : false
+      const list = Array.isArray(filteredOrders.value) ? filteredOrders.value : []
+      list.forEach(o => { if (o && o.id) selected[o.id] = checked })
     }
 
     const editStatus = (order) => {
@@ -472,11 +509,13 @@ const fetchAbnormalOrders = async () => {
         activeTab,
         filter,
         orders,
+        selected,
         abnormalOrders,
         filteredOrders,
         getStatusClass,
         handleSearch,
         exportOrders,
+        toggleSelectAll,
         shipOrder,
         closeOrder,
         changeTracking,
