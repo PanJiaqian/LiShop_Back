@@ -36,6 +36,19 @@
                 <div v-if="item.label" class="detail-label">{{ item.label }}</div>
                 <img :src="item.src || item.value" alt="preview" :class="item.large ? 'detail-image-large' : ''" @click="enlargeDetailImage(item.src || item.value)" />
               </div>
+              <div v-else-if="item && item.type === 'image-row'" class="detail-image-row">
+                <div v-if="item.label" class="detail-label">{{ item.label }}</div>
+                <div class="image-row-container">
+                  <div 
+                    v-for="(src, i) in (item.images || [])" 
+                    :key="i" 
+                    class="image-row-thumb"
+                    @click="enlargeDetailImage(src)"
+                  >
+                    <img :src="src" alt="thumb" />
+                  </div>
+                </div>
+              </div>
               <div v-else-if="item && item.type === 'video'" class="detail-image">
                 <div v-if="item.label" class="detail-label">{{ item.label }}</div>
                 <video :src="item.src || item.value" controls style="max-width: 100%; border-radius: 8px; border: 1px solid #e5e7eb;"></video>
@@ -1050,6 +1063,31 @@ body {
     max-height: 80vh;
     display: block;
     border-radius: 8px;
+  }
+  .detail-image-row .detail-label {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 6px;
+  }
+  .image-row-container {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+  }
+  .image-row-thumb {
+    flex: 0 0 auto;
+    width: 64px;
+    height: 64px;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+    cursor: pointer;
+  }
+  .image-row-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 .upload-progress {
     margin-bottom: 16px;

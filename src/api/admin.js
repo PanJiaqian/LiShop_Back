@@ -4,7 +4,7 @@ import { createPinia, setActivePinia, defineStore } from 'pinia'
 const pinia = createPinia()
 setActivePinia(pinia)
 
-const BASE_URL = 'https://www.nuomi-light.com:6149'
+const BASE_URL = 'https://www.nuomi-light.com:6149/api'
 const TOKEN_KEY = 'shopback_admin_token'
 const EXPIRES_KEY = 'shopback_admin_token_expires_at'
 const USER_KEY = 'shopback_admin_user'

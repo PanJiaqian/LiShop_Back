@@ -566,11 +566,20 @@ export default {
       if (!u) return
       showModal({ type: 'detail', title: '图片预览', data: [{ label: '', value: u, type: 'image' }] })
     }
-    const getImages = (item) => {
-      const arr = (Array.isArray(item.images) ? item.images : [])
+    const normalizeUrl = (u) => {
+      let s = String(u || '').trim()
+      s = s.replace(/^`+|`+$/g, '')
+      s = s.replace(/^"+|"+$/g, '')
+      s = s.replace(/^'+|'+$/g, '')
+      return s
+    }
+    const getMainImages = (item) => {
       const mains = Array.isArray(item.main_image) ? item.main_image : (item.main_image ? [item.main_image] : [])
-      const list = [...mains, ...arr].map(x => String(x))
-      return list.filter(Boolean)
+      return mains.map(x => normalizeUrl(String(x))).filter(Boolean)
+    }
+    const getImages = (item) => {
+      const arr = Array.isArray(item.images) ? item.images : []
+      return arr.map(x => normalizeUrl(String(x))).filter(Boolean)
     }
 
     const viewDetail = (item) => {
@@ -584,10 +593,10 @@ export default {
         { label: '创建时间', value: String(item.created_at || '') }
       ]
       const data = []
+      const mains = getMainImages(item)
+      if (mains.length) data.push({ type: 'image-row', label: '主图', images: mains })
       const imgs = getImages(item)
-      if (imgs.length) {
-        imgs.forEach((src, i) => data.push({ label: i === 0 ? '商品图片' : '', value: src, type: 'image' }))
-      }
+      if (imgs.length) data.push({ type: 'image-row', label: '商品图片', images: imgs })
       rows.forEach(r => data.push(r))
       showModal({ type: 'detail', title: '商品详情', data })
     }
