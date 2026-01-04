@@ -26,7 +26,8 @@
             <th>手机号</th>
             <th>角色</th>
             <th>状态</th>
-          <th>创建时间</th>
+            <!-- <th>负责用户</th> -->
+            <th>创建时间</th>
             <th width="220">操作</th>
           </tr>
         </thead>
@@ -42,12 +43,19 @@
             <td>
               <span class="badge" :class="admin.status === 1 ? 'success' : 'gray'">{{ admin.status === 1 ? '启用' : '禁用' }}</span>
             </td>
+            <!-- <td>
+              <div v-if="admin.responsible_user_ids && admin.responsible_user_ids.length" style="max-width: 200px; overflow-x: auto; white-space: nowrap;">
+                <span v-for="uid in admin.responsible_user_ids" :key="uid" class="tag" style="margin-right: 4px; font-size: 10px;">{{ uid }}</span>
+              </div>
+              <span v-else style="color: #999;">-</span>
+            </td> -->
             <td>{{ admin.created_at }}</td>
             <td>
             <div class="actions">
               <button class="btn-link" @click="viewAdmin(admin)">详情</button>
               <button class="btn-link" @click="editAdmin(admin)">编辑</button>
               <button class="btn-link" @click="editPermissions(admin)">权限</button>
+              <button class="btn-link" @click="handleBindUsers(admin)">绑定用户</button>
               <button class="btn-link danger" v-if="admin.id !== 1" @click="deleteAdmin(admin)">删除</button>
             </div>
             </td>
@@ -69,7 +77,7 @@
 
 <script setup>
 import { ref, inject, onMounted, computed } from 'vue'
-import { listAdmins, createAdmin, updateAdmin, updateAdminStatus, updateAdminPermissions, useAuthStore, deleteAdmin as deleteAdminApi } from '@/api/admin.js'
+import { listAdmins, createAdmin, updateAdmin, updateAdminStatus, updateAdminPermissions, useAuthStore, deleteAdmin as deleteAdminApi, bindResponsibleUsers, updateResponsibleUsers } from '@/api/admin.js'
 
 const showModal = inject('showModal')
 const showToast = inject('showToast')
@@ -177,7 +185,8 @@ const fetchAdmins = async () => {
         created_at: formatTime(it.created_at),
         status: it.status,
         phone: it.phone,
-        permissions: it.permissions || []
+        permissions: it.permissions || [],
+        responsible_user_ids: it.responsible_user_ids || []
       }))
     } else {
       const msg = (res && (res.data || res.message)) || '获取管理员列表失败'
@@ -200,7 +209,8 @@ const viewAdmin = (admin) => {
     { label: '角色', value: admin.role_display },
     { label: '状态', value: admin.status === 1 ? '启用' : '禁用' },
     { label: '创建时间', value: admin.created_at },
-    { label: '权限', value: admin.permissions.join(', ') || '无' }
+    { label: '权限', value: admin.permissions.join(', ') || '无' },
+    { label: '负责用户', value: (admin.responsible_user_ids && admin.responsible_user_ids.length) ? admin.responsible_user_ids.join(', ') : '无' }
   ]
   showModal({ type: 'detail', title: '管理员详情', data: rows })
 }
@@ -329,6 +339,44 @@ const editPermissions = (admin) => {
         }
       } catch (e) {
         showToast('权限更新失败')
+      }
+    }
+  })
+}
+
+const handleBindUsers = (admin) => {
+  const initial = (admin.responsible_user_ids && admin.responsible_user_ids.length) ? admin.responsible_user_ids.join(',') : ''
+  showModal({
+    type: 'form',
+    title: '绑定负责用户',
+    fields: {
+      admins_id: { label: '管理员ID', type: 'text', value: admin.admins_id },
+      user_ids: { label: '用户ID集合(英文逗号分隔)', type: 'text', value: initial }
+    },
+    onConfirm: async (fields) => {
+      try {
+        const idsStr = String(fields.user_ids.value || '').trim()
+        const ids = idsStr ? idsStr.split(',').map(s => s.trim()).filter(Boolean) : []
+        
+        // Decide whether to use bind (add) or update. Since this is a "set" operation from the UI perspective,
+        // we'll assume we want to update the list to exactly what is entered.
+        // However, the user provided both interfaces. If the list was empty, maybe 'add' is used?
+        // But 'update' usually covers setting the state. Let's stick with updateResponsibleUsers as it's more robust for editing.
+        const res = await updateResponsibleUsers({
+          admin_id: fields.admins_id.value,
+          user_ids: ids
+        })
+        
+        if (res && res.success) {
+          const msg = (res && res.message) || '绑定用户成功'
+          showToast(msg)
+          await fetchAdmins()
+        } else {
+          const msg = (res && (res.data || res.message)) || '绑定用户失败'
+          showToast(String(msg))
+        }
+      } catch (e) {
+        showToast('绑定用户失败')
       }
     }
   })
