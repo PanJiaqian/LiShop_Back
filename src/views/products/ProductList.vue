@@ -447,15 +447,18 @@ export default {
           category_name: { label: '分类名称', type: 'select', value: categoryOptions.find(o => o.label === String(item.category_id))?.value || (categoryOptions[0]?.value || ''), options: categoryOptions },
           sort_order: { label: '推荐值', type: 'number', value: item.sort_order },
           shipping_origin: { label: '发货地', type: 'text', value: item.shipping_origin },
-          main_image: { label: '主图(修改则上传)', type: 'file', multiple: true, files: [], maxFiles: 6, hint: '主图最多选择6个文件' },
-          images: { label: '轮播图(修改则上传)', type: 'file', multiple: true, files: [], maxFiles: 6, hint: '轮播图最多选择6个文件' },
-          video_url: { label: '视频(修改则上传)', type: 'file', multiple: true, files: [], maxFiles: 2, hint: '视频最多选择2个文件' },
+          main_image: { label: '主图(修改则上传)', type: 'file', multiple: true, files: [], maxFiles: 6, hint: '主图最多选择6个文件', existing: (Array.isArray(item.main_image) ? item.main_image : (item.main_image ? [item.main_image] : [])).map(x => String(x)) },
+          images: { label: '轮播图(修改则上传)', type: 'file', multiple: true, files: [], maxFiles: 6, hint: '轮播图最多选择6个文件', existing: (Array.isArray(item.images) ? item.images : []).map(x => String(x)) },
+          video_url: { label: '视频(修改则上传)', type: 'file', multiple: true, files: [], maxFiles: 2, hint: '视频最多选择2个文件', existing: (Array.isArray(item.video_url) ? item.video_url : (item.video_url ? [item.video_url] : [])).map(x => String(x)) },
           status: { label: '状态', type: 'select', value: String(item.status), options: [{label:'上架', value:'1'}, {label:'下架', value:'0'}] },
           is_free_shipping: { label: '包邮', type: 'select', value: String(item.is_free_shipping), options: [{label:'是', value:'1'}, {label:'否', value:'0'}] },
           shipping_time_hours: { label: '发货时效(小时)', type: 'number', value: item.shipping_time_hours },
           support_no_reason_return_7d: { label: '七天无理由', type: 'select', value: String(item.support_no_reason_return_7d), options: [{label:'支持', value:'1'}, {label:'不支持', value:'0'}] }
         },
         onConfirm: async (fields) => {
+          const initialMain = Array.isArray(item.main_image) ? item.main_image.map(String) : (item.main_image ? [String(item.main_image)] : [])
+          const initialImages = Array.isArray(item.images) ? item.images.map(String) : []
+          const initialVideos = Array.isArray(item.video_url) ? item.video_url.map(String) : (item.video_url ? [String(item.video_url)] : [])
           // Validation
           if (fields.main_image.files && fields.main_image.files.length > 6) {
             showToast('主图最多选择6个文件，请删除多余文件')
@@ -492,6 +495,21 @@ export default {
           if (fields.video_url.files) {
             const files = Array.from(fields.video_url.files)
             files.forEach(f => formData.append('video_url', f))
+          }
+          const currentMain = Array.isArray(fields.main_image.existing) ? fields.main_image.existing.map(String) : []
+          const currentImages = Array.isArray(fields.images.existing) ? fields.images.existing.map(String) : []
+          const currentVideos = Array.isArray(fields.video_url.existing) ? fields.video_url.existing.map(String) : []
+          const removedMain = initialMain.filter(u => !currentMain.includes(String(u)))
+          const removedImages = initialImages.filter(u => !currentImages.includes(String(u)))
+          const removedVideos = initialVideos.filter(u => !currentVideos.includes(String(u)))
+          if (removedMain.length) {
+            try { formData.append('remove_main_image', JSON.stringify(removedMain)) } catch (e) {}
+          }
+          if (removedImages.length) {
+            try { formData.append('remove_images', JSON.stringify(removedImages)) } catch (e) {}
+          }
+          if (removedVideos.length) {
+            try { formData.append('remove_video_url', JSON.stringify(removedVideos)) } catch (e) {}
           }
 
           try {

@@ -473,7 +473,7 @@ export default {
           color: { label: '颜色', type: 'text', value: item.color },
           model: { label: '型号', type: 'text', value: item.model },
           status: { label: '状态', type: 'select', value: String(item.status), options: [{label:'上架', value:'1'}, {label:'下架', value:'0'}] },
-          image: { label: '图片(修改则上传)', type: 'file', multiple: false, files: null }
+          image: { label: '图片(修改则上传)', type: 'file', multiple: false, files: null, existing: getImages(item) }
         },
         onConfirm: async (fields) => {
             const formData = new FormData()
@@ -501,6 +501,12 @@ export default {
 
             if (fields.image.files && fields.image.files[0]) {
                 formData.append('image', fields.image.files[0])
+            }
+            const initialImages = getImages(item).map(String)
+            const currentImages = Array.isArray(fields.image.existing) ? fields.image.existing.map(String) : []
+            const removedImages = initialImages.filter(u => !currentImages.includes(String(u)))
+            if (removedImages.length) {
+              try { formData.append('remove_image', JSON.stringify(removedImages)) } catch (e) {}
             }
 
             try {

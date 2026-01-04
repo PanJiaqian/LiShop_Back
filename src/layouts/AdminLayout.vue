@@ -106,6 +106,21 @@
                   }"
                   class="form-input" 
                 />
+                <div v-if="Array.isArray(field.existing) && field.existing.length" class="file-thumb-list">
+                  <div v-for="(u, i) in field.existing" :key="i" class="file-thumb-item">
+                    <div class="thumb" @click="previewSelectedFile(u)">
+                      <img v-if="isImageUrl(u)" :src="u" />
+                      <video v-else-if="isVideoUrl(u)" :src="u" muted playsinline style="max-width: 100%; border-radius: 8px; border: 1px solid #e5e7eb;"></video>
+                      <div v-else class="thumb-file">
+                        <span class="thumb-icon">📄</span>
+                      </div>
+                    </div>
+                    <div class="thumb-meta">
+                      <span class="thumb-name">{{ basename(u) }}</span>
+                      <span class="thumb-remove" @click="confirmDeleteExistingUrl(field, i)">&times;</span>
+                    </div>
+                  </div>
+                </div>
                 <div v-if="Array.isArray(field.files) && field.files.length" class="file-thumb-list">
                   <div v-for="(f, i) in field.files" :key="i" class="file-thumb-item">
                     <div class="thumb" @click="previewSelectedFile(f)">
@@ -389,6 +404,25 @@ export default {
     toggleSidebar () {
       this.sidebarCollapsed = !this.sidebarCollapsed
     },
+    isImageUrl (u) {
+      try {
+        const s = String(u || '').toLowerCase()
+        return /\.(png|jpg|jpeg|gif|bmp|webp)(\?.*)?$/.test(s)
+      } catch (e) { return false }
+    },
+    isVideoUrl (u) {
+      try {
+        const s = String(u || '').toLowerCase()
+        return /\.(mp4|mov|webm|ogg)(\?.*)?$/.test(s)
+      } catch (e) { return false }
+    },
+    basename (u) {
+      try {
+        const s = String(u || '')
+        const parts = s.split('?')[0].split('/')
+        return parts[parts.length - 1] || s
+      } catch (e) { return '文件' }
+    },
     getFileObjectURL (f) {
       try {
         const URLRef = (typeof window !== 'undefined' && (window.URL || window.webkitURL)) || null
@@ -462,6 +496,18 @@ export default {
           this.modal.show = true
         }, 0)
         return false
+      }
+      this.modal.show = true
+    },
+    confirmDeleteExistingUrl (field, i) {
+      const t = this
+      this.modal.type = 'confirm'
+      this.modal.title = '删除文件'
+      this.modal.message = '确认删除该文件？'
+      this.modal.onConfirm = function () {
+        if (Array.isArray(field.existing)) {
+          field.existing.splice(i, 1)
+        }
       }
       this.modal.show = true
     },
