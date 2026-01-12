@@ -16,15 +16,44 @@
     </div>
 
     <!-- Global Modal Component -->
-    <div v-if="modal.show" class="modal-overlay" @click="closeModal">
+    <div v-if="modal.show" class="modal-overlay" @click="handleOverlayClick">
       <div class="modal-container" :class="modal.className" @click.stop>
         <div class="modal-header">
           <h3>{{ modal.title }}</h3>
-          <button class="close-btn" @click="closeModal">&times;</button>
+          <button v-if="!modal.forceConfirm" class="close-btn" @click="closeModal">&times;</button>
         </div>
         <div class="modal-body">
           <div v-if="modal.type === 'confirm'" class="modal-message">
             {{ modal.message }}
+          </div>
+          <div v-else-if="modal.type === 'result'" class="modal-result">
+            <div class="result-summary">
+              <div class="summary-item"><span class="label">状态</span><span class="value">{{ (modal.result && modal.result.success) ? '成功' : '失败' }}</span></div>
+              <div class="summary-item wide" v-if="modal.result && modal.result.timestamp"><span class="label">时间</span><span class="value">{{ formatTimestamp(modal.result.timestamp) }}</span></div>
+              <div class="summary-item wide" v-if="modal.result && modal.result.message"><span class="label">说明</span><span class="value">{{ modal.result.message }}</span></div>
+              <div class="summary-item" v-if="modal.result && modal.result.data && (modal.result.data.failure_count != null)"><span class="label">失败条数</span><span class="value">{{ modal.result.data.failure_count }}</span></div>
+            </div>
+            <div v-if="modal.result && modal.result.data">
+              <table v-if="Array.isArray(modal.result.data.failures) && modal.result.data.failures.length" class="result-table">
+                <thead>
+                  <tr>
+                    <th>行</th>
+                    <th>名称</th>
+                    <th>原因</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(f, i) in modal.result.data.failures" :key="i">
+                    <td>{{ (f && f.row) != null ? f.row : '' }}</td>
+                    <td>{{ f && (f.name || f.username) }}</td>
+                    <td>{{ f && f.reason }}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div v-else-if="Array.isArray(modal.result.data)" class="result-list">
+                <div class="list-item" v-for="(t, i) in modal.result.data" :key="i">{{ t }}</div>
+              </div>
+            </div>
           </div>
           <div v-else-if="modal.type === 'detail'" class="modal-detail">
             <div 
@@ -120,7 +149,8 @@
               </div>
               <div v-else-if="field.type === 'file'" class="file-input-wrapper">
                 <input 
-                  type="file" 
+                  type="file"
+                  :ref="'file-'+key" 
                   :multiple="field.multiple"
                   @change="(e) => { 
                     const newFiles = Array.from(e.target.files || [])
@@ -137,8 +167,12 @@
                     e.target.value = ''
                     if(field.onChange) field.onChange(e) 
                   }"
-                  class="form-input" 
+                  class="file-input-hidden" 
                 />
+                <div class="file-input-actions">
+                  <button class="btn-sm" @click="openFileChooser(key, $event)">选择文件</button>
+                  <span v-if="Array.isArray(field.files) && field.files.length" class="file-count">已选择 {{ field.files.length }} 个</span>
+                </div>
                 <div v-if="Array.isArray(field.existing) && field.existing.length" class="file-thumb-list">
                   <div v-for="(u, i) in field.existing" :key="i" class="file-thumb-item">
                     <div class="thumb" @click="previewSelectedFile(u)">
@@ -174,7 +208,7 @@
                   </div>
                 </div>
               </div>
-              <select v-else-if="field.type === 'select'" v-model="field.value" class="form-select" @change="(e) => { if(field.onChange) field.onChange(e) }">
+              <select v-else-if="field.type === 'select'" v-model="field.value" :disabled="!!field.disabled" :class="['form-select', field.disabled ? 'disabled-select' : '']" @change="(e) => { if(field.onChange) field.onChange(e, modal.fields) }">
                 <option v-for="opt in field.options" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
               </select>
               <div v-else-if="field.type === 'checkbox-group'" class="checkbox-group">
@@ -203,7 +237,7 @@
           </div>
         </div>
         <div class="modal-footer" v-if="!modal.isPreview">
-          <button class="btn-sm" @click="closeModal">取消</button>
+          <button class="btn-sm" v-if="!modal.forceConfirm" @click="closeModal">取消</button>
           <button class="btn-sm primary" @click="confirmModal">确定</button>
         </div>
       </div>
@@ -240,6 +274,7 @@
 import LayoutHeader from '@/components/LayoutHeader.vue'
 import LayoutSidebar from '@/components/LayoutSidebar.vue'
 import { reactive, provide } from 'vue'
+import { deleteProductFile } from '@/api/product'
 
 export default {
   name: 'AdminLayout',
@@ -260,7 +295,9 @@ export default {
       onConfirm: null,
       className: '',
       isPreview: false,
-      backup: null
+      backup: null,
+      forceConfirm: false,
+      result: null
     })
 
     const sideEditor = reactive({
@@ -287,6 +324,8 @@ export default {
       modal.className = options.className || ''
       modal.isPreview = false
       modal.backup = null
+      modal.forceConfirm = !!(options && options.forceConfirm)
+      modal.result = options.result || null
       modal.show = true
     }
 
@@ -452,6 +491,22 @@ export default {
     }
   },
   methods: {
+    formatTimestamp (ts) {
+      try {
+        let s = String(ts || '').trim()
+        if (!s) return ''
+        s = s.replace(/`/g, '')
+        // 2026-01-12T10:13:39.576753 -> 2026-01-12 10:13:39
+        const m = s.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})/)
+        if (m) return `${m[1]} ${m[2]}`
+        const d = new Date(s)
+        if (!isNaN(d.getTime())) {
+          const pad = n => String(n).padStart(2, '0')
+          return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+        }
+        return s
+      } catch (e) { return String(ts || '') }
+    },
     toggleSidebar () {
       this.sidebarCollapsed = !this.sidebarCollapsed
     },
@@ -530,6 +585,14 @@ export default {
       }
       if (!src) return
       const item = isImg ? { type: 'image', src, large: true } : (isVideo ? { type: 'video', src, large: true } : { type: '', value: (f && f.name) || '' })
+      if (this.modal.isPreview) {
+        this.modal.type = 'detail'
+        this.modal.title = '文件预览'
+        this.modal.data = [item]
+        this.modal.onConfirm = null
+        this.modal.show = true
+        return
+      }
       const backup = {
         type: this.modal.type,
         title: this.modal.title,
@@ -549,18 +612,43 @@ export default {
     },
     confirmDeleteExistingUrl (field, i) {
       const t = this
-      this.modal.type = 'confirm'
-      this.modal.title = '删除文件'
-      this.modal.message = '确认删除该文件？'
-      this.modal.onConfirm = function () {
-        if (Array.isArray(field.existing)) {
-          field.existing.splice(i, 1)
+      ;(async () => {
+        try {
+          const pid = (t.modal.fields && t.modal.fields.product_id && t.modal.fields.product_id.value) ? String(t.modal.fields.product_id.value) : ''
+          const rawName = Array.isArray(field.existing) ? String(field.existing[i]) : ''
+          const fileName = String(rawName || '').replace(/^`+|`+$/g, '').trim()
+          const label = String(field.label || '')
+          let fileType = ''
+          if (label.includes('主图')) fileType = 'main_image'
+          else if (label.includes('轮播图')) fileType = 'images'
+          else if (label.includes('视频')) fileType = 'video'
+          const fd = new FormData()
+          fd.append('product_id', pid)
+          fd.append('file_name', fileName)
+          if (fileType) fd.append('file_type', fileType)
+          const body = await deleteProductFile(fd)
+          if (body && body.success) {
+            if (Array.isArray(field.existing)) field.existing.splice(i, 1)
+            t.showToast(body.message || '删除成功')
+          } else {
+            const msg = (body && (body.data || body.message)) || '删除失败'
+            t.showToast(String(msg))
+          }
+        } catch (e) {
+          t.showToast('删除失败')
         }
-      }
-      this.modal.show = true
+      })()
     },
     enlargeDetailImage (url) {
       if (!url) return
+      if (this.modal.isPreview) {
+        this.modal.type = 'detail'
+        this.modal.title = '图片预览'
+        this.modal.data = [{ type: 'image', value: url, large: true }]
+        this.modal.onConfirm = null
+        this.modal.show = true
+        return
+      }
       const backup = {
         type: this.modal.type,
         title: this.modal.title,
@@ -580,6 +668,14 @@ export default {
     },
     enlargeDetailVideo (url) {
       if (!url) return
+      if (this.modal.isPreview) {
+        this.modal.type = 'detail'
+        this.modal.title = '视频预览'
+        this.modal.data = [{ type: 'video', value: url, large: true }]
+        this.modal.onConfirm = null
+        this.modal.show = true
+        return
+      }
       const backup = {
         type: this.modal.type,
         title: this.modal.title,
@@ -596,6 +692,25 @@ export default {
       this.modal.isPreview = true
       this.modal.backup = backup
       this.modal.show = true
+    },
+    handleOverlayClick () {
+      if (this.modal.forceConfirm) return
+      this.closeModal()
+    },
+    openFileChooser (key, e) {
+      let el = null
+      try {
+        const wrapper = e && e.target && e.target.closest && e.target.closest('.file-input-wrapper')
+        if (wrapper) {
+          el = wrapper.querySelector('input[type="file"]')
+        }
+      } catch (err) {}
+      if (!el) {
+        const refName = 'file-' + String(key)
+        el = this.$refs && this.$refs[refName]
+        if (Array.isArray(el)) el = el[0]
+      }
+      if (el && typeof el.click === 'function') el.click()
     }
   }
 }
@@ -635,6 +750,10 @@ body {
   overflow-y: auto;
   padding: 24px;
   background-color: var(--bg-color);
+}
+
+.disabled-select {
+  cursor: not-allowed;
 }
 
 .page-title {
@@ -995,7 +1114,7 @@ body {
 .modal-container {
   background: white;
   border-radius: 12px;
-  width: 400px;
+  width: 520px;
   max-width: 90%;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   animation: modalFadeIn 0.2s ease-out;
@@ -1048,6 +1167,34 @@ body {
     font-size: 15px;
     line-height: 1.5;
   }
+  .modal-result {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .result-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 12px;
+  }
+  .summary-item { display: inline-flex; gap: 8px; font-size: 14px; color: #374151; }
+  .summary-item .label { width: 72px; color: #6b7280; flex-shrink: 0; }
+  .summary-item .value { flex: 1; word-break: break-all; }
+  .summary-item.wide { grid-column: 1 / -1; }
+  .result-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid #e5e7eb;
+  }
+  .result-table th, .result-table td {
+    border: 1px solid #e5e7eb;
+    padding: 8px 10px;
+    font-size: 13px;
+    text-align: left;
+  }
+  .result-table thead th { background: #f9fafb; color: #6b7280; }
+  .result-list { display: flex; flex-direction: column; gap: 6px; }
+  .result-list .list-item { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px 10px; font-size: 13px; color: #374151; }
 
   .modal-detail {
     display: flex;
@@ -1223,6 +1370,20 @@ body {
   gap: 12px;
   flex-shrink: 0;
 }
+.file-input-hidden {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+.file-input-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.file-count { font-size: 12px; color: #6b7280; }
 .toast-container {
   position: fixed;
   bottom: 24px;

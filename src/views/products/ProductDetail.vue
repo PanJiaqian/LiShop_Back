@@ -109,6 +109,7 @@ import {
   searchProducts,
   listProductsByAvailableProduct
 } from '@/api/product'
+import { listPriceStrategies } from '@/api/prices'
  
 
 export default {
@@ -235,18 +236,31 @@ export default {
       s = s.replace(/^`+|`+$/g, '')
       s = s.replace(/^"+|"+$/g, '')
       s = s.replace(/^'+|'+$/g, '')
+      if (!s || s.toLowerCase() === 'null' || s.toLowerCase() === 'undefined') return ''
       return s
     }
     const getImages = (item) => {
       const arr = item && (item.images || item.image_list || [])
-      if (Array.isArray(arr) && arr.length) return arr.map(x => String(x))
+      if (Array.isArray(arr) && arr.length) return arr.map(x => String(x)).filter(s => s && s.toLowerCase() !== 'null' && s.toLowerCase() !== 'undefined')
       const single = getImageUrl(item)
       return single ? [single] : []
     }
 
     // --- Operations copied and adapted from ProductList.vue ---
 
-    const handleCreateDetailProduct = () => {
+    const buildStrategyOptions = async () => {
+      try {
+        const res = await listPriceStrategies({ strategy_id: '', page: 1, page_size: 200, sort_by: '', sort_order: 'desc' })
+        const items = (res && res.data && res.data.items) || []
+        return items.map(s => {
+          const name = String(s.name || '').trim()
+          return { label: name || String(s.formula || ''), value: name || String(s.formula || '') }
+        })
+      } catch (e) { return [] }
+    }
+
+    const handleCreateDetailProduct = async () => {
+      const strategyOptions = await buildStrategyOptions()
       showModal({
         type: 'form',
         className: 'create-detail-modal',
@@ -259,7 +273,18 @@ export default {
           additional_price: { label: '附加费', type: 'number', value: '0.00' },
           inventory: { label: '库存', type: 'number', value: '0' },
           
-          compute_method: { label: '计算方式', type: 'select', value: '直接', options: [{label:'直接', value:'直接'}, {label:'公式', value:'公式'}] },
+          compute_method: { label: '计算方式', type: 'select', value: '单价', options: [{label:'单价', value:'单价'}, {label:'公式', value:'公式'}], onChange: async (e, fields) => {
+            const v = String(fields.compute_method.value || '')
+            if (v === '公式') {
+              if (!Array.isArray(fields.pricing_type.options) || !fields.pricing_type.options.length) {
+                fields.pricing_type.options = await buildStrategyOptions()
+              }
+              fields.pricing_type.disabled = false
+            } else {
+              fields.pricing_type.value = ''
+              fields.pricing_type.disabled = true
+            }
+          } },
           has_length: { label: '是否有长度', type: 'select', value: '0', options: [{label:'是', value:'1'}, {label:'否', value:'0'}] },
           length_unit: { label: '长度单位', type: 'select', value: 'm', options: [
             { label: 'cm', value: 'cm' },
@@ -268,7 +293,7 @@ export default {
             { label: 'm', value: 'm' }
           ] },
           color_temperature: { label: '色温', type: 'text', value: '' },
-          pricing_type: { label: '定价类型', type: 'select', value: 'all_pricing', options: [{label:'公式', value:'all_pricing'}, {label:'单价', value:'fixed'}] },
+          pricing_type: { label: '公式名称', type: 'select', value: '', options: strategyOptions, disabled: true },
           
           item_number: { label: '品号', type: 'text', value: '' },
           nuomi_item_number: { label: '诺米品号', type: 'text', value: '' },
@@ -366,39 +391,16 @@ export default {
           formData.append('file', fields.file.files[0])
           try {
             const res = await importProductsExcel(formData, { onUploadProgress: (e) => setUploadProgress && setUploadProgress(e, '正在导入Excel') })
-            if (res && res.success) {
-               hideToast(loadingToast)
-               endUploadProgress && endUploadProgress()
-               showToast('导入成功')
-               if (res.data && res.data.success) {
-                 showToast(`成功导入 ${res.data.success_count} 条`)
-               }
-               fetchProducts()
-            } else {
-              const body = res || {}
-              const title = String(body.message || '导入失败')
-              const data = body.data || {}
-              const count = typeof data.failure_count === 'number' ? data.failure_count : (Array.isArray(data.failures) ? data.failures.length : 0)
-              const failures = Array.isArray(data.failures) ? data.failures : []
-              let detail = `${title}\n失败条数：${count}`
-              if (failures.length) {
-                detail += `\n失败明细：`
-                failures.forEach((f, i) => {
-                  const row = (f && f.row) != null ? String(f.row) : ''
-                  const name = (f && f.name) != null ? String(f.name) : ''
-                  const reason = (f && f.reason) != null ? String(f.reason) : ''
-                  detail += `\n第${row}行｜${name}｜原因：${reason}`
-                })
-              }
-              hideToast(loadingToast)
-              endUploadProgress && endUploadProgress()
-              showModal({
-                type: 'confirm',
-                title: '导入失败',
-                message: detail,
-                onConfirm: () => {}
-              })
-            }
+            hideToast(loadingToast)
+            endUploadProgress && endUploadProgress()
+            showModal({
+              type: 'result',
+              title: '导入结果',
+              result: res || {},
+              forceConfirm: true,
+              onConfirm: () => {}
+            })
+            if (res && res.success) fetchProducts()
           } catch (e) {
             hideToast(loadingToast)
             endUploadProgress && endUploadProgress()
@@ -426,36 +428,16 @@ export default {
           formData.append('zip_file', fields.zip_file.files[0])
           try {
             const res = await importProductsImagesZip(formData, { onUploadProgress: (e) => setUploadProgress && setUploadProgress(e, '正在导入图片Zip') })
-            if (res && res.success) {
-              hideToast(loadingToast)
-              endUploadProgress && endUploadProgress()
-              showToast('导入成功')
-              fetchProducts()
-            } else {
-              const body = res || {}
-              const title = String(body.message || '导入失败')
-              const data = body.data || {}
-              const count = typeof data.failure_count === 'number' ? data.failure_count : (Array.isArray(data.failures) ? data.failures.length : 0)
-              const failures = Array.isArray(data.failures) ? data.failures : []
-              let detail = `${title}\n失败条数：${count}`
-              if (failures.length) {
-                detail += `\n失败明细：`
-                failures.forEach((f, i) => {
-                  const row = (f && f.row) != null ? String(f.row) : ''
-                  const name = (f && f.name) != null ? String(f.name) : ''
-                  const reason = (f && f.reason) != null ? String(f.reason) : ''
-                  detail += `\n第${row}行｜${name}｜原因：${reason}`
-                })
-              }
-              hideToast(loadingToast)
-              endUploadProgress && endUploadProgress()
-              showModal({
-                type: 'confirm',
-                title: '导入失败',
-                message: detail,
-                onConfirm: () => {}
-              })
-            }
+            hideToast(loadingToast)
+            endUploadProgress && endUploadProgress()
+            showModal({
+              type: 'result',
+              title: '导入结果',
+              result: res || {},
+              forceConfirm: true,
+              onConfirm: () => {}
+            })
+            if (res && res.success) fetchProducts()
           } catch (e) {
             hideToast(loadingToast)
             endUploadProgress && endUploadProgress()
@@ -465,7 +447,8 @@ export default {
       })
     }
 
-    const openUpdateModal = (item) => {
+    const openUpdateModal = async (item) => {
+          const strategyOptions = await buildStrategyOptions()
         showModal({
         type: 'form',
         className: 'update-modal',
@@ -479,7 +462,18 @@ export default {
           additional_price: { label: '附加费', type: 'number', value: item.additional_price },
           inventory: { label: '库存', type: 'number', value: item.inventory },
           
-          compute_method: { label: '计算方式', type: 'select', value: item.compute_method, options: [{label:'直接', value:'直接'}, {label:'公式', value:'公式'}] },
+          compute_method: { label: '计算方式', type: 'select', value: (item.compute_method || '单价'), options: [{label:'单价', value:'单价'}, {label:'公式', value:'公式'}], onChange: async (e, fields) => {
+            const v = String(fields.compute_method.value || '')
+            if (v === '公式') {
+              if (!Array.isArray(fields.pricing_type.options) || !fields.pricing_type.options.length) {
+                fields.pricing_type.options = await buildStrategyOptions()
+              }
+              fields.pricing_type.disabled = false
+            } else {
+              fields.pricing_type.value = ''
+              fields.pricing_type.disabled = true
+            }
+          } },
           has_length: { label: '是否有长度', type: 'select', value: String(item.has_length), options: [{label:'是', value:'1'}, {label:'否', value:'0'}] },
           length_unit: { label: '长度单位', type: 'select', value: item.length_unit || 'm', options: [
             { label: 'cm', value: 'cm' },
@@ -488,7 +482,7 @@ export default {
             { label: 'm', value: 'm' }
           ] },
           color_temperature: { label: '色温', type: 'text', value: item.color_temperature },
-          pricing_type: { label: '定价类型', type: 'select', value: item.pricing_type, options: [{label:'公式', value:'all_pricing'}, {label:'单价', value:'fixed'}] },
+          pricing_type: { label: '公式名称', type: 'select', value: (String(item.compute_method || '') === '公式' ? (item.pricing_type || strategyOptions[0]?.value || '') : ''), options: strategyOptions, disabled: String(item.compute_method || '') !== '公式' },
           item_number: { label: '品号', type: 'text', value: item.item_number || '' },
           nuomi_item_number: { label: '诺米品号', type: 'text', value: item.nuomi_item_number || '' },
           product_type: { label: '商品类型', type: 'select', value: item.product_type || 'normal', options: [{label:'正常生产商品', value:'normal'}, {label:'呆滞商品', value:'stagnant'}] },

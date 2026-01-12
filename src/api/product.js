@@ -51,3 +51,11 @@ export const searchProducts = (params) => {
 export const listProductsByAvailableProduct = (params) => {
   return api.get('/admin/available_products/products', { params }).then(res => res.data)
 }
+
+export const deleteProductFile = (formData) => {
+  return api.post('/admin/products/file/delete', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  }).then(res => res.data)
+}

@@ -328,39 +328,16 @@ export default {
           formData.append('file', fields.file.files[0])
           try {
             const res = await importAvailableProductsExcel(formData, { onUploadProgress: (e) => setUploadProgress && setUploadProgress(e, '正在导入Excel') })
-            if (res && res.success) {
-               hideToast(loadingToast)
-               endUploadProgress && endUploadProgress()
-               showToast('导入成功')
-               if (res.data && res.data.success) {
-                 showToast(`成功导入 ${res.data.success_count} 条`)
-               }
-               fetchProducts() // Refresh list immediately
-            } else {
-              const body = res || {}
-              const title = String(body.message || '导入失败')
-              const data = body.data || {}
-              const count = typeof data.failure_count === 'number' ? data.failure_count : (Array.isArray(data.failures) ? data.failures.length : 0)
-              const failures = Array.isArray(data.failures) ? data.failures : []
-              let detail = `${title}\n失败条数：${count}`
-              if (failures.length) {
-                detail += `\n失败明细：`
-                failures.forEach((f, i) => {
-                  const row = (f && f.row) != null ? String(f.row) : ''
-                  const name = (f && f.name) != null ? String(f.name) : ''
-                  const reason = (f && f.reason) != null ? String(f.reason) : ''
-                  detail += `\n第${row}行｜${name}｜原因：${reason}`
-                })
-              }
-              hideToast(loadingToast)
-              endUploadProgress && endUploadProgress()
-              showModal({
-                type: 'confirm',
-                title: '导入失败',
-                message: detail,
-                onConfirm: () => {}
-              })
-            }
+            hideToast(loadingToast)
+            endUploadProgress && endUploadProgress()
+            showModal({
+              type: 'result',
+              title: '导入结果',
+              result: res || {},
+              forceConfirm: true,
+              onConfirm: () => {}
+            })
+            if (res && res.success) fetchProducts()
           } catch (e) {
             hideToast(loadingToast)
             endUploadProgress && endUploadProgress()
@@ -388,36 +365,16 @@ export default {
           formData.append('zip_file', fields.zip_file.files[0])
           try {
             const res = await importAvailableProductsImagesZip(formData, { onUploadProgress: (e) => setUploadProgress && setUploadProgress(e, '正在导入图片Zip') })
-            if (res && res.success) {
-              hideToast(loadingToast)
-              endUploadProgress && endUploadProgress()
-              showToast('导入成功')
-              fetchProducts() // Refresh list immediately
-            } else {
-              const body = res || {}
-              const title = String(body.message || '导入失败')
-              const data = body.data || {}
-              const count = typeof data.failure_count === 'number' ? data.failure_count : (Array.isArray(data.failures) ? data.failures.length : 0)
-              const failures = Array.isArray(data.failures) ? data.failures : []
-              let detail = `${title}\n失败条数：${count}`
-              if (failures.length) {
-                detail += `\n失败明细：`
-                failures.forEach((f, i) => {
-                  const row = (f && f.row) != null ? String(f.row) : ''
-                  const name = (f && f.name) != null ? String(f.name) : ''
-                  const reason = (f && f.reason) != null ? String(f.reason) : ''
-                  detail += `\n第${row}行｜${name}｜原因：${reason}`
-                })
-              }
-              hideToast(loadingToast)
-              endUploadProgress && endUploadProgress()
-              showModal({
-                type: 'confirm',
-                title: '导入失败',
-                message: detail,
-                onConfirm: () => {}
-              })
-            }
+            hideToast(loadingToast)
+            endUploadProgress && endUploadProgress()
+            showModal({
+              type: 'result',
+              title: '导入结果',
+              result: res || {},
+              forceConfirm: true,
+              onConfirm: () => {}
+            })
+            if (res && res.success) fetchProducts()
           } catch (e) {
             hideToast(loadingToast)
             endUploadProgress && endUploadProgress()
@@ -445,17 +402,16 @@ export default {
           formData.append('zip_file', fields.zip_file.files[0])
           try {
             const res = await importAvailableProductsVideosZip(formData, { onUploadProgress: (e) => setUploadProgress && setUploadProgress(e, '正在导入视频Zip') })
-            if (res && res.success) {
-              hideToast(loadingToast)
-              endUploadProgress && endUploadProgress()
-              showToast('导入成功')
-              fetchProducts() // Refresh list immediately
-            } else {
-              const msg = (res && (res.data || res.message)) || '上传失败'
-              hideToast(loadingToast)
-              endUploadProgress && endUploadProgress()
-              showToast(String(msg))
-            }
+            hideToast(loadingToast)
+            endUploadProgress && endUploadProgress()
+            showModal({
+              type: 'result',
+              title: '导入结果',
+              result: res || {},
+              forceConfirm: true,
+              onConfirm: () => {}
+            })
+            if (res && res.success) fetchProducts()
           } catch (e) {
             hideToast(loadingToast)
             endUploadProgress && endUploadProgress()
@@ -485,9 +441,9 @@ export default {
           category_name: { label: '分类名称', type: 'select', value: categoryOptions.find(o => o.label === String(item.category_id))?.value || (categoryOptions[0]?.value || ''), options: categoryOptions },
           sort_order: { label: '推荐值', type: 'number', value: item.sort_order },
           shipping_origin: { label: '发货地', type: 'text', value: item.shipping_origin },
-          main_image: { label: '主图(修改则上传)', type: 'file', multiple: true, files: [], maxFiles: 6, hint: '主图最多选择6个文件', existing: (Array.isArray(item.main_image) ? item.main_image : (item.main_image ? [item.main_image] : [])).map(x => String(x)) },
-          images: { label: '轮播图(修改则上传)', type: 'file', multiple: true, files: [], maxFiles: 6, hint: '轮播图最多选择6个文件', existing: (Array.isArray(item.images) ? item.images : []).map(x => String(x)) },
-          video_url: { label: '视频(修改则上传)', type: 'file', multiple: true, files: [], maxFiles: 2, hint: '视频最多选择2个文件', existing: (Array.isArray(item.video) ? item.video : (Array.isArray(item.video_url) ? item.video_url : (item.video_url ? [item.video_url] : []) )).map(x => String(x)) },
+          main_image: { label: '主图(修改则上传)', type: 'file', multiple: true, files: [], maxFiles: 6, hint: '主图最多选择6个文件', existing: (Array.isArray(item.main_image) ? item.main_image : (item.main_image ? [item.main_image] : [])).map(x => String(x)).filter(s => s && s.toLowerCase() !== 'null' && s.toLowerCase() !== 'undefined') },
+          images: { label: '轮播图(修改则上传)', type: 'file', multiple: true, files: [], maxFiles: 6, hint: '轮播图最多选择6个文件', existing: (Array.isArray(item.images) ? item.images : []).map(x => String(x)).filter(s => s && s.toLowerCase() !== 'null' && s.toLowerCase() !== 'undefined') },
+          video_url: { label: '视频(修改则上传)', type: 'file', multiple: true, files: [], maxFiles: 2, hint: '视频最多选择2个文件', existing: (Array.isArray(item.video) ? item.video : (Array.isArray(item.video_url) ? item.video_url : (item.video_url ? [item.video_url] : []) )).map(x => String(x)).filter(s => s && s.toLowerCase() !== 'null' && s.toLowerCase() !== 'undefined') },
           status: { label: '状态', type: 'select', value: String(item.status), options: [{label:'上架', value:'1'}, {label:'下架', value:'0'}] },
           is_free_shipping: { label: '包邮', type: 'select', value: String(item.is_free_shipping), options: [{label:'是', value:'1'}, {label:'否', value:'0'}] },
           shipping_time_hours: { label: '发货时效(小时)', type: 'number', value: item.shipping_time_hours },
@@ -609,6 +565,7 @@ export default {
       s = s.replace(/^`+|`+$/g, '')
       s = s.replace(/^"+|"+$/g, '')
       s = s.replace(/^'+|'+$/g, '')
+      if (!s || s.toLowerCase() === 'null' || s.toLowerCase() === 'undefined') return ''
       return s
     }
     const getMainImages = (item) => {

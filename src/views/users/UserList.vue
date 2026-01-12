@@ -229,23 +229,24 @@ export default {
       
       try {
         const res = await importUsersExcel(file)
+        showModal({
+          type: 'result',
+          title: '导入结果',
+          result: res || { success: false, timestamp: new Date().toISOString(), message: '导入失败', data: {} },
+          forceConfirm: true
+        })
         if (res && res.success) {
-          const successCount = res.data.success_count || 0
-          const failureCount = res.data.failure_count || 0
-          let msg = `导入完成：成功 ${successCount} 条`
-          if (failureCount > 0) {
-            msg += `，失败 ${failureCount} 条`
-          }
-          showToast(msg)
           fetchUsers()
-        } else {
-          const msg = (res && (res.data || res.message)) || '导入失败'
-          showToast(String(msg))
         }
-      } catch (e) {
-        showToast('导入出错')
+      } catch (err) {
+        showModal({
+          type: 'result',
+          title: '导入失败',
+          result: { success: false, timestamp: new Date().toISOString(), message: String(err && err.message || '请求错误'), data: {} },
+          forceConfirm: true
+        })
       } finally {
-        e.target.value = '' // Reset input
+        e.target.value = ''
       }
     }
 
