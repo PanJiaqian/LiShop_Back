@@ -276,7 +276,6 @@ import LayoutHeader from '@/components/LayoutHeader.vue'
 import LayoutSidebar from '@/components/LayoutSidebar.vue'
 import { reactive, provide } from 'vue'
 import { deleteProductFile } from '@/api/product'
-import Hls from 'hls.js'
 
 export default {
   name: 'AdminLayout',
@@ -699,11 +698,12 @@ export default {
       this.modal.show = true
       this.initHlsInCurrentModal()
     },
-    initHlsInCurrentModal () {
+    async initHlsInCurrentModal () {
       try {
         const container = document.querySelector('.modal-container')
         if (!container) return
         const videos = container.querySelectorAll('video')
+        const HlsCtor = await this.ensureHls()
         videos.forEach(v => {
           const src = v.getAttribute('src')
           if (!src) return
@@ -716,8 +716,8 @@ export default {
               v.setAttribute('controls', 'true')
               return
             }
-            if (Hls && Hls.isSupported()) {
-              const h = new Hls()
+            if (HlsCtor && HlsCtor.isSupported()) {
+              const h = new HlsCtor()
               h.loadSource(src)
               h.attachMedia(v)
               v.setAttribute('controls', 'true')
@@ -725,6 +725,31 @@ export default {
           } catch (e) {}
         })
       } catch (e) {}
+    },
+    ensureHls () {
+      return new Promise(resolve => {
+        try {
+          if (window.Hls && window.Hls.isSupported && window.Hls.isSupported()) {
+            resolve(window.Hls)
+            return
+          }
+          const existed = document.querySelector('script[data-hlsjs]')
+          if (existed) {
+            const done = () => resolve(window.Hls || null)
+            existed.addEventListener('load', done, { once: true })
+            existed.addEventListener('error', () => resolve(null), { once: true })
+            return
+          }
+          const s = document.createElement('script')
+          s.src = 'https://cdn.jsdelivr.net/npm/hls.js@latest'
+          s.setAttribute('data-hlsjs', '1')
+          s.onload = () => resolve(window.Hls || null)
+          s.onerror = () => resolve(null)
+          document.head.appendChild(s)
+        } catch (e) {
+          resolve(null)
+        }
+      })
     },
     handleOverlayClick () {
       if (this.modal.forceConfirm) return
