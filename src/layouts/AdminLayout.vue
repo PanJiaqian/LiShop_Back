@@ -87,7 +87,7 @@
                     class="video-row-thumb"
                     @click="enlargeDetailVideo(src)"
                   >
-                    <video :src="src" muted playsinline></video>
+                    <video :src="src" muted playsinline crossorigin="anonymous"></video>
                   </div>
                 </div>
               </div>
@@ -99,6 +99,7 @@
                   :controls="!!item.large" 
                   muted 
                   playsinline
+                  crossorigin="anonymous"
                   @click="enlargeDetailVideo(item.src || item.value)"
                 ></video>
               </div>
@@ -275,6 +276,7 @@ import LayoutHeader from '@/components/LayoutHeader.vue'
 import LayoutSidebar from '@/components/LayoutSidebar.vue'
 import { reactive, provide } from 'vue'
 import { deleteProductFile } from '@/api/product'
+import Hls from 'hls.js'
 
 export default {
   name: 'AdminLayout',
@@ -591,6 +593,7 @@ export default {
         this.modal.data = [item]
         this.modal.onConfirm = null
         this.modal.show = true
+        this.initHlsInCurrentModal()
         return
       }
       const backup = {
@@ -609,6 +612,7 @@ export default {
       this.modal.isPreview = true
       this.modal.backup = backup
       this.modal.show = true
+      this.initHlsInCurrentModal()
     },
     confirmDeleteExistingUrl (field, i) {
       const t = this
@@ -674,6 +678,7 @@ export default {
         this.modal.data = [{ type: 'video', value: url, large: true }]
         this.modal.onConfirm = null
         this.modal.show = true
+        this.initHlsInCurrentModal()
         return
       }
       const backup = {
@@ -692,6 +697,34 @@ export default {
       this.modal.isPreview = true
       this.modal.backup = backup
       this.modal.show = true
+      this.initHlsInCurrentModal()
+    },
+    initHlsInCurrentModal () {
+      try {
+        const container = document.querySelector('.modal-container')
+        if (!container) return
+        const videos = container.querySelectorAll('video')
+        videos.forEach(v => {
+          const src = v.getAttribute('src')
+          if (!src) return
+          const isM3u8 = /\.m3u8(\?.*)?$/.test(String(src).toLowerCase())
+          if (!isM3u8) return
+          try {
+            if (v.canPlayType && v.canPlayType('application/vnd.apple.mpegURL')) {
+              v.src = src
+              v.load()
+              v.setAttribute('controls', 'true')
+              return
+            }
+            if (Hls && Hls.isSupported()) {
+              const h = new Hls()
+              h.loadSource(src)
+              h.attachMedia(v)
+              v.setAttribute('controls', 'true')
+            }
+          } catch (e) {}
+        })
+      } catch (e) {}
     },
     handleOverlayClick () {
       if (this.modal.forceConfirm) return
