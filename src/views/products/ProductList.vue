@@ -337,10 +337,29 @@ export default {
                }
                fetchProducts() // Refresh list immediately
             } else {
-              const msg = (res && (res.data || res.message)) || '导入失败'
+              const body = res || {}
+              const title = String(body.message || '导入失败')
+              const data = body.data || {}
+              const count = typeof data.failure_count === 'number' ? data.failure_count : (Array.isArray(data.failures) ? data.failures.length : 0)
+              const failures = Array.isArray(data.failures) ? data.failures : []
+              let detail = `${title}\n失败条数：${count}`
+              if (failures.length) {
+                detail += `\n失败明细：`
+                failures.forEach((f, i) => {
+                  const row = (f && f.row) != null ? String(f.row) : ''
+                  const name = (f && f.name) != null ? String(f.name) : ''
+                  const reason = (f && f.reason) != null ? String(f.reason) : ''
+                  detail += `\n第${row}行｜${name}｜原因：${reason}`
+                })
+              }
               hideToast(loadingToast)
               endUploadProgress && endUploadProgress()
-              showToast(String(msg))
+              showModal({
+                type: 'confirm',
+                title: '导入失败',
+                message: detail,
+                onConfirm: () => {}
+              })
             }
           } catch (e) {
             hideToast(loadingToast)
@@ -375,10 +394,29 @@ export default {
               showToast('导入成功')
               fetchProducts() // Refresh list immediately
             } else {
-              const msg = (res && (res.data || res.message)) || '上传失败'
+              const body = res || {}
+              const title = String(body.message || '导入失败')
+              const data = body.data || {}
+              const count = typeof data.failure_count === 'number' ? data.failure_count : (Array.isArray(data.failures) ? data.failures.length : 0)
+              const failures = Array.isArray(data.failures) ? data.failures : []
+              let detail = `${title}\n失败条数：${count}`
+              if (failures.length) {
+                detail += `\n失败明细：`
+                failures.forEach((f, i) => {
+                  const row = (f && f.row) != null ? String(f.row) : ''
+                  const name = (f && f.name) != null ? String(f.name) : ''
+                  const reason = (f && f.reason) != null ? String(f.reason) : ''
+                  detail += `\n第${row}行｜${name}｜原因：${reason}`
+                })
+              }
               hideToast(loadingToast)
               endUploadProgress && endUploadProgress()
-              showToast(String(msg))
+              showModal({
+                type: 'confirm',
+                title: '导入失败',
+                message: detail,
+                onConfirm: () => {}
+              })
             }
           } catch (e) {
             hideToast(loadingToast)
@@ -449,7 +487,7 @@ export default {
           shipping_origin: { label: '发货地', type: 'text', value: item.shipping_origin },
           main_image: { label: '主图(修改则上传)', type: 'file', multiple: true, files: [], maxFiles: 6, hint: '主图最多选择6个文件', existing: (Array.isArray(item.main_image) ? item.main_image : (item.main_image ? [item.main_image] : [])).map(x => String(x)) },
           images: { label: '轮播图(修改则上传)', type: 'file', multiple: true, files: [], maxFiles: 6, hint: '轮播图最多选择6个文件', existing: (Array.isArray(item.images) ? item.images : []).map(x => String(x)) },
-          video_url: { label: '视频(修改则上传)', type: 'file', multiple: true, files: [], maxFiles: 2, hint: '视频最多选择2个文件', existing: (Array.isArray(item.video_url) ? item.video_url : (item.video_url ? [item.video_url] : [])).map(x => String(x)) },
+          video_url: { label: '视频(修改则上传)', type: 'file', multiple: true, files: [], maxFiles: 2, hint: '视频最多选择2个文件', existing: (Array.isArray(item.video) ? item.video : (Array.isArray(item.video_url) ? item.video_url : (item.video_url ? [item.video_url] : []) )).map(x => String(x)) },
           status: { label: '状态', type: 'select', value: String(item.status), options: [{label:'上架', value:'1'}, {label:'下架', value:'0'}] },
           is_free_shipping: { label: '包邮', type: 'select', value: String(item.is_free_shipping), options: [{label:'是', value:'1'}, {label:'否', value:'0'}] },
           shipping_time_hours: { label: '发货时效(小时)', type: 'number', value: item.shipping_time_hours },
@@ -581,6 +619,12 @@ export default {
       const arr = Array.isArray(item.images) ? item.images : []
       return arr.map(x => normalizeUrl(String(x))).filter(Boolean)
     }
+    const getVideos = (item) => {
+      const arr = Array.isArray(item.video) ? item.video
+                : (Array.isArray(item.video_url) ? item.video_url
+                  : (item.video_url ? [item.video_url] : []))
+      return arr.map(x => normalizeUrl(String(x))).filter(Boolean)
+    }
 
     const viewDetail = (item) => {
       const rows = [
@@ -597,6 +641,8 @@ export default {
       if (mains.length) data.push({ type: 'image-row', label: '主图', images: mains })
       const imgs = getImages(item)
       if (imgs.length) data.push({ type: 'image-row', label: '商品图片', images: imgs })
+      const vids = getVideos(item)
+      if (vids.length) data.push({ type: 'video-row', label: '视频', videos: vids })
       rows.forEach(r => data.push(r))
       showModal({ type: 'detail', title: '商品详情', data })
     }

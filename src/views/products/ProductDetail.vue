@@ -268,7 +268,11 @@ export default {
             { label: 'm', value: 'm' }
           ] },
           color_temperature: { label: '色温', type: 'text', value: '' },
-          pricing_type: { label: '定价类型', type: 'select', value: 'fixed', options: [{label:'固定', value:'fixed'}, {label:'全部定价', value:'all_pricing'}] },
+          pricing_type: { label: '定价类型', type: 'select', value: 'all_pricing', options: [{label:'公式', value:'all_pricing'}, {label:'单价', value:'fixed'}] },
+          
+          item_number: { label: '品号', type: 'text', value: '' },
+          nuomi_item_number: { label: '诺米品号', type: 'text', value: '' },
+          product_type: { label: '商品类型', type: 'select', value: 'normal', options: [{label:'正常生产商品', value:'normal'}, {label:'呆滞商品', value:'stagnant'}] },
           
           max_length: { label: '最大长度', type: 'number', value: '0' },
           min_length: { label: '最小长度', type: 'number', value: '0' },
@@ -308,6 +312,9 @@ export default {
           append('length_unit')
           append('color_temperature')
           append('pricing_type')
+          append('item_number')
+          append('nuomi_item_number')
+          append('product_type')
           append('max_length')
           append('min_length')
           append('length_interval')
@@ -368,10 +375,29 @@ export default {
                }
                fetchProducts()
             } else {
-              const msg = (res && (res.data || res.message)) || '导入失败'
+              const body = res || {}
+              const title = String(body.message || '导入失败')
+              const data = body.data || {}
+              const count = typeof data.failure_count === 'number' ? data.failure_count : (Array.isArray(data.failures) ? data.failures.length : 0)
+              const failures = Array.isArray(data.failures) ? data.failures : []
+              let detail = `${title}\n失败条数：${count}`
+              if (failures.length) {
+                detail += `\n失败明细：`
+                failures.forEach((f, i) => {
+                  const row = (f && f.row) != null ? String(f.row) : ''
+                  const name = (f && f.name) != null ? String(f.name) : ''
+                  const reason = (f && f.reason) != null ? String(f.reason) : ''
+                  detail += `\n第${row}行｜${name}｜原因：${reason}`
+                })
+              }
               hideToast(loadingToast)
               endUploadProgress && endUploadProgress()
-              showToast(String(msg))
+              showModal({
+                type: 'confirm',
+                title: '导入失败',
+                message: detail,
+                onConfirm: () => {}
+              })
             }
           } catch (e) {
             hideToast(loadingToast)
@@ -406,10 +432,29 @@ export default {
               showToast('导入成功')
               fetchProducts()
             } else {
-              const msg = (res && (res.data || res.message)) || '上传失败'
+              const body = res || {}
+              const title = String(body.message || '导入失败')
+              const data = body.data || {}
+              const count = typeof data.failure_count === 'number' ? data.failure_count : (Array.isArray(data.failures) ? data.failures.length : 0)
+              const failures = Array.isArray(data.failures) ? data.failures : []
+              let detail = `${title}\n失败条数：${count}`
+              if (failures.length) {
+                detail += `\n失败明细：`
+                failures.forEach((f, i) => {
+                  const row = (f && f.row) != null ? String(f.row) : ''
+                  const name = (f && f.name) != null ? String(f.name) : ''
+                  const reason = (f && f.reason) != null ? String(f.reason) : ''
+                  detail += `\n第${row}行｜${name}｜原因：${reason}`
+                })
+              }
               hideToast(loadingToast)
               endUploadProgress && endUploadProgress()
-              showToast(String(msg))
+              showModal({
+                type: 'confirm',
+                title: '导入失败',
+                message: detail,
+                onConfirm: () => {}
+              })
             }
           } catch (e) {
             hideToast(loadingToast)
@@ -433,6 +478,7 @@ export default {
           unit_price: { label: '单价', type: 'number', value: item.unit_price, hint: '该单位价格指代的为1m的价格' },
           additional_price: { label: '附加费', type: 'number', value: item.additional_price },
           inventory: { label: '库存', type: 'number', value: item.inventory },
+          
           compute_method: { label: '计算方式', type: 'select', value: item.compute_method, options: [{label:'直接', value:'直接'}, {label:'公式', value:'公式'}] },
           has_length: { label: '是否有长度', type: 'select', value: String(item.has_length), options: [{label:'是', value:'1'}, {label:'否', value:'0'}] },
           length_unit: { label: '长度单位', type: 'select', value: item.length_unit || 'm', options: [
@@ -442,7 +488,10 @@ export default {
             { label: 'm', value: 'm' }
           ] },
           color_temperature: { label: '色温', type: 'text', value: item.color_temperature },
-          pricing_type: { label: '定价类型', type: 'select', value: item.pricing_type, options: [{label:'固定', value:'fixed'}, {label:'全部定价', value:'all_pricing'}] },
+          pricing_type: { label: '定价类型', type: 'select', value: item.pricing_type, options: [{label:'公式', value:'all_pricing'}, {label:'单价', value:'fixed'}] },
+          item_number: { label: '品号', type: 'text', value: item.item_number || '' },
+          nuomi_item_number: { label: '诺米品号', type: 'text', value: item.nuomi_item_number || '' },
+          product_type: { label: '商品类型', type: 'select', value: item.product_type || 'normal', options: [{label:'正常生产商品', value:'normal'}, {label:'呆滞商品', value:'stagnant'}] },
           max_length: { label: '最大长度', type: 'number', value: item.max_length },
           min_length: { label: '最小长度', type: 'number', value: item.min_length },
           length_interval: { label: '长度间隔', type: 'text', value: item.length_interval },
@@ -489,6 +538,9 @@ export default {
             append('color_temperature')
             append('length_unit')
             append('pricing_type')
+            append('item_number')
+            append('nuomi_item_number')
+            append('product_type')
             append('max_length')
             append('min_length')
             append('length_interval')
@@ -545,6 +597,9 @@ export default {
         { label: '长度单位', value: String(item.length_unit || '') },
         { label: '色温', value: String(item.color_temperature || '') },
         { label: '定价类型', value: String(item.pricing_type || '') },
+        { label: '品号', value: String(item.item_number || '') },
+        { label: '诺米品号', value: String(item.nuomi_item_number || '') },
+        { label: '商品类型', value: String((item.product_type === 'stagnant') ? '呆滞商品' : '正常生产商品') },
         { label: '最大长度', value: String(item.max_length || '') },
         { label: '最小长度', value: String(item.min_length || '') },
         { label: '长度间隔', value: String(item.length_interval || '') },

@@ -49,9 +49,29 @@
                   </div>
                 </div>
               </div>
-              <div v-else-if="item && item.type === 'video'" class="detail-image">
+              <div v-else-if="item && item.type === 'video-row'" class="detail-video-row">
                 <div v-if="item.label" class="detail-label">{{ item.label }}</div>
-                <video :src="item.src || item.value" controls style="max-width: 100%; border-radius: 8px; border: 1px solid #e5e7eb;"></video>
+                <div class="video-row-container">
+                  <div 
+                    v-for="(src, i) in (item.videos || [])" 
+                    :key="i" 
+                    class="video-row-thumb"
+                    @click="enlargeDetailVideo(src)"
+                  >
+                    <video :src="src" muted playsinline></video>
+                  </div>
+                </div>
+              </div>
+              <div v-else-if="item && item.type === 'video'" class="detail-video">
+                <div v-if="item.label" class="detail-label">{{ item.label }}</div>
+                <video 
+                  :src="item.src || item.value" 
+                  :class="item.large ? 'detail-video-large' : ''" 
+                  :controls="!!item.large" 
+                  muted 
+                  playsinline
+                  @click="enlargeDetailVideo(item.src || item.value)"
+                ></video>
               </div>
               <div v-else class="detail-row">
                 <div class="detail-label">{{ item.label }}</div>
@@ -182,7 +202,7 @@
             </div>
           </div>
         </div>
-        <div class="modal-footer">
+        <div class="modal-footer" v-if="!modal.isPreview">
           <button class="btn-sm" @click="closeModal">取消</button>
           <button class="btn-sm primary" @click="confirmModal">确定</button>
         </div>
@@ -238,7 +258,9 @@ export default {
       fields: {},
       data: [],
       onConfirm: null,
-      className: ''
+      className: '',
+      isPreview: false,
+      backup: null
     })
 
     const sideEditor = reactive({
@@ -263,11 +285,27 @@ export default {
       modal.data = options.data || []
       modal.onConfirm = options.onConfirm
       modal.className = options.className || ''
+      modal.isPreview = false
+      modal.backup = null
       modal.show = true
     }
 
     const closeModal = () => {
-      modal.show = false
+      if (modal.isPreview && modal.backup) {
+        const b = modal.backup
+        modal.type = b.type
+        modal.title = b.title
+        modal.message = b.message
+        modal.fields = b.fields
+        modal.data = b.data
+        modal.onConfirm = b.onConfirm
+        modal.className = b.className
+        modal.isPreview = false
+        modal.backup = null
+        modal.show = true
+      } else {
+        modal.show = false
+      }
     }
 
     const confirmModal = () => {
@@ -426,7 +464,7 @@ export default {
     isVideoUrl (u) {
       try {
         const s = String(u || '').toLowerCase()
-        return /\.(mp4|mov|webm|ogg)(\?.*)?$/.test(s)
+        return /\.(mp4|mov|webm|ogg|m3u8)(\?.*)?$/.test(s)
       } catch (e) { return false }
     },
     basename (u) {
@@ -475,16 +513,23 @@ export default {
         if (f && typeof f === 'object' && (f instanceof Blob)) {
           isImg = String(f.type || '').startsWith('image/')
           isVideo = String(f.type || '').startsWith('video/')
+          if (!isVideo) {
+            const nm = String((f && f.name) || '').toLowerCase()
+            if (/\.(mp4|mov|webm|ogg|m3u8)(\?.*)?$/.test(nm)) {
+              isVideo = true
+            }
+          }
           src = this.getFileObjectURL(f)
         } else if (typeof f === 'string') {
           src = f
-          isImg = true
+          isImg = this.isImageUrl(src)
+          isVideo = this.isVideoUrl(src)
         }
       } catch (e) {
         src = ''
       }
       if (!src) return
-      const item = isImg ? { type: 'image', src, large: true } : (isVideo ? { type: 'video', src } : { type: '', value: (f && f.name) || '' })
+      const item = isImg ? { type: 'image', src, large: true } : (isVideo ? { type: 'video', src, large: true } : { type: '', value: (f && f.name) || '' })
       const backup = {
         type: this.modal.type,
         title: this.modal.title,
@@ -497,19 +542,9 @@ export default {
       this.modal.type = 'detail'
       this.modal.title = '文件预览'
       this.modal.data = [item]
-      this.modal.onConfirm = () => {
-        setTimeout(() => {
-          this.modal.type = backup.type
-          this.modal.title = backup.title
-          this.modal.message = backup.message
-          this.modal.fields = backup.fields
-          this.modal.data = backup.data
-          this.modal.onConfirm = backup.onConfirm
-          this.modal.className = backup.className
-          this.modal.show = true
-        }, 0)
-        return false
-      }
+      this.modal.onConfirm = null
+      this.modal.isPreview = true
+      this.modal.backup = backup
       this.modal.show = true
     },
     confirmDeleteExistingUrl (field, i) {
@@ -538,19 +573,28 @@ export default {
       this.modal.type = 'detail'
       this.modal.title = '图片预览'
       this.modal.data = [{ type: 'image', value: url, large: true }]
-      this.modal.onConfirm = () => {
-        setTimeout(() => {
-          this.modal.type = backup.type
-          this.modal.title = backup.title
-          this.modal.message = backup.message
-          this.modal.fields = backup.fields
-          this.modal.data = backup.data
-          this.modal.onConfirm = backup.onConfirm
-          this.modal.className = backup.className
-          this.modal.show = true
-        }, 0)
-        return false
+      this.modal.onConfirm = null
+      this.modal.isPreview = true
+      this.modal.backup = backup
+      this.modal.show = true
+    },
+    enlargeDetailVideo (url) {
+      if (!url) return
+      const backup = {
+        type: this.modal.type,
+        title: this.modal.title,
+        message: this.modal.message,
+        fields: this.modal.fields,
+        data: this.modal.data,
+        onConfirm: this.modal.onConfirm,
+        className: this.modal.className
       }
+      this.modal.type = 'detail'
+      this.modal.title = '视频预览'
+      this.modal.data = [{ type: 'video', value: url, large: true }]
+      this.modal.onConfirm = null
+      this.modal.isPreview = true
+      this.modal.backup = backup
       this.modal.show = true
     }
   }
@@ -1064,7 +1108,37 @@ body {
     display: block;
     border-radius: 8px;
   }
+  .detail-video {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: center;
+  }
+  .detail-video .detail-label {
+    font-size: 12px;
+    color: #6b7280;
+  }
+  .detail-video video {
+    width: 64px;
+    height: 64px;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+    cursor: pointer;
+    object-fit: cover;
+  }
+  .detail-video video.detail-video-large {
+    width: 100%;
+    height: auto;
+    max-height: 80vh;
+    border-radius: 8px;
+    cursor: default;
+  }
   .detail-image-row .detail-label {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 6px;
+  }
+  .detail-video-row .detail-label {
     font-size: 12px;
     color: #6b7280;
     margin-bottom: 6px;
@@ -1085,6 +1159,26 @@ body {
     cursor: pointer;
   }
   .image-row-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .video-row-container {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+  }
+  .video-row-thumb {
+    flex: 0 0 auto;
+    width: 64px;
+    height: 64px;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+    cursor: pointer;
+  }
+  .video-row-thumb video {
     width: 100%;
     height: 100%;
     object-fit: cover;
