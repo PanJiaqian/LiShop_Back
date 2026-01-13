@@ -535,6 +535,7 @@ export default {
         if (res && res.success) {
           showToast('状态更新成功')
           item.status = newStatus
+          fetchProducts()
         } else {
           const msg = (res && (res.data || res.message)) || '状态更新失败'
           showToast(String(msg))

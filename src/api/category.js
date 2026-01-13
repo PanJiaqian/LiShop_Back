@@ -27,3 +27,11 @@ export const deleteCategory = (formData) => {
     }
   }).then(res => res.data)
 }
+
+export const uploadCategoryImage = (formData) => {
+  return api.post('/admin/categories/image', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  }).then(res => res.data)
+}

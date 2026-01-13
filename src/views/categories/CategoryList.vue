@@ -69,6 +69,22 @@
                 <label class="radio-label"><input type="radio" :name="'status'+activeCategory.id" :value="0" v-model="activeCategory.status"> 下架</label>
               </div>
             </div>
+            <div class="form-group">
+              <label>分类图片</label>
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <div v-if="normalizeImageUrl(activeCategory.image_url)" class="product-thumb">
+                  <img :src="normalizeImageUrl(activeCategory.image_url)" @error="onImgError($event)" alt="category" @click="previewCategoryImage(normalizeImageUrl(activeCategory.image_url))"
+                    style="cursor: pointer; width: 64px; height: 64px; object-fit: cover; border-radius: 8px; border: 1px solid #e5e7eb;" />
+                  <span class="thumb-remove" @click="deleteCategoryImage">&times;</span>
+                </div>
+                <input type="file" ref="catImageRef" accept="image/*" @change="onSelectCategoryImage" style="display: none;" />
+                <div class="file-input-actions" v-if="!normalizeImageUrl(activeCategory.image_url)">
+                  <button class="btn-sm" @click="openCatImageChooser">选择文件</button>
+                  <span v-if="selectedCatImage" class="file-count">已选择 1 个</span>
+                  <button class="btn-sm primary" @click="uploadSelectedCategoryImage" :disabled="!selectedCatImage">上传</button>
+                </div>
+              </div>
+            </div>
             
             <div class="divider"></div>
             
@@ -94,7 +110,8 @@
 
 <script setup>
 import { ref, inject, onMounted, computed } from 'vue'
-import { listCategories, createCategory, updateCategory, updateCategoryStatus, deleteCategory as deleteCategoryApi } from '@/api/category'
+import { listCategories, createCategory, updateCategory, updateCategoryStatus, deleteCategory as deleteCategoryApi, uploadCategoryImage } from '@/api/category'
+import { deleteProductFile } from '@/api/product'
 
 const showModal = inject('showModal')
 const showToast = inject('showToast')
@@ -309,6 +326,76 @@ const addAttribute = () => {
     }
   })
 }
+
+const normalizeImageUrl = (u) => {
+  try { return String(u || '').replace(/^`+|`+$/g, '').trim() } catch (e) { return String(u || '') }
+}
+const catImageRef = ref(null)
+const selectedCatImage = ref(null)
+const openCatImageChooser = () => {
+  try { catImageRef.value && catImageRef.value.click() } catch (e) {}
+}
+const onSelectCategoryImage = (e) => {
+  try {
+    const f = (e?.target?.files && e.target.files[0]) ? e.target.files[0] : null
+    selectedCatImage.value = f || null
+    if (e && e.target) { try { e.target.value = '' } catch (err) {} }
+  } catch (err) { selectedCatImage.value = null }
+}
+const uploadSelectedCategoryImage = async () => {
+  if (!activeCategory.value || !activeCategory.value.id) {
+    showToast('请选择分类')
+    return
+  }
+  if (!selectedCatImage.value) {
+    showToast('请先选择图片')
+    return
+  }
+  const fd = new FormData()
+  fd.append('category_id', activeCategory.value.id)
+  fd.append('image', selectedCatImage.value)
+  try {
+    const res = await uploadCategoryImage(fd)
+    if (res && res.success) {
+      showToast(res.message || '上传成功')
+      selectedCatImage.value = null
+      await fetchCategories()
+    } else {
+      const msg = (res && (res.data || res.message)) || '上传失败'
+      showToast(String(msg))
+    }
+  } catch (e) {
+    showToast('上传失败')
+  }
+}
+const onImgError = (e) => {
+  try { e.target.style.visibility = 'hidden' } catch (err) {}
+}
+const previewCategoryImage = (url) => {
+  if (!url) return
+  showModal({ type: 'detail', title: '图片预览', data: [{ label: '', value: url, type: 'image' }] })
+}
+const deleteCategoryImage = async () => {
+  const url = normalizeImageUrl(activeCategory.value?.image_url || '')
+  if (!url) return
+  const fd = new FormData()
+  fd.append('product_id', activeCategory.value.id)
+  fd.append('file_name', url)
+  fd.append('file_type', 'images')
+  try {
+    const res = await deleteProductFile(fd)
+    if (res && res.success) {
+      showToast(res.message || '删除成功')
+      if (activeCategory.value) activeCategory.value.image_url = ''
+      await fetchCategories()
+    } else {
+      const msg = (res && (res.data || res.message)) || '删除失败'
+      showToast(String(msg))
+    }
+  } catch (e) {
+    showToast('删除失败')
+  }
+}
 </script>
 
 <style scoped lang="scss">
@@ -426,5 +513,27 @@ const addAttribute = () => {
     font-size: 48px;
     margin-bottom: 16px;
   }
+}
+.product-thumb {
+  position: relative;
+  display: inline-block;
+}
+.product-thumb .thumb-remove {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
+  text-align: center;
+  background: #ef4444;
+  color: #fff;
+  border-radius: 50%;
+  cursor: pointer;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.product-thumb .thumb-remove:hover {
+  background: #dc2626;
 }
 </style>

@@ -274,7 +274,8 @@
 <script>
 import LayoutHeader from '@/components/LayoutHeader.vue'
 import LayoutSidebar from '@/components/LayoutSidebar.vue'
-import { reactive, provide } from 'vue'
+import { reactive, provide, watch } from 'vue'
+import { useAuthStore } from '@/api/admin'
 import { deleteProductFile } from '@/api/product'
 
 export default {
@@ -286,6 +287,10 @@ export default {
     }
   },
   setup() {
+    const auth = useAuthStore()
+    watch(() => [auth.token, auth.expiresAt], () => {
+      try { window.location.reload() } catch (e) {}
+    })
     const modal = reactive({
       show: false,
       type: 'confirm', // 'confirm', 'form', 'detail'
@@ -546,20 +551,13 @@ export default {
       }
     },
     confirmDeleteFile (field, i) {
-      const t = this
-      this.modal.type = 'confirm'
-      this.modal.title = '删除文件'
-      this.modal.message = '确认删除该文件？'
-      this.modal.onConfirm = function () {
-        if (Array.isArray(field.files)) {
-          const removed = field.files.splice(i, 1)[0]
-          const URLRef = (typeof window !== 'undefined' && (window.URL || window.webkitURL)) || null
-          if (removed && removed._previewUrl && URLRef && typeof URLRef.revokeObjectURL === 'function') {
-            try { URLRef.revokeObjectURL(removed._previewUrl) } catch (e) {}
-          }
+      if (Array.isArray(field.files)) {
+        const removed = field.files.splice(i, 1)[0]
+        const URLRef = (typeof window !== 'undefined' && (window.URL || window.webkitURL)) || null
+        if (removed && removed._previewUrl && URLRef && typeof URLRef.revokeObjectURL === 'function') {
+          try { URLRef.revokeObjectURL(removed._previewUrl) } catch (e) {}
         }
       }
-      this.modal.show = true
     },
     previewSelectedFile (f) {
       let src = ''
