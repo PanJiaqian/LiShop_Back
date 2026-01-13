@@ -54,7 +54,7 @@
             </td>
             <td>
               <div class="product-name-cell">
-                <div class="name" @click="goToDetail(item)" style="cursor: pointer; color: #3b82f6; font-weight: 500;">{{ item.name }}</div>
+                <div class="name" style="color: #3b82f6; font-weight: 500;">{{ item.name }}</div>
                 <div class="code" style="font-size: 12px; color: #999;">{{ item.available_product_id }}</div>
               </div>
             </td>
