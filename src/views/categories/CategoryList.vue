@@ -77,9 +77,14 @@
                     style="cursor: pointer; width: 64px; height: 64px; object-fit: cover; border-radius: 8px; border: 1px solid #e5e7eb;" />
                   <span class="thumb-remove" @click="deleteCategoryImage">&times;</span>
                 </div>
+                <div v-else-if="selectedCatImage" class="product-thumb">
+                  <img :src="getFileObjectURL(selectedCatImage)" alt="preview" @click="previewCategoryImage(getFileObjectURL(selectedCatImage))"
+                    style="cursor: pointer; width: 64px; height: 64px; object-fit: cover; border-radius: 8px; border: 1px solid #e5e7eb;" />
+                  <span class="thumb-remove" @click="removeSelectedCategoryImage">&times;</span>
+                </div>
                 <input type="file" ref="catImageRef" accept="image/*" @change="onSelectCategoryImage" style="display: none;" />
                 <div class="file-input-actions" v-if="!normalizeImageUrl(activeCategory.image_url)">
-                  <button class="btn-sm" @click="openCatImageChooser">选择文件</button>
+                  <button class="btn-sm" v-if="!selectedCatImage" @click="openCatImageChooser">选择文件</button>
                   <span v-if="selectedCatImage" class="file-count">已选择 1 个</span>
                   <button class="btn-sm primary" @click="uploadSelectedCategoryImage" :disabled="!selectedCatImage">上传</button>
                 </div>
@@ -337,6 +342,11 @@ const openCatImageChooser = () => {
 }
 const onSelectCategoryImage = (e) => {
   try {
+    const prev = selectedCatImage.value
+    const URLRef = (typeof window !== 'undefined' && (window.URL || window.webkitURL)) || null
+    if (prev && prev._previewUrl && URLRef && typeof URLRef.revokeObjectURL === 'function') {
+      try { URLRef.revokeObjectURL(prev._previewUrl) } catch (err) {}
+    }
     const f = (e?.target?.files && e.target.files[0]) ? e.target.files[0] : null
     selectedCatImage.value = f || null
     if (e && e.target) { try { e.target.value = '' } catch (err) {} }
@@ -358,7 +368,12 @@ const uploadSelectedCategoryImage = async () => {
     const res = await uploadCategoryImage(fd)
     if (res && res.success) {
       showToast(res.message || '上传成功')
+      const prev = selectedCatImage.value
       selectedCatImage.value = null
+      const URLRef = (typeof window !== 'undefined' && (window.URL || window.webkitURL)) || null
+      if (prev && prev._previewUrl && URLRef && typeof URLRef.revokeObjectURL === 'function') {
+        try { URLRef.revokeObjectURL(prev._previewUrl) } catch (err) {}
+      }
       await fetchCategories()
     } else {
       const msg = (res && (res.data || res.message)) || '上传失败'
@@ -371,9 +386,24 @@ const uploadSelectedCategoryImage = async () => {
 const onImgError = (e) => {
   try { e.target.style.visibility = 'hidden' } catch (err) {}
 }
+const getFileObjectURL = (f) => {
+  try {
+    const URLRef = (typeof window !== 'undefined' && (window.URL || window.webkitURL)) || null
+    if (!URLRef || typeof URLRef.createObjectURL !== 'function') return ''
+    if (f && typeof f === 'object') {
+      if (f._previewUrl && typeof f._previewUrl === 'string') return f._previewUrl
+      const u = URLRef.createObjectURL(f)
+      try { f._previewUrl = u } catch (e) {}
+      return u
+    }
+    return ''
+  } catch (e) {
+    return ''
+  }
+}
 const previewCategoryImage = (url) => {
   if (!url) return
-  showModal({ type: 'detail', title: '图片预览', data: [{ label: '', value: url, type: 'image' }] })
+  showModal({ type: 'detail', title: '图片预览', data: [{ label: '', value: url, type: 'image', large: true }] })
 }
 const deleteCategoryImage = async () => {
   const url = normalizeImageUrl(activeCategory.value?.image_url || '')
@@ -394,6 +424,18 @@ const deleteCategoryImage = async () => {
     }
   } catch (e) {
     showToast('删除失败')
+  }
+}
+const removeSelectedCategoryImage = () => {
+  try {
+    const prev = selectedCatImage.value
+    selectedCatImage.value = null
+    const URLRef = (typeof window !== 'undefined' && (window.URL || window.webkitURL)) || null
+    if (prev && prev._previewUrl && URLRef && typeof URLRef.revokeObjectURL === 'function') {
+      try { URLRef.revokeObjectURL(prev._previewUrl) } catch (err) {}
+    }
+  } catch (e) {
+    selectedCatImage.value = null
   }
 }
 </script>
