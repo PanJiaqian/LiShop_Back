@@ -71,7 +71,7 @@
                 {{ String(item.status) === '1' ? '上架' : '下架' }}
               </span>
             </td>
-            <td>{{ item.created_at }}</td>
+            <td>{{ formatTime(item.created_at) }}</td>
             <td>
               <div class="actions">
                 <button class="btn-link primary" @click="goToDetail(item)">明细</button>
@@ -118,6 +118,18 @@ export default {
     const showModal = inject('showModal')
     const showToast = inject('showToast')
     const hideToast = inject('hideToast')
+    const formatTime = inject('formatTime', (t) => {
+      if (t == null) return ''
+      try {
+        let s = String(t).trim()
+        if (!s) return ''
+        s = s.replace('T', ' ').replace(/Z$/, '')
+        if (s.includes('.')) s = s.split('.')[0]
+        return s
+      } catch (e) {
+        return String(t || '')
+      }
+    })
     const setUploadProgress = inject('setUploadProgress')
     const endUploadProgress = inject('endUploadProgress')
     const router = useRouter()
@@ -592,7 +604,7 @@ export default {
         { label: '推荐值', value: String(item.sort_order || '') },
         { label: '发货地', value: String(item.shipping_origin || '') },
         { label: '状态', value: String(item.status) === '1' ? '上架' : '下架' },
-        { label: '创建时间', value: String(item.created_at || '') }
+        { label: '创建时间', value: formatTime(item.created_at) }
       ]
       const data = []
       const mains = getMainImages(item)
@@ -611,6 +623,7 @@ export default {
         displayProducts,
         pagination,
         filter,
+        formatTime,
         fetchProducts,
         handleSearch,
         resetFilter,

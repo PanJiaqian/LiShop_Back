@@ -30,8 +30,18 @@
                 }}</span>
             </td>
             <td>{{ item.owner_admin_id }}</td>
-            <td>{{ item.created_at }}</td>
-            <td>{{ item.updated_at }}</td>
+            <td class="time-cell">
+              <div class="time-2line">
+                <div>{{ formatDate(item.created_at) }}</div>
+                <div v-if="formatClock(item.created_at)" class="time">{{ formatClock(item.created_at) }}</div>
+              </div>
+            </td>
+            <td class="time-cell">
+              <div class="time-2line">
+                <div>{{ formatDate(item.updated_at) }}</div>
+                <div v-if="formatClock(item.updated_at)" class="time">{{ formatClock(item.updated_at) }}</div>
+              </div>
+            </td>
             <td>
               <div class="actions">
                 <button class="btn-link" @click="publish(item)">上架</button>
@@ -63,8 +73,31 @@ export default {
   setup() {
     const showToast = inject('showToast')
     const showModal = inject('showModal')
+    const formatTime = inject('formatTime', (t) => {
+      if (t == null) return ''
+      try {
+        let s = String(t).trim()
+        if (!s) return ''
+        s = s.replace('T', ' ').replace(/Z$/, '')
+        if (s.includes('.')) s = s.split('.')[0]
+        return s
+      } catch (e) {
+        return String(t || '')
+      }
+    })
     const items = ref([])
     const total = ref(0)
+
+    const formatDate = (t) => {
+      const s = formatTime(t)
+      const parts = String(s || '').split(' ')
+      return parts[0] || ''
+    }
+    const formatClock = (t) => {
+      const s = formatTime(t)
+      const parts = String(s || '').split(' ')
+      return parts[1] || ''
+    }
 
     const openCreateModal = () => {
       showModal({
@@ -190,7 +223,9 @@ export default {
       fetchList,
       publish,
       unpublish,
-      remove
+      remove,
+      formatDate,
+      formatClock
     }
   }
 }
@@ -206,6 +241,23 @@ export default {
 .data-table td {
   text-align: center;
   white-space: nowrap;
+}
+
+.time-cell {
+  white-space: normal;
+}
+
+.time-2line {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+}
+
+.time-2line .time {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 2px;
 }
 
 .badge.success {

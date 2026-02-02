@@ -36,7 +36,7 @@
               <span class="badge" :class="String(ann.status) === '1' ? 'success' : 'gray'">{{
                 String(ann.status) === '1' ? '启用':'停用' }}</span>
             </td>
-            <td>{{ ann.created_at }}</td>
+            <td>{{ formatTime(ann.created_at) }}</td>
             <td>{{ ann.last_operator_id }}</td>
             <td>
               <div class="actions">
@@ -68,6 +68,18 @@ export default {
   setup() {
     const showToast = inject('showToast')
     const showModal = inject('showModal')
+    const formatTime = inject('formatTime', (t) => {
+      if (t == null) return ''
+      try {
+        let s = String(t).trim()
+        if (!s) return ''
+        s = s.replace('T', ' ').replace(/Z$/, '')
+        if (s.includes('.')) s = s.split('.')[0]
+        return s
+      } catch (e) {
+        return String(t || '')
+      }
+    })
     const announcements = ref([])
     const total = ref(0)
 
@@ -189,7 +201,8 @@ export default {
       editAnnouncement,
       removeAnnouncement,
       announcements,
-      total
+      total,
+      formatTime
     }
   }
 }

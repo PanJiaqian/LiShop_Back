@@ -141,7 +141,7 @@
               </div>
               <div v-else class="detail-row">
                 <div class="detail-label">{{ item.label }}</div>
-                <div class="detail-value">{{ item.value }}</div>
+                <div class="detail-value">{{ formatMaybeTime(item.value) }}</div>
               </div>
             </div>
           </div>
@@ -606,6 +606,21 @@ export default {
         }
         return s
       } catch (e) { return String(ts || '') }
+    },
+    formatMaybeTime (v) {
+      try {
+        const s = String(v == null ? '' : v).trim()
+        if (!s) return ''
+        if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(s)) {
+          return s.replace('T', ' ').replace(/Z$/, '').split('.')[0]
+        }
+        if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(s)) {
+          return s.replace(/Z$/, '').split('.')[0]
+        }
+        return v
+      } catch (e) {
+        return v
+      }
     },
     toggleSidebar () {
       this.sidebarCollapsed = !this.sidebarCollapsed
