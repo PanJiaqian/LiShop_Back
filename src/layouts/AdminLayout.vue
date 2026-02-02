@@ -4,7 +4,43 @@
     <div class="admin-body" :class="{ collapsed: sidebarCollapsed }">
       <layout-sidebar :collapsed="sidebarCollapsed" />
       <main class="admin-content">
-        <router-view />
+        <div v-if="pageLoading" class="page-skeleton">
+          <div class="page-skeleton-title"></div>
+          <div class="page-skeleton-card">
+            <div class="page-skeleton-filters">
+              <div class="skeleton-line w-24"></div>
+              <div class="skeleton-line w-24"></div>
+              <div class="skeleton-line w-18"></div>
+              <div class="skeleton-line w-18"></div>
+              <div class="skeleton-line w-12"></div>
+            </div>
+            <div class="page-skeleton-table">
+              <div class="page-skeleton-row header">
+                <div class="skeleton-cell w-10"></div>
+                <div class="skeleton-cell w-18"></div>
+                <div class="skeleton-cell w-12"></div>
+                <div class="skeleton-cell w-14"></div>
+                <div class="skeleton-cell w-16"></div>
+                <div class="skeleton-cell w-12"></div>
+              </div>
+              <div class="page-skeleton-row" v-for="i in 9" :key="i">
+                <div class="skeleton-cell w-10"></div>
+                <div class="skeleton-cell w-18"></div>
+                <div class="skeleton-cell w-12"></div>
+                <div class="skeleton-cell w-14"></div>
+                <div class="skeleton-cell w-16"></div>
+                <div class="skeleton-cell w-12"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div :class="{ 'page-loading-hidden': pageLoading }">
+          <router-view v-slot="{ Component }">
+            <keep-alive :max="20">
+              <component :is="Component" :key="$route.fullPath" />
+            </keep-alive>
+          </router-view>
+        </div>
       </main>
     </div>
 
@@ -274,7 +310,8 @@
 <script>
 import LayoutHeader from '@/components/LayoutHeader.vue'
 import LayoutSidebar from '@/components/LayoutSidebar.vue'
-import { reactive, provide, watch } from 'vue'
+import { reactive, provide, watch, ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/api/admin'
 import { deleteProductFile } from '@/api/product'
 
@@ -287,6 +324,62 @@ export default {
     }
   },
   setup() {
+    const pageLoading = ref(true)
+    const router = useRouter()
+    let hideTimer = null
+    let minUntil = 0
+    const showPageLoading = () => {
+      if (hideTimer) {
+        clearTimeout(hideTimer)
+        hideTimer = null
+      }
+      pageLoading.value = true
+      minUntil = Date.now() + 250
+    }
+    const hidePageLoading = () => {
+      const delay = Math.max(0, minUntil - Date.now())
+      hideTimer = setTimeout(() => {
+        pageLoading.value = false
+        hideTimer = null
+      }, delay)
+    }
+
+    const removeBefore = router.beforeEach((to, from, next) => {
+      showPageLoading()
+      next()
+    })
+    const removeAfter = router.afterEach(async () => {
+      try { await nextTick() } catch (e) {}
+      try {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            hidePageLoading()
+          })
+        })
+      } catch (e) {
+        hidePageLoading()
+      }
+    })
+    onMounted(() => {
+      try {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            hidePageLoading()
+          })
+        })
+      } catch (e) {
+        hidePageLoading()
+      }
+    })
+    onBeforeUnmount(() => {
+      try { if (typeof removeBefore === 'function') removeBefore() } catch (e) {}
+      try { if (typeof removeAfter === 'function') removeAfter() } catch (e) {}
+      if (hideTimer) {
+        clearTimeout(hideTimer)
+        hideTimer = null
+      }
+    })
+
     const auth = useAuthStore()
     watch(() => [auth.token, auth.expiresAt], () => {
       try { window.location.reload() } catch (e) {}
@@ -483,6 +576,7 @@ export default {
     }
 
     return {
+      pageLoading,
       modal,
       closeModal,
       confirmModal,
@@ -804,12 +898,116 @@ body {
 .admin-content {
   flex: 1;
   overflow-y: auto;
+  position: relative;
   padding: 24px;
   background-color: var(--bg-color);
 }
 
 .disabled-select {
   cursor: not-allowed;
+}
+
+.page-loading-hidden {
+  visibility: hidden;
+}
+
+.page-skeleton {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 24px;
+  background: var(--bg-color);
+  z-index: 50;
+  overflow: hidden;
+}
+
+.page-skeleton-title {
+  height: 28px;
+  width: 200px;
+  border-radius: 10px;
+  background: #e5e7eb;
+  margin-bottom: 18px;
+  position: relative;
+  overflow: hidden;
+}
+
+.page-skeleton-card {
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid rgba(229, 231, 235, 0.6);
+  padding: 18px;
+  overflow: hidden;
+}
+
+.page-skeleton-filters {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.page-skeleton-table {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.page-skeleton-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1.2fr 1.4fr 1.6fr 1.2fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.page-skeleton-row.header {
+  opacity: 0.85;
+}
+
+.skeleton-line,
+.skeleton-cell,
+.page-skeleton-title {
+  background: #e5e7eb;
+}
+
+.skeleton-line {
+  height: 34px;
+  border-radius: 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-cell {
+  height: 14px;
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.w-10 { width: 56px; }
+.w-12 { width: 84px; }
+.w-14 { width: 110px; }
+.w-16 { width: 140px; }
+.w-18 { width: 170px; }
+.w-24 { width: 220px; }
+
+.skeleton-line::after,
+.skeleton-cell::after,
+.page-skeleton-title::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -40%;
+  height: 100%;
+  width: 40%;
+  background: linear-gradient(90deg, rgba(229,231,235,0) 0%, rgba(255,255,255,0.7) 50%, rgba(229,231,235,0) 100%);
+  animation: skeletonShimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes skeletonShimmer {
+  0% { left: -40%; }
+  100% { left: 100%; }
 }
 
 .page-title {

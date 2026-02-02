@@ -571,5 +571,22 @@ const fetchAbnormalOrders = async () => {
   text-align: center;
   white-space: nowrap;
   vertical-align: middle;
+  padding: 8px 10px;
+  line-height: 1.2;
+}
+
+.data-table th {
+  padding: 10px 10px;
+}
+
+.actions {
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.btn-link {
+  padding: 0 2px;
+  line-height: 1.2;
 }
 </style>
