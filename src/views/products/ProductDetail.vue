@@ -248,6 +248,29 @@ export default {
 
     // --- Operations copied and adapted from ProductList.vue ---
 
+    const displayContentLabelToKey = {
+      名称: 'name',
+      规格: 'specification',
+      色温: 'color_temperature',
+      颜色: 'color',
+      型号: 'model',
+      品号: 'item_number',
+      诺米品号: 'nuomi_item_number',
+      产品类别: 'product_category'
+    }
+    const displayContentKeyToLabel = Object.keys(displayContentLabelToKey).reduce((acc, k) => {
+      acc[displayContentLabelToKey[k]] = k
+      return acc
+    }, {})
+    const displayContentOptions = Object.keys(displayContentLabelToKey).map(label => ({ label, value: label }))
+    const normalizeDisplayContentLabel = (v) => {
+      const s = String(v || '').trim()
+      if (!s) return ''
+      if (displayContentLabelToKey[s]) return s
+      if (displayContentKeyToLabel[s]) return displayContentKeyToLabel[s]
+      return s
+    }
+
     const buildStrategyOptions = async () => {
       try {
         const res = await listPriceStrategies({ strategy_id: '', page: 1, page_size: 200, sort_by: '', sort_order: 'desc' })
@@ -267,6 +290,7 @@ export default {
         title: '新建明细商品',
         fields: {
           name: { label: '明细商品名称', type: 'text', value: '' },
+          display_content: { label: '前台显示内容', type: 'select', value: '名称', options: displayContentOptions },
           available_products_name: { label: '关联商品名称', type: 'text', value: '' }, // Could auto-fill this if we had the parent name
           unit: { label: '单位', type: 'text', value: '件' },
           unit_price: { label: '单价', type: 'number', value: '0.00', hint: '该单位价格指代的为1m的价格' },
@@ -328,6 +352,7 @@ export default {
           const append = (key) => formData.append(key, fields[key].value)
           
           append('name')
+          append('display_content')
           append('available_products_name')
           append('unit')
           append('unit_price')
@@ -456,6 +481,7 @@ export default {
         fields: {
           product_id: { label: '明细商品ID', type: 'text', value: item.product_id, readonly: true },
           name: { label: '明细商品名称', type: 'text', value: item.name },
+          display_content: { label: '前台显示内容', type: 'select', value: normalizeDisplayContentLabel(item.display_content) || '名称', options: displayContentOptions },
           available_products_name: { label: '关联商品名称', type: 'text', value: item.available_products_id || '' },
           unit: { label: '单位', type: 'text', value: item.unit },
           unit_price: { label: '单价', type: 'number', value: item.unit_price, hint: '该单位价格指代的为1m的价格' },
@@ -523,6 +549,7 @@ export default {
             const append = (key) => formData.append(key, fields[key].value)
             append('product_id')
             append('name')
+            append('display_content')
             append('available_products_name')
             append('unit')
             append('unit_price')
@@ -581,6 +608,7 @@ export default {
       const rows = [
         { label: '明细商品ID', value: String(item.product_id || '') },
         { label: '明细商品名称', value: String(item.name || '') },
+        { label: '前台显示内容', value: normalizeDisplayContentLabel(item.display_content) },
         { label: '关联商品名称', value: String(item.available_products_id || '') },
         { label: '单位', value: String(item.unit || '') },
         { label: '单价', value: String(item.unit_price || '') },
