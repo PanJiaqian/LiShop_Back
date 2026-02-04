@@ -429,7 +429,27 @@ export default {
           } catch (e) {
             hideToast(loadingToast)
             endUploadProgress && endUploadProgress()
-            showToast('导入请求失败')
+            const apiResult = e && e.response && e.response.data
+            if (apiResult && typeof apiResult === 'object') {
+              showModal({
+                type: 'result',
+                title: '导入结果',
+                result: apiResult,
+                forceConfirm: true,
+                onConfirm: () => {}
+              })
+              const msg = apiResult.message || '导入失败'
+              showToast(String(msg))
+              return
+            }
+            showModal({
+              type: 'result',
+              title: '导入失败',
+              result: { success: false, timestamp: new Date().toISOString(), message: String((e && e.message) || '导入请求失败'), data: {} },
+              forceConfirm: true,
+              onConfirm: () => {}
+            })
+            showToast(String((e && e.message) || '导入请求失败'))
           }
         }
       })
