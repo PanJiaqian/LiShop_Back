@@ -122,7 +122,7 @@ export default {
   align-items: center;
   justify-content: center;
   transition: background 0.2s;
-  
+
   &:hover {
     background: #f3f4f6;
   }
@@ -152,7 +152,7 @@ export default {
   font-size: 14px;
   background: #f9fafb;
   transition: all 0.2s;
-  
+
   &:focus {
     outline: none;
     border-color: var(--primary-color);

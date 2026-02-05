@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="page-title">用户管理</div>
-    
+
     <!-- 筛选栏 -->
     <div class="card" style="margin-bottom: 24px;">
       <div class="filter-bar">
@@ -32,7 +32,7 @@
           <!-- <button class="btn-sm" @click="exportUsers">导出数据</button> -->
         </div>
       </div>
-      
+
       <table class="data-table">
         <thead>
           <tr>
@@ -103,13 +103,13 @@ import { listUsers, createUser, updateUser, updateUserStatus, importUsersExcel, 
 
 export default {
   name: 'UserList',
-  setup() {
+  setup () {
     const showModal = inject('showModal')
     const showToast = inject('showToast')
     const hideToast = inject('hideToast')
     const setUploadProgress = inject('setUploadProgress')
     const endUploadProgress = inject('endUploadProgress')
-    
+
     const filter = reactive({
       user_id: '',
       status: '',
@@ -226,7 +226,7 @@ export default {
     const handleImport = async (e) => {
       const file = e.target.files[0]
       if (!file) return
-      
+
       try {
         const res = await importUsersExcel(file)
         showModal({
@@ -286,10 +286,15 @@ export default {
           contact_name: { label: '联系人', type: 'text', value: user.contact_name },
           region: { label: '所在地区', type: 'text', value: user.region },
           level: { label: '会员等级', type: 'number', value: String(user.level || 1) },
-          status: { label: '状态', type: 'select', value: String(user.status || 1), options: [
-            { label: '正常', value: '1' },
-            { label: '禁用', value: '0' }
-          ]},
+          status: {
+            label: '状态',
+            type: 'select',
+            value: String(user.status || 1),
+            options: [
+              { label: '正常', value: '1' },
+              { label: '禁用', value: '0' }
+            ]
+          },
           avatar: { label: '头像(可选)', type: 'file', multiple: false, files: null }
         },
         onConfirm: async (fields) => {
@@ -413,7 +418,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  
+
   .avatar {
     width: 36px;
     height: 36px;
@@ -427,7 +432,7 @@ export default {
     font-size: 16px;
     margin-right: 10px;
   }
-  
+
   .info {
     text-align: left;
     .nickname {
@@ -448,11 +453,11 @@ export default {
   border-radius: 50%;
   margin-right: 4px;
   background: #ccc;
-  
+
   &.active {
     background: #52c41a;
   }
-  
+
   &.inactive {
     background: #ff4d4f;
   }

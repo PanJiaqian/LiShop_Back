@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="page-title">类目管理</div>
-    
+
     <div class="grid">
       <!-- Category Tree -->
       <div class="card" style="grid-column: span 4; min-height: 500px;">
@@ -45,7 +45,7 @@
               <button class="btn-sm primary" @click="saveCategory">保存更改</button>
             </div>
           </div>
-          
+
           <div class="form-section">
             <div class="form-group">
               <label>类目名称</label>
@@ -90,9 +90,25 @@
                 </div>
               </div>
             </div>
-            
+
             <div class="divider"></div>
-            
+
+            <div class="form-group">
+              <label>自定义参数</label>
+              <div class="radio-group">
+                <label class="radio-label"><input type="radio" :name="'hascp'+activeCategory.id" :value="1" v-model="activeCategory.has_custom_params"> 有</label>
+                <label class="radio-label"><input type="radio" :name="'hascp'+activeCategory.id" :value="0" v-model="activeCategory.has_custom_params"> 无</label>
+              </div>
+            </div>
+            <div v-if="showCustomParamNames" class="form-group">
+              <label>自定义参数1名称</label>
+              <input type="text" class="form-input" v-model="activeCategory.custom_param1_name">
+            </div>
+            <div v-if="showCustomParamNames" class="form-group">
+              <label>自定义参数2名称</label>
+              <input type="text" class="form-input" v-model="activeCategory.custom_param2_name">
+            </div>
+
             <!-- <div class="form-group">
               <label>关联属性</label>
               <div class="tags-input">
@@ -125,6 +141,7 @@ const confirmDialog = inject('confirmDialog')
 const categories = ref([])
 const flatCategories = ref([])
 const activeCategory = ref(null)
+const showCustomParamNames = computed(() => String(activeCategory.value?.has_custom_params ?? 0) === '1')
 
 const fetchCategories = async () => {
   try {
@@ -140,7 +157,7 @@ const fetchCategories = async () => {
       flatCategories.value = items
       categories.value = buildTree(items)
       sortTree(categories.value)
-      
+
       if (activeCategory.value) {
         const found = items.find(c => c.id === activeCategory.value.id)
         if (found) {
@@ -172,13 +189,13 @@ const resolveParentId = (val) => {
 const buildTree = (items) => {
   const mapByName = {}
   const roots = []
-  
+
   const nodes = items.map(item => ({ ...item, children: [] }))
-  
+
   nodes.forEach(node => {
     mapByName[node.name] = node
   })
-  
+
   nodes.forEach(node => {
     if (node.parent_id === '无' || !node.parent_id || !mapByName[node.parent_id]) {
       roots.push(node)
@@ -186,7 +203,7 @@ const buildTree = (items) => {
       mapByName[node.parent_id].children.push(node)
     }
   })
-  
+
   return roots
 }
 
@@ -227,10 +244,31 @@ const handleAddCategory = () => {
       name: { label: '类目名称', type: 'text', value: '' },
       parent_id: { label: '上级类目', type: 'select', value: '无', options },
       sort_order: { label: '推荐值', type: 'number', value: '1' },
-      status: { label: '状态', type: 'select', value: '1', options: [
-        { label: '显示', value: '1' },
-        { label: '隐藏', value: '0' }
-      ]}
+      has_custom_params: {
+        label: '自定义参数',
+        type: 'select',
+        value: '0',
+        options: [
+          { label: '无', value: '0' },
+          { label: '有', value: '1' }
+        ],
+        onChange: (e, allFields) => {
+          const show = String(allFields?.has_custom_params?.value ?? '0') === '1'
+          if (allFields && allFields.custom_param1_name) allFields.custom_param1_name.hidden = !show
+          if (allFields && allFields.custom_param2_name) allFields.custom_param2_name.hidden = !show
+        }
+      },
+      custom_param1_name: { label: '自定义参数1名称', type: 'text', value: '', hidden: true },
+      custom_param2_name: { label: '自定义参数2名称', type: 'text', value: '', hidden: true },
+      status: {
+        label: '状态',
+        type: 'select',
+        value: '1',
+        options: [
+          { label: '显示', value: '1' },
+          { label: '隐藏', value: '0' }
+        ]
+      }
     },
     onConfirm: async (fields) => {
       try {
@@ -238,6 +276,9 @@ const handleAddCategory = () => {
           name: fields.name.value,
           parent_id: resolveParentId(fields.parent_id.value),
           sort_order: parseInt(fields.sort_order.value),
+          has_custom_params: parseInt(fields.has_custom_params.value),
+          custom_param1_name: fields.custom_param1_name.hidden ? '' : fields.custom_param1_name.value,
+          custom_param2_name: fields.custom_param2_name.hidden ? '' : fields.custom_param2_name.value,
           status: parseInt(fields.status.value)
         })
         if (res && res.success) {
@@ -281,13 +322,16 @@ const deleteCategory = (cat) => {
 
 const saveCategory = async () => {
   if (!activeCategory.value) return
-  
+
   try {
     const res1 = await updateCategory({
       category_id: activeCategory.value.id,
       name: activeCategory.value.name,
       parent_id: resolveParentId(activeCategory.value.parent_id),
-      sort_order: parseInt(activeCategory.value.sort_order)
+      sort_order: parseInt(activeCategory.value.sort_order),
+      has_custom_params: parseInt(activeCategory.value.has_custom_params || 0),
+      custom_param1_name: activeCategory.value.custom_param1_name || '',
+      custom_param2_name: activeCategory.value.custom_param2_name || ''
     })
     const res2 = await updateCategoryStatus({
       category_id: activeCategory.value.id,
@@ -303,33 +347,6 @@ const saveCategory = async () => {
   } catch (e) {
     showToast('保存失败')
   }
-}
-
-const addAttribute = () => {
-  showModal({
-    title: '添加关联属性',
-    content: `
-      <div class="form-group">
-        <label>属性名称</label>
-        <input type="text" class="form-input" placeholder="如：颜色、尺寸">
-      </div>
-      <div class="form-group">
-        <label>属性类型</label>
-        <select class="form-select">
-          <option>单选</option>
-          <option>多选</option>
-          <option>文本输入</option>
-        </select>
-      </div>
-    `,
-    onConfirm: () => {
-      if (activeCategory.value) {
-        if (!activeCategory.value.attributes) activeCategory.value.attributes = []
-        activeCategory.value.attributes.push('新属性')
-        showToast('属性已添加 (仅本地演示)')
-      }
-    }
-  })
 }
 
 const normalizeImageUrl = (u) => {
@@ -450,21 +467,24 @@ const removeSelectedCategoryImage = () => {
       cursor: pointer;
       border-radius: 4px;
       transition: background 0.2s;
-      
+
       &:hover {
         background: #f5f7fa;
       }
-      
+
       &.active {
         background: #e6f7ff;
         color: var(--primary-color);
-        
+
         .toggle-icon {
           color: var(--primary-color);
         }
       }
+      &.active:hover {
+        background: #e6f7ff;
+      }
     }
-    
+
     .toggle-icon {
       width: 20px;
       display: flex;
@@ -472,12 +492,12 @@ const removeSelectedCategoryImage = () => {
       color: #999;
       font-size: 12px;
       margin-right: 4px;
-      
+
       &:hover {
         color: #666;
       }
     }
-    
+
     .node-children {
       padding-left: 20px;
     }
@@ -490,7 +510,7 @@ const removeSelectedCategoryImage = () => {
 
 .form-group {
   margin-bottom: 20px;
-  
+
   label {
     display: block;
     margin-bottom: 8px;
@@ -502,7 +522,7 @@ const removeSelectedCategoryImage = () => {
 .radio-group {
   display: flex;
   gap: 20px;
-  
+
   .radio-label {
     display: flex;
     align-items: center;
@@ -519,7 +539,7 @@ const removeSelectedCategoryImage = () => {
   border: 1px solid #e5e7eb;
   border-radius: 6px;
   min-height: 42px;
-  
+
   .tag {
     background: #f3f4f6;
     padding: 2px 8px;
@@ -528,7 +548,7 @@ const removeSelectedCategoryImage = () => {
     display: flex;
     align-items: center;
     gap: 4px;
-    
+
     .remove {
       cursor: pointer;
       color: #999;
@@ -550,7 +570,7 @@ const removeSelectedCategoryImage = () => {
   align-items: center;
   justify-content: center;
   color: #999;
-  
+
   .icon {
     font-size: 48px;
     margin-bottom: 16px;

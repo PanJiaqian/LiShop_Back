@@ -7,7 +7,6 @@
       </div>
     </div>
 
-
     <div class="card">
       <!-- <div class="card-header">
         <h3>公告列表</h3>
@@ -65,7 +64,7 @@ import { createAnnouncement, updateAnnouncement, updateAnnouncementStatus, listA
 
 export default {
   name: 'AnnouncementList',
-  setup() {
+  setup () {
     const showToast = inject('showToast')
     const showModal = inject('showModal')
     const formatTime = inject('formatTime', (t) => {

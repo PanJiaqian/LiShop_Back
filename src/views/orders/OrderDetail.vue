@@ -269,7 +269,7 @@ export default {
     },
     statusClass () {
       const t = this.statusText
-      const map = { '待付款': 'warning', '待发货': 'info', '待收货': 'primary', '已收货': 'success', '已取消': 'gray' }
+      const map = { 待付款: 'warning', 待发货: 'info', 待收货: 'primary', 已收货: 'success', 已取消: 'gray' }
       return map[t] || 'gray'
     }
   },
@@ -346,12 +346,12 @@ export default {
   display: flex;
   justify-content: space-between;
   padding: 20px 40px;
-  
+
   .step {
     flex: 1;
     text-align: center;
     position: relative;
-    
+
     &::after {
       content: '';
       position: absolute;
@@ -362,11 +362,11 @@ export default {
       background: #eee;
       z-index: 0;
     }
-    
+
     &:last-child::after {
       display: none;
     }
-    
+
     &.active {
       .step-icon {
         background: #1890ff;
@@ -395,13 +395,13 @@ export default {
       z-index: 1;
       font-weight: bold;
     }
-    
+
     .step-title {
       font-size: 14px;
       color: #999;
       margin-bottom: 5px;
     }
-    
+
     .step-time {
       font-size: 12px;
       color: #999;
@@ -413,7 +413,7 @@ export default {
   display: grid;
   grid-template-columns: 350px 1fr;
   gap: 20px;
-  
+
   @media (max-width: 1000px) {
     grid-template-columns: 1fr;
   }
@@ -424,13 +424,13 @@ export default {
     display: flex;
     margin-bottom: 12px;
     font-size: 14px;
-    
+
     .label {
       color: #666;
       width: 80px;
       flex-shrink: 0;
     }
-    
+
     .value {
       color: #333;
     }
@@ -441,7 +441,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  
+
   .product-img-placeholder {
     width: 40px;
     height: 40px;
@@ -449,12 +449,12 @@ export default {
     border-radius: 4px;
     margin-right: 10px;
   }
-  
+
   .name {
     font-size: 14px;
     color: #333;
   }
-  
+
   .sku {
     font-size: 12px;
     color: #999;
@@ -471,29 +471,29 @@ export default {
   margin-top: 20px;
   padding-top: 20px;
   border-top: 1px solid #eee;
-  
+
   .total-row {
     display: flex;
     justify-content: flex-end;
     margin-bottom: 8px;
     font-size: 14px;
-    
+
     .label {
       color: #666;
       margin-right: 10px;
     }
-    
+
     .value {
       color: #333;
       width: 100px;
       text-align: right;
     }
-    
+
     &.grand-total {
       font-weight: bold;
       font-size: 16px;
       margin-top: 10px;
-      
+
       .value {
         color: #f5222d;
       }
@@ -505,13 +505,13 @@ export default {
   list-style: none;
   padding: 0;
   margin: 0;
-  
+
   .timeline-item {
     position: relative;
     padding-left: 20px;
     padding-bottom: 20px;
     border-left: 2px solid #f0f0f0;
-    
+
     &::before {
       content: '';
       position: absolute;
@@ -522,17 +522,17 @@ export default {
       border-radius: 50%;
       background: #1890ff;
     }
-    
+
     &:last-child {
       border-left: none;
     }
-    
+
     .time {
       font-size: 12px;
       color: #999;
       margin-bottom: 4px;
     }
-    
+
     .content {
       font-size: 14px;
       color: #333;

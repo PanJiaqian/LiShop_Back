@@ -6,7 +6,7 @@
       </span>
       编辑商品
     </div>
-    
+
     <div class="grid">
       <!-- Basic Info -->
       <div class="card" style="grid-column: span 8;">
@@ -74,7 +74,7 @@
             <div class="text">点击上传更多</div>
           </div>
         </div>
-        
+
         <div class="card-header" style="margin-top: 32px;">
           <h3>发布设置</h3>
         </div>
@@ -158,7 +158,7 @@
 <script>
 export default {
   name: 'ProductEdit',
-  data() {
+  data () {
     return {
       form: {
         name: '无线蓝牙耳机 Pro',
@@ -184,8 +184,8 @@ export default {
     }
   },
   methods: {
-    addSpec() {
-      this.form.specs.push({ name: '', values: [] });
+    addSpec () {
+      this.form.specs.push({ name: '', values: [] })
     }
   }
 }

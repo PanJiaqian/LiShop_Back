@@ -107,7 +107,7 @@ export default {
       default: false
     }
   },
-  setup() {
+  setup () {
     const showModal = inject('showModal')
     return { showModal }
   },
@@ -211,23 +211,23 @@ export default {
 }
 .sidebar.collapsed {
   width: 64px;
-  
+
   .menu-group-title {
     opacity: 0;
     height: 0;
     padding: 0;
     margin: 0;
   }
-  
+
   .text {
     opacity: 0;
     display: none;
   }
-  
+
   .menu-item {
     justify-content: center;
     padding: 12px 0;
-    
+
     .icon {
       margin-right: 0;
     }
@@ -260,13 +260,18 @@ export default {
   text-decoration: none;
   transition: all 0.2s;
   margin-bottom: 4px;
-  
+
   &:hover {
     background: #334155;
     color: #fff;
   }
-  
+
   &.router-link-active {
+    background: var(--primary-color);
+    color: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  &.router-link-active:hover {
     background: var(--primary-color);
     color: #fff;
     box-shadow: 0 1px 3px rgba(0,0,0,0.2);

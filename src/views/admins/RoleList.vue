@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="page-title">角色权限管理</div>
-    
+
     <div class="grid">
       <!-- 左侧角色列表 -->
       <div class="card role-list-card">
@@ -10,9 +10,9 @@
           <button class="btn-sm primary" @click="addRole">添加角色</button>
         </div>
         <div class="role-list">
-          <div 
-            class="role-item" 
-            v-for="role in roles" 
+          <div
+            class="role-item"
+            v-for="role in roles"
             :key="role.id"
             :class="{ active: activeRole.id === role.id }"
             @click="activeRole = role"
@@ -192,14 +192,14 @@ const savePermissions = () => {
 .role-list-card {
   padding: 0;
   overflow: hidden;
-  
+
   .card-header {
     padding: 16px 20px;
     border-bottom: 1px solid #eee;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    
+
     h3 { margin: 0; font-size: 16px; }
   }
 }
@@ -213,38 +213,38 @@ const savePermissions = () => {
     justify-content: space-between;
     align-items: center;
     transition: all 0.3s;
-    
+
     &:hover {
       background: #f9f9f9;
     }
-    
+
     &.active {
       background: var(--bg-color-active, #eff6ff);
       border-right: 3px solid var(--primary-color);
-      
+
       .role-name {
         color: var(--primary-color);
       }
     }
-    
+
     .role-info {
       .role-name {
         font-weight: 500;
         margin-bottom: 4px;
         color: #333;
       }
-      
+
       .role-desc {
         font-size: 12px;
         color: #999;
       }
     }
-    
+
     .role-actions {
     opacity: 0;
     transition: opacity 0.3s;
   }
-  
+
   &:hover .role-actions {
     opacity: 1;
   }
@@ -258,11 +258,11 @@ const savePermissions = () => {
   padding: 4px;
   font-size: 14px;
   color: #666;
-  
+
   &:hover {
     color: var(--primary-color);
   }
-  
+
   &.danger:hover {
     color: #ff4d4f;
   }
@@ -270,17 +270,17 @@ const savePermissions = () => {
 
 .permission-tree {
   padding: 20px 0;
-  
+
   .tree-group {
     margin-bottom: 24px;
-    
+
     .group-header {
       margin-bottom: 12px;
       padding-bottom: 8px;
       border-bottom: 1px solid #f0f0f0;
       font-weight: bold;
     }
-    
+
     .group-items {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -295,12 +295,12 @@ const savePermissions = () => {
   align-items: center;
   cursor: pointer;
   font-size: 14px;
-  
+
   input {
     margin-right: 8px;
     accent-color: var(--primary-color);
   }
-  
+
   .label-text {
     color: #333;
   }

@@ -2,7 +2,6 @@
   <div>
     <div class="page-title">管理员列表</div>
 
-
     <div class="card" style="margin-bottom: 24px;">
       <div class="filter-bar">
         <input type="text" class="form-input" placeholder="用户名/姓名" v-model="filter.keyword" />
@@ -62,7 +61,7 @@
           </tr>
         </tbody>
       </table>
-      
+
       <div class="pagination">
         <span class="page-info">共 {{ filteredAdmins.length }} 条记录</span>
         <div class="page-btns">
@@ -224,10 +223,15 @@ const addAdmin = () => {
       real_name: { label: '姓名', type: 'text', value: '' },
       phone: { label: '手机号', type: 'text', value: '' },
       password: { label: '密码', type: 'password', value: '' },
-      role: { label: '角色', type: 'select', value: 'SUB', options: [
-        { label: '普通管理员', value: 'SUB' },
-        { label: '超级管理员', value: 'SUPER' }
-      ]}
+      role: {
+        label: '角色',
+        type: 'select',
+        value: 'SUB',
+        options: [
+          { label: '普通管理员', value: 'SUB' },
+          { label: '超级管理员', value: 'SUPER' }
+        ]
+      }
     },
     onConfirm: async (fields) => {
       try {
@@ -263,10 +267,15 @@ const editAdmin = (admin) => {
       admins_id: { label: '管理员ID', type: 'text', value: admin.admins_id },
       real_name: { label: '姓名', type: 'text', value: admin.name },
       phone: { label: '手机号', type: 'text', value: admin.phone },
-      status: { label: '状态', type: 'select', value: admin.status === '启用' ? '1' : '0', options: [
-        { label: '启用', value: '1' },
-        { label: '禁用', value: '0' }
-      ]}
+      status: {
+        label: '状态',
+        type: 'select',
+        value: admin.status === '启用' ? '1' : '0',
+        options: [
+          { label: '启用', value: '1' },
+          { label: '禁用', value: '0' }
+        ]
+      }
     },
     onConfirm: async (fields) => {
       try {
@@ -357,7 +366,7 @@ const handleBindUsers = (admin) => {
       try {
         const idsStr = String(fields.user_ids.value || '').trim()
         const ids = idsStr ? idsStr.split(',').map(s => s.trim()).filter(Boolean) : []
-        
+
         // Decide whether to use bind (add) or update. Since this is a "set" operation from the UI perspective,
         // we'll assume we want to update the list to exactly what is entered.
         // However, the user provided both interfaces. If the list was empty, maybe 'add' is used?
@@ -366,7 +375,7 @@ const handleBindUsers = (admin) => {
           admin_id: fields.admins_id.value,
           user_ids: ids
         })
-        
+
         if (res && res.success) {
           const msg = (res && res.message) || '绑定用户成功'
           showToast(msg)
@@ -454,6 +463,5 @@ onMounted(async () => {
 .btn-link:hover {
   text-decoration: underline;
 }
-
 
 </style>

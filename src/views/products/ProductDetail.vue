@@ -15,7 +15,7 @@
         <!-- <button class="btn-sm secondary" @click="handleToggleDetailStatus">更改明细商品状态</button> -->
       </div>
     </div>
-    
+
     <div class="card" style="margin-bottom: 24px;">
       <div class="filter-bar">
         <input type="text" class="form-input" placeholder="搜索明细商品..." v-model="filter.keyword" />
@@ -67,8 +67,8 @@
             <td>{{ item.inventory }}</td>
             <td>{{ item.compute_method }}</td>
             <td>
-              <span 
-                class="badge" 
+              <span
+                class="badge"
                 :class="String(item.status) === '1' ? 'success' : 'gray'"
               >
                 {{ String(item.status) === '1' ? '上架' : '下架' }}
@@ -83,7 +83,7 @@
           </tr>
         </tbody>
       </table>
-      
+
       <div class="pagination">
         <span class="page-info">共 {{ pagination.total }} 条记录</span>
         <div class="page-btns">
@@ -99,29 +99,28 @@
 <script>
 import { inject, reactive, onMounted, ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { 
-  createProduct, 
-  importProductsExcel, 
-  importProductsImagesZip, 
-  updateProduct, 
+import {
+  createProduct,
+  importProductsExcel,
+  importProductsImagesZip,
+  updateProduct,
   updateProductStatus,
   listProducts,
   searchProducts,
   listProductsByAvailableProduct
 } from '@/api/product'
 import { listPriceStrategies } from '@/api/prices'
- 
 
 export default {
   name: 'ProductDetail',
-  setup() {
+  setup () {
     const showModal = inject('showModal')
     const showToast = inject('showToast')
     const hideToast = inject('hideToast')
     const setUploadProgress = inject('setUploadProgress')
     const endUploadProgress = inject('endUploadProgress')
     const route = useRoute()
-    
+
     const loading = ref(false)
     const products = ref([])
     const pagination = reactive({
@@ -138,8 +137,9 @@ export default {
       keyword: '',
       status: ''
     })
-    
+
     const availableProductId = computed(() => route.params.id)
+    const productsIdQuery = computed(() => route.query.products_id)
 
     const fetchProducts = async () => {
       loading.value = true
@@ -147,7 +147,16 @@ export default {
         const statusSet = applied.status !== '' && applied.status != null
         const shouldSearch = !!(String(applied.keyword || '').trim() || statusSet)
         let res
-        if (!availableProductId.value) {
+        if (productsIdQuery.value) {
+          const params = {
+            products_id: String(productsIdQuery.value),
+            page: pagination.page,
+            page_size: pagination.page_size,
+            sort_by: 'name',
+            sort_order: 'desc'
+          }
+          res = await listProducts(params)
+        } else if (!availableProductId.value) {
           if (shouldSearch) {
             const params = { content: String(applied.keyword || '').trim(), status: statusSet ? applied.status : undefined }
             res = await searchProducts(params)
@@ -195,10 +204,10 @@ export default {
     })
 
     const handleSearch = () => {
-       applied.keyword = filter.keyword
-       applied.status = filter.status
-       pagination.page = 1
-       fetchProducts()
+      applied.keyword = filter.keyword
+      applied.status = filter.status
+      pagination.page = 1
+      fetchProducts()
     }
 
     const resetFilter = () => {
@@ -218,7 +227,7 @@ export default {
       }
       return arr
     })
-    
+
     const changePage = (page) => {
       pagination.page = page
       fetchProducts()
@@ -296,40 +305,51 @@ export default {
           unit_price: { label: '单价', type: 'number', value: '0.00', hint: '该单位价格指代的为1m的价格' },
           additional_price: { label: '附加费', type: 'number', value: '0.00' },
           inventory: { label: '库存', type: 'number', value: '0' },
-          
-          compute_method: { label: '计算方式', type: 'select', value: '单价', options: [{label:'单价', value:'单价'}, {label:'公式', value:'公式'}], onChange: async (e, fields) => {
-            const v = String(fields.compute_method.value || '')
-            if (v === '公式') {
-              if (!Array.isArray(fields.pricing_type.options) || !fields.pricing_type.options.length) {
-                fields.pricing_type.options = await buildStrategyOptions()
+
+          compute_method: {
+            label: '计算方式',
+            type: 'select',
+            value: '单价',
+            options: [{ label: '单价', value: '单价' }, { label: '公式', value: '公式' }],
+            onChange: async (e, fields) => {
+              const v = String(fields.compute_method.value || '')
+              if (v === '公式') {
+                if (!Array.isArray(fields.pricing_type.options) || !fields.pricing_type.options.length) {
+                  fields.pricing_type.options = await buildStrategyOptions()
+                }
+                fields.pricing_type.disabled = false
+              } else {
+                fields.pricing_type.value = ''
+                fields.pricing_type.disabled = true
               }
-              fields.pricing_type.disabled = false
-            } else {
-              fields.pricing_type.value = ''
-              fields.pricing_type.disabled = true
             }
-          } },
-          has_length: { label: '是否有长度', type: 'select', value: '0', options: [{label:'是', value:'1'}, {label:'否', value:'0'}] },
-          length_unit: { label: '长度单位', type: 'select', value: 'm', options: [
-            { label: 'cm', value: 'cm' },
-            { label: 'mm', value: 'mm' },
-            { label: 'dm', value: 'dm' },
-            { label: 'm', value: 'm' }
-          ] },
+          },
+          has_length: { label: '是否有长度', type: 'select', value: '0', options: [{ label: '是', value: '1' }, { label: '否', value: '0' }] },
+          length_unit: {
+            label: '长度单位',
+            type: 'select',
+            value: 'm',
+            options: [
+              { label: 'cm', value: 'cm' },
+              { label: 'mm', value: 'mm' },
+              { label: 'dm', value: 'dm' },
+              { label: 'm', value: 'm' }
+            ]
+          },
           color_temperature: { label: '色温', type: 'text', value: '' },
           pricing_type: { label: '公式名称', type: 'select', value: '', options: strategyOptions, disabled: true },
-          
+
           item_number: { label: '品号', type: 'text', value: '' },
           nuomi_item_number: { label: '诺米品号', type: 'text', value: '' },
-          product_type: { label: '商品类型', type: 'select', value: 'normal', options: [{label:'正常生产商品', value:'normal'}, {label:'呆滞商品', value:'stagnant'}] },
-          
+          product_type: { label: '商品类型', type: 'select', value: 'normal', options: [{ label: '正常生产商品', value: 'normal' }, { label: '呆滞商品', value: 'stagnant' }] },
+
           max_length: { label: '最大长度', type: 'number', value: '0' },
           min_length: { label: '最小长度', type: 'number', value: '0' },
           length_interval: { label: '长度间隔', type: 'text', value: '无' },
-          
-          level_discount: { 
-            label: '等级折扣', 
-            type: 'level-discount', 
+
+          level_discount: {
+            label: '等级折扣',
+            type: 'level-discount',
             value: '[]',
             entries: [],
             max: 3,
@@ -339,6 +359,8 @@ export default {
           specification: { label: '规格', type: 'text', value: '' },
           color: { label: '颜色', type: 'text', value: '' },
           model: { label: '型号', type: 'text', value: '' },
+          custom_param1_value: { label: '自定义参数1值', type: 'text', value: '' },
+          custom_param2_value: { label: '自定义参数2值', type: 'text', value: '' },
           image: { label: '图片', type: 'file', multiple: false, files: null }
         },
         onConfirm: async (fields) => {
@@ -348,9 +370,9 @@ export default {
           // The previous code didn't use ID. Let's stick to the previous implementation but maybe user wants to fill it.
           // Actually, if we are in detail page, we should probably pass the ID.
           // But I'll stick to the exact fields from before to avoid breaking API expectations unless necessary.
-          
+
           const append = (key) => formData.append(key, fields[key].value)
-          
+
           append('name')
           append('display_content')
           append('available_products_name')
@@ -373,6 +395,8 @@ export default {
           append('specification')
           append('color')
           append('model')
+          append('custom_param1_value')
+          append('custom_param2_value')
           append('inventory')
 
           if (fields.image.files && fields.image.files[0]) {
@@ -493,8 +517,8 @@ export default {
     }
 
     const openUpdateModal = async (item) => {
-          const strategyOptions = await buildStrategyOptions()
-        showModal({
+      const strategyOptions = await buildStrategyOptions()
+      showModal({
         type: 'form',
         className: 'update-modal',
         title: '更新明细商品',
@@ -507,37 +531,48 @@ export default {
           unit_price: { label: '单价', type: 'number', value: item.unit_price, hint: '该单位价格指代的为1m的价格' },
           additional_price: { label: '附加费', type: 'number', value: item.additional_price },
           inventory: { label: '库存', type: 'number', value: item.inventory },
-          
-          compute_method: { label: '计算方式', type: 'select', value: (item.compute_method || '单价'), options: [{label:'单价', value:'单价'}, {label:'公式', value:'公式'}], onChange: async (e, fields) => {
-            const v = String(fields.compute_method.value || '')
-            if (v === '公式') {
-              if (!Array.isArray(fields.pricing_type.options) || !fields.pricing_type.options.length) {
-                fields.pricing_type.options = await buildStrategyOptions()
+
+          compute_method: {
+            label: '计算方式',
+            type: 'select',
+            value: (item.compute_method || '单价'),
+            options: [{ label: '单价', value: '单价' }, { label: '公式', value: '公式' }],
+            onChange: async (e, fields) => {
+              const v = String(fields.compute_method.value || '')
+              if (v === '公式') {
+                if (!Array.isArray(fields.pricing_type.options) || !fields.pricing_type.options.length) {
+                  fields.pricing_type.options = await buildStrategyOptions()
+                }
+                fields.pricing_type.disabled = false
+              } else {
+                fields.pricing_type.value = ''
+                fields.pricing_type.disabled = true
               }
-              fields.pricing_type.disabled = false
-            } else {
-              fields.pricing_type.value = ''
-              fields.pricing_type.disabled = true
             }
-          } },
-          has_length: { label: '是否有长度', type: 'select', value: String(item.has_length), options: [{label:'是', value:'1'}, {label:'否', value:'0'}] },
-          length_unit: { label: '长度单位', type: 'select', value: item.length_unit || 'm', options: [
-            { label: 'cm', value: 'cm' },
-            { label: 'mm', value: 'mm' },
-            { label: 'dm', value: 'dm' },
-            { label: 'm', value: 'm' }
-          ] },
+          },
+          has_length: { label: '是否有长度', type: 'select', value: String(item.has_length), options: [{ label: '是', value: '1' }, { label: '否', value: '0' }] },
+          length_unit: {
+            label: '长度单位',
+            type: 'select',
+            value: item.length_unit || 'm',
+            options: [
+              { label: 'cm', value: 'cm' },
+              { label: 'mm', value: 'mm' },
+              { label: 'dm', value: 'dm' },
+              { label: 'm', value: 'm' }
+            ]
+          },
           color_temperature: { label: '色温', type: 'text', value: item.color_temperature },
           pricing_type: { label: '公式名称', type: 'select', value: (String(item.compute_method || '') === '公式' ? (item.pricing_type || strategyOptions[0]?.value || '') : ''), options: strategyOptions, disabled: String(item.compute_method || '') !== '公式' },
           item_number: { label: '品号', type: 'text', value: item.item_number || '' },
           nuomi_item_number: { label: '诺米品号', type: 'text', value: item.nuomi_item_number || '' },
-          product_type: { label: '商品类型', type: 'select', value: item.product_type || 'normal', options: [{label:'正常生产商品', value:'normal'}, {label:'呆滞商品', value:'stagnant'}] },
+          product_type: { label: '商品类型', type: 'select', value: item.product_type || 'normal', options: [{ label: '正常生产商品', value: 'normal' }, { label: '呆滞商品', value: 'stagnant' }] },
           max_length: { label: '最大长度', type: 'number', value: item.max_length },
           min_length: { label: '最小长度', type: 'number', value: item.min_length },
           length_interval: { label: '长度间隔', type: 'text', value: item.length_interval },
-          level_discount: { 
-            label: '等级折扣', 
-            type: 'level-discount', 
+          level_discount: {
+            label: '等级折扣',
+            type: 'level-discount',
             value: (() => {
               const raw = String(item.level_discount || '[]').trim().replace(/^`+|`+$/g, '').replace(/^\"+|\"+$/g, '').replace(/^'+|'+$/g, '')
               return raw
@@ -561,70 +596,74 @@ export default {
           specification: { label: '规格', type: 'text', value: item.specification },
           color: { label: '颜色', type: 'text', value: item.color },
           model: { label: '型号', type: 'text', value: item.model },
-          status: { label: '状态', type: 'select', value: String(item.status), options: [{label:'上架', value:'1'}, {label:'下架', value:'0'}] },
+          custom_param1_value: { label: '自定义参数1值', type: 'text', value: item.custom_param1_value || '' },
+          custom_param2_value: { label: '自定义参数2值', type: 'text', value: item.custom_param2_value || '' },
+          status: { label: '状态', type: 'select', value: String(item.status), options: [{ label: '上架', value: '1' }, { label: '下架', value: '0' }] },
           image: { label: '图片(修改则上传)', type: 'file', multiple: false, files: null, existing: getImages(item) }
         },
         onConfirm: async (fields) => {
-            const formData = new FormData()
-            const append = (key) => formData.append(key, fields[key].value)
-            append('product_id')
-            append('name')
-            append('display_content')
-            append('available_products_name')
-            append('unit')
-            append('unit_price')
-            append('additional_price')
-            append('compute_method')
-            append('has_length')
-            append('color_temperature')
-            append('length_unit')
-            append('pricing_type')
-            append('item_number')
-            append('nuomi_item_number')
-            append('product_type')
-            append('max_length')
-            append('min_length')
-            append('length_interval')
-            formData.append('level_discount', String(fields.level_discount.value || '[]'))
-            append('product_category')
-            append('specification')
-            append('color')
-            append('model')
-            append('inventory')
+          const formData = new FormData()
+          const append = (key) => formData.append(key, fields[key].value)
+          append('product_id')
+          append('name')
+          append('display_content')
+          append('available_products_name')
+          append('unit')
+          append('unit_price')
+          append('additional_price')
+          append('compute_method')
+          append('has_length')
+          append('color_temperature')
+          append('length_unit')
+          append('pricing_type')
+          append('item_number')
+          append('nuomi_item_number')
+          append('product_type')
+          append('max_length')
+          append('min_length')
+          append('length_interval')
+          formData.append('level_discount', String(fields.level_discount.value || '[]'))
+          append('product_category')
+          append('specification')
+          append('color')
+          append('model')
+          append('custom_param1_value')
+          append('custom_param2_value')
+          append('inventory')
 
-            if (fields.image.files && fields.image.files[0]) {
-                formData.append('image', fields.image.files[0])
-            }
-            const initialImages = getImages(item).map(String)
-            const currentImages = Array.isArray(fields.image.existing) ? fields.image.existing.map(String) : []
-            const removedImages = initialImages.filter(u => !currentImages.includes(String(u)))
-            if (removedImages.length) {
-              try { formData.append('remove_image', JSON.stringify(removedImages)) } catch (e) {}
-            }
+          if (fields.image.files && fields.image.files[0]) {
+            formData.append('image', fields.image.files[0])
+          }
+          const initialImages = getImages(item).map(String)
+          const currentImages = Array.isArray(fields.image.existing) ? fields.image.existing.map(String) : []
+          const removedImages = initialImages.filter(u => !currentImages.includes(String(u)))
+          if (removedImages.length) {
+            try { formData.append('remove_image', JSON.stringify(removedImages)) } catch (e) {}
+          }
 
-            try {
-                const res = await updateProduct(formData, { onUploadProgress: (e) => setUploadProgress && setUploadProgress(e, '正在上传图片') })
-                if (res && res.success) {
-                    showToast('更新明细商品成功')
-                    try {
-                      await updateProductStatus({ product_id: fields.product_id.value, status: fields.status.value })
-                    } catch (e) {}
-                    endUploadProgress && endUploadProgress()
-                    fetchProducts()
-                } else {
-                    const msg = (res && (res.data || res.message)) || '更新失败'
-                    endUploadProgress && endUploadProgress()
-                    showToast(String(msg))
-                }
-            } catch (e) {
-                showToast('更新请求失败')
-                endUploadProgress && endUploadProgress()
+          try {
+            const res = await updateProduct(formData, { onUploadProgress: (e) => setUploadProgress && setUploadProgress(e, '正在上传图片') })
+            if (res && res.success) {
+              showToast('更新明细商品成功')
+              try {
+                await updateProductStatus({ product_id: fields.product_id.value, status: fields.status.value })
+              } catch (e) {}
+              endUploadProgress && endUploadProgress()
+              fetchProducts()
+            } else {
+              const msg = (res && (res.data || res.message)) || '更新失败'
+              endUploadProgress && endUploadProgress()
+              showToast(String(msg))
             }
+          } catch (e) {
+            showToast('更新请求失败')
+            endUploadProgress && endUploadProgress()
+          }
         }
       })
     }
 
-   const viewDetail = (item) => {
+    const viewDetail = (item) => {
       const rows = [
         { label: '明细商品ID', value: String(item.product_id || '') },
         { label: '明细商品名称', value: String(item.name || '') },
@@ -647,6 +686,8 @@ export default {
         { label: '长度间隔', value: String(item.length_interval || '') },
         { label: '等级折扣', value: String(item.level_discount || '') },
         { label: '产品分类', value: String(item.product_category || '') },
+        { label: '自定义参数1值', value: String(item.custom_param1_value || '') },
+        { label: '自定义参数2值', value: String(item.custom_param2_value || '') },
         { label: '规格', value: String(item.specification || '') },
         { label: '颜色', value: String(item.color || '') },
         { label: '型号', value: String(item.model || '') },
@@ -661,83 +702,91 @@ export default {
       showModal({ type: 'detail', title: '明细商品详情', data })
     }
 
-
     const handleUpdateDetailProduct = () => {
-       // This is the manual ID entry version from previous requirement
-       showModal({
+      // This is the manual ID entry version from previous requirement
+      showModal({
         type: 'form',
-       title: '更新明细商品(输入ID)',
-       fields: {
-         product_id: { label: '明细商品ID', type: 'text', value: '' },
-         name: { label: '明细商品名称', type: 'text', value: '' },
-         // ... (simplified for manual entry, or same full fields)
-         // To save space, I'll just use the same full fields but empty
-         available_products_name: { label: '关联商品名称', type: 'text', value: '' },
-         unit: { label: '单位', type: 'text', value: '件' },
+        title: '更新明细商品(输入ID)',
+        fields: {
+          product_id: { label: '明细商品ID', type: 'text', value: '' },
+          name: { label: '明细商品名称', type: 'text', value: '' },
+          // ... (simplified for manual entry, or same full fields)
+          // To save space, I'll just use the same full fields but empty
+          available_products_name: { label: '关联商品名称', type: 'text', value: '' },
+          unit: { label: '单位', type: 'text', value: '件' },
           unit_price: { label: '单价', type: 'number', value: '0.00', hint: '该单位价格指代的为1m的价格' },
-         additional_price: { label: '附加费', type: 'number', value: '0.00' },
-         inventory: { label: '库存', type: 'number', value: '0' },
-         compute_method: { label: '计算方式', type: 'select', value: '直接', options: [{label:'直接', value:'直接'}, {label:'公式', value:'公式'}] },
-         has_length: { label: '是否有长度', type: 'select', value: '0', options: [{label:'是', value:'1'}, {label:'否', value:'0'}] },
-         length_unit: { label: '长度单位', type: 'select', value: 'm', options: [
-           { label: 'cm', value: 'cm' },
-           { label: 'mm', value: 'mm' },
-           { label: 'dm', value: 'dm' },
-           { label: 'm', value: 'm' }
-         ] },
-         color_temperature: { label: '色温', type: 'text', value: '' },
-         pricing_type: { label: '定价类型', type: 'select', value: 'fixed', options: [{label:'固定', value:'fixed'}, {label:'全部定价', value:'all_pricing'}] },
-         max_length: { label: '最大长度', type: 'number', value: '0' },
-         min_length: { label: '最小长度', type: 'number', value: '0' },
-         length_interval: { label: '长度间隔', type: 'text', value: '无' },
-         level_discount: { label: '等级折扣(JSON)', type: 'text', value: '[]' },
-         product_category: { label: '产品分类', type: 'text', value: '' },
-         specification: { label: '规格', type: 'text', value: '' },
-         color: { label: '颜色', type: 'text', value: '' },
-         model: { label: '型号', type: 'text', value: '' },
-         image: { label: '图片', type: 'file', multiple: false, files: null }
-       },
+          additional_price: { label: '附加费', type: 'number', value: '0.00' },
+          inventory: { label: '库存', type: 'number', value: '0' },
+          compute_method: { label: '计算方式', type: 'select', value: '直接', options: [{ label: '直接', value: '直接' }, { label: '公式', value: '公式' }] },
+          has_length: { label: '是否有长度', type: 'select', value: '0', options: [{ label: '是', value: '1' }, { label: '否', value: '0' }] },
+          length_unit: {
+            label: '长度单位',
+            type: 'select',
+            value: 'm',
+            options: [
+              { label: 'cm', value: 'cm' },
+              { label: 'mm', value: 'mm' },
+              { label: 'dm', value: 'dm' },
+              { label: 'm', value: 'm' }
+            ]
+          },
+          color_temperature: { label: '色温', type: 'text', value: '' },
+          pricing_type: { label: '定价类型', type: 'select', value: 'fixed', options: [{ label: '固定', value: 'fixed' }, { label: '全部定价', value: 'all_pricing' }] },
+          max_length: { label: '最大长度', type: 'number', value: '0' },
+          min_length: { label: '最小长度', type: 'number', value: '0' },
+          length_interval: { label: '长度间隔', type: 'text', value: '无' },
+          level_discount: { label: '等级折扣(JSON)', type: 'text', value: '[]' },
+          product_category: { label: '产品分类', type: 'text', value: '' },
+          specification: { label: '规格', type: 'text', value: '' },
+          color: { label: '颜色', type: 'text', value: '' },
+          model: { label: '型号', type: 'text', value: '' },
+          custom_param1_value: { label: '自定义参数1值', type: 'text', value: '' },
+          custom_param2_value: { label: '自定义参数2值', type: 'text', value: '' },
+          image: { label: '图片', type: 'file', multiple: false, files: null }
+        },
         onConfirm: async (fields) => {
-            const formData = new FormData()
-            const append = (key) => formData.append(key, fields[key].value)
-            append('product_id')
-            append('name')
-            // ... append all ...
-            append('available_products_name')
-            append('unit')
-            append('unit_price')
-            append('additional_price')
-            append('compute_method')
-            append('has_length')
-            append('color_temperature')
-            append('length_unit')
-            append('pricing_type')
-            append('max_length')
-            append('min_length')
-            append('length_interval')
-            append('level_discount')
-            append('product_category')
-            append('specification')
-            append('color')
-            append('model')
-            append('inventory')
-            
-            if (fields.image.files && fields.image.files[0]) {
-                formData.append('image', fields.image.files[0])
-            }
+          const formData = new FormData()
+          const append = (key) => formData.append(key, fields[key].value)
+          append('product_id')
+          append('name')
+          // ... append all ...
+          append('available_products_name')
+          append('unit')
+          append('unit_price')
+          append('additional_price')
+          append('compute_method')
+          append('has_length')
+          append('color_temperature')
+          append('length_unit')
+          append('pricing_type')
+          append('max_length')
+          append('min_length')
+          append('length_interval')
+          append('level_discount')
+          append('product_category')
+          append('specification')
+          append('color')
+          append('model')
+          append('custom_param1_value')
+          append('custom_param2_value')
+          append('inventory')
 
-            try {
-                const res = await updateProduct(formData)
-                if (res && res.success) {
-                    showToast('更新明细商品成功')
-                    fetchProducts()
-                } else {
-                    const msg = (res && (res.data || res.message)) || '更新失败'
-                    showToast(String(msg))
-                }
-            } catch (e) {
-                showToast('更新请求失败')
+          if (fields.image.files && fields.image.files[0]) {
+            formData.append('image', fields.image.files[0])
+          }
+
+          try {
+            const res = await updateProduct(formData)
+            if (res && res.success) {
+              showToast('更新明细商品成功')
+              fetchProducts()
+            } else {
+              const msg = (res && (res.data || res.message)) || '更新失败'
+              showToast(String(msg))
             }
+          } catch (e) {
+            showToast('更新请求失败')
+          }
         }
       })
     }
@@ -748,7 +797,7 @@ export default {
         title: '更改明细商品状态',
         fields: {
           product_id: { label: '明细商品ID', type: 'text', value: '' },
-          status: { label: '状态', type: 'select', value: '1', options: [{label:'上架', value:'1'}, {label:'下架', value:'0'}] }
+          status: { label: '状态', type: 'select', value: '1', options: [{ label: '上架', value: '1' }, { label: '下架', value: '0' }] }
         },
         onConfirm: async (fields) => {
           try {

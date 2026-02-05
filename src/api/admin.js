@@ -115,5 +115,3 @@ export const deleteAdmin = body => api.post('/admin/admins/delete', body).then(r
 export const bindResponsibleUsers = body => api.post('/admin/admins/bind_users/add', body).then(r => r.data)
 
 export const updateResponsibleUsers = body => api.post('/admin/admins/bind_users/update', body).then(r => r.data)
-
-

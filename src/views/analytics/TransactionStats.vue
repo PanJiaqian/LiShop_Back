@@ -4,20 +4,20 @@
     <div class="card" style="margin-bottom: 24px;">
       <div class="filter-bar">
         <div class="tabs">
-          <button 
-            :class="['tab-btn', { active: activeTab === 'mother' }]" 
+          <button
+            :class="['tab-btn', { active: activeTab === 'mother' }]"
             @click="activeTab = 'mother'"
           >
             母商品销量
           </button>
-          <button 
-            :class="['tab-btn', { active: activeTab === 'child' }]" 
+          <button
+            :class="['tab-btn', { active: activeTab === 'child' }]"
             @click="activeTab = 'child'"
           >
             子商品销量
           </button>
-          <button 
-            :class="['tab-btn', { active: activeTab === 'orders' }]" 
+          <button
+            :class="['tab-btn', { active: activeTab === 'orders' }]"
             @click="activeTab = 'orders'"
           >
             成交情况
@@ -25,11 +25,11 @@
         </div>
       </div>
       <div class="filter-bar" style="margin-top: 16px;">
-        <input 
-          type="text" 
-          class="form-input" 
-          v-model="queryId" 
-          :placeholder="activeTab === 'mother' ? 'aprodXXXXXXXXXXXX' : (activeTab === 'child' ? 'productXXXXXXXXXXXX' : '订单视图无需填写')" 
+        <input
+          type="text"
+          class="form-input"
+          v-model="queryId"
+          :placeholder="activeTab === 'mother' ? 'aprodXXXXXXXXXXXX' : (activeTab === 'child' ? 'productXXXXXXXXXXXX' : '订单视图无需填写')"
         />
         <input type="date" class="form-input" v-model="start" />
         <span class="separator">-</span>
@@ -163,13 +163,13 @@ import { getAvailableProductSalesStats, getProductSalesStats, getOrderStats } fr
 
 export default {
   name: 'TransactionStats',
-  setup() {
+  setup () {
     const showToast = inject('showToast')
-    const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+    const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     const now = new Date()
     const endDefault = fmt(now)
     const startDefault = fmt(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7))
-    
+
     const activeTab = ref('mother')
     const queryId = ref('')
     const start = ref(startDefault)

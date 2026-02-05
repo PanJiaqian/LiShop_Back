@@ -92,9 +92,9 @@
             </div>
           </div>
           <div v-else-if="modal.type === 'detail'" class="modal-detail">
-            <div 
-              v-for="(item, idx) in modal.data" 
-              :key="idx" 
+            <div
+              v-for="(item, idx) in modal.data"
+              :key="idx"
               :class="['detail-item', item && item.type === 'image' ? 'is-image' : (item && item.type === 'video' ? 'is-video' : 'is-row')]"
             >
               <div v-if="item && item.type === 'image'" class="detail-image">
@@ -104,9 +104,9 @@
               <div v-else-if="item && item.type === 'image-row'" class="detail-image-row">
                 <div v-if="item.label" class="detail-label">{{ item.label }}</div>
                 <div class="image-row-container">
-                  <div 
-                    v-for="(src, i) in (item.images || [])" 
-                    :key="i" 
+                  <div
+                    v-for="(src, i) in (item.images || [])"
+                    :key="i"
                     class="image-row-thumb"
                     @click="enlargeDetailImage(src)"
                   >
@@ -117,9 +117,9 @@
               <div v-else-if="item && item.type === 'video-row'" class="detail-video-row">
                 <div v-if="item.label" class="detail-label">{{ item.label }}</div>
                 <div class="video-row-container">
-                  <div 
-                    v-for="(src, i) in (item.videos || [])" 
-                    :key="i" 
+                  <div
+                    v-for="(src, i) in (item.videos || [])"
+                    :key="i"
                     class="video-row-thumb"
                     @click="enlargeDetailVideo(src)"
                   >
@@ -129,11 +129,11 @@
               </div>
               <div v-else-if="item && item.type === 'video'" class="detail-video">
                 <div v-if="item.label" class="detail-label">{{ item.label }}</div>
-                <video 
-                  :src="item.src || item.value" 
-                  :class="item.large ? 'detail-video-large' : ''" 
-                  :controls="!!item.large" 
-                  muted 
+                <video
+                  :src="item.src || item.value"
+                  :class="item.large ? 'detail-video-large' : ''"
+                  :controls="!!item.large"
+                  muted
                   playsinline
                   crossorigin="anonymous"
                   @click="enlargeDetailVideo(item.src || item.value)"
@@ -153,17 +153,17 @@
                 <span v-if="field.tooltip" class="hint-icon" :title="field.tooltip">!</span>
                 <a v-if="field.link" :href="field.link" target="_blank" class="field-link">{{ field.linkText || '查看公司列表' }}</a>
               </div>
-              <input 
-                v-if="field.type === 'text' || field.type === 'number' || field.type === 'password' || field.type === 'email'" 
-                :type="field.type" 
-                v-model="field.value" 
+              <input
+                v-if="field.type === 'text' || field.type === 'number' || field.type === 'password' || field.type === 'email'"
+                :type="field.type"
+                v-model="field.value"
                 class="form-input"
                 @focus="(e) => { if(field.onFocus) field.onFocus(e) }"
                 @click="(e) => { if(field.onClick) field.onClick(e) }"
               />
               <div v-else-if="field.type === 'level-discount'" class="level-discount-group">
                 <div class="ld-add-row">
-                  <button class="ld-add-btn" 
+                  <button class="ld-add-btn"
                           :disabled="((Array.isArray(field.entries)?field.entries.length:0) + (field.newRows||0)) >= (field.max || 3)"
                           @click="() => {
                             const total = (Array.isArray(field.entries)?field.entries.length:0) + (field.newRows||0)
@@ -172,24 +172,24 @@
                           }">＋</button>
                 </div>
                 <div class="ld-rows">
-                  <div class="ld-row" 
-                       v-for="(row, idx) in ([]).concat(Array.isArray(field.entries)?field.entries:[]).concat(new Array(field.newRows||0).fill(null))" 
+                  <div class="ld-row"
+                       v-for="(row, idx) in ([]).concat(Array.isArray(field.entries)?field.entries:[]).concat(new Array(field.newRows||0).fill(null))"
                        :key="idx">
-                    <input class="form-input ld-display" 
-                           :readonly="true" 
-                           :value="row ? (`等级${row.level}:${row.discount}`) : ''" 
-                           :placeholder="row ? '' : '点击设置'" 
+                    <input class="form-input ld-display"
+                           :readonly="true"
+                           :value="row ? (`等级${row.level}:${row.discount}`) : ''"
+                           :placeholder="row ? '' : '点击设置'"
                            @click="() => openLevelDiscountEditor(field, idx, row)" />
                     <button class="ld-del-btn" @click="() => removeLevelDiscountRow(field, idx)">×</button>
                   </div>
                 </div>
               </div>
               <div v-else-if="field.type === 'file'" class="file-input-wrapper">
-                <input 
+                <input
                   type="file"
-                  :ref="'file-'+key" 
+                  :ref="'file-'+key"
                   :multiple="field.multiple"
-                  @change="(e) => { 
+                  @change="(e) => {
                     const newFiles = Array.from(e.target.files || [])
                     const existing = Array.isArray(field.files) ? field.files : []
                     const max = Number(field.maxFiles || field.max || 0)
@@ -202,9 +202,9 @@
                     }
                     field.files = [...existing, ...newFiles]
                     e.target.value = ''
-                    if(field.onChange) field.onChange(e) 
+                    if(field.onChange) field.onChange(e)
                   }"
-                  class="file-input-hidden" 
+                  class="file-input-hidden"
                 />
                 <div class="file-input-actions">
                   <button class="btn-sm" @click="openFileChooser(key, $event)">选择文件</button>
@@ -323,7 +323,7 @@ export default {
       sidebarCollapsed: false
     }
   },
-  setup() {
+  setup () {
     const pageLoading = ref(true)
     const router = useRouter()
     let hideTimer = null
@@ -602,7 +602,7 @@ export default {
         const d = new Date(s)
         if (!isNaN(d.getTime())) {
           const pad = n => String(n).padStart(2, '0')
-          return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+          return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
         }
         return s
       } catch (e) { return String(ts || '') }
@@ -1058,13 +1058,13 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  
+
   .kpi-label {
     font-size: 14px;
     color: #6b7280;
     font-weight: 500;
   }
-  
+
   .kpi-value {
     font-size: 28px;
     font-weight: 700;
@@ -1076,7 +1076,7 @@ body {
     display: flex;
     align-items: center;
     gap: 4px;
-    
+
     &.up { color: #10b981; }
     &.down { color: #ef4444; }
   }
@@ -1128,7 +1128,7 @@ body {
   margin-bottom: 24px;
   border-bottom: 1px solid #e5e7eb;
   padding-bottom: 12px;
-  
+
   h3 {
     margin: 0;
     font-size: 18px;
@@ -1147,11 +1147,11 @@ body {
   transition: all 0.2s;
   box-sizing: border-box;
   background-color: #fff;
-  
+
   &:hover {
     border-color: #cbd5e1;
   }
-  
+
   &:focus {
     outline: none;
     border-color: var(--primary-color);
@@ -1164,11 +1164,11 @@ body {
   gap: 12px;
   align-items: center;
   flex-wrap: wrap;
-  
+
   input {
     width: 200px;
   }
-  
+
   select {
     width: auto;
     min-width: 120px;
@@ -1193,47 +1193,47 @@ body {
   padding: 8px 16px;
   font-size: 14px;
   border: 1px solid #e2e8f0;
-  
+
   &:hover {
     background: #f8fafc;
     border-color: #cbd5e1;
     transform: translateY(-1px);
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
   }
-  
+
   &:active {
     transform: translateY(0);
   }
-  
+
   &.active {
     background: var(--primary-color);
     color: #fff;
     border-color: var(--primary-color);
   }
-  
+
   &.primary {
     background: var(--primary-color);
     color: #fff;
     border-color: var(--primary-color);
     box-shadow: 0 1px 2px rgba(37, 99, 235, 0.1);
-    
-    &:hover { 
+
+    &:hover {
       background: var(--primary-hover);
       border-color: var(--primary-hover);
       box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2), 0 2px 4px -1px rgba(37, 99, 235, 0.1);
     }
-    
+
     &:active {
       background: var(--primary-hover);
       box-shadow: none;
     }
   }
-  
+
   &.secondary {
     background: #f1f5f9;
     color: #475569;
     border-color: transparent;
-    &:hover { 
+    &:hover {
       background: #e2e8f0;
       color: #1e293b;
     }
@@ -1243,7 +1243,7 @@ body {
 .btn-lg {
   padding: 10px 24px;
   font-size: 14px;
-  
+
   &.primary {
     background: var(--primary-color);
     color: #fff;
@@ -1258,16 +1258,16 @@ body {
   color: var(--primary-color);
   padding: 4px 8px;
   font-size: 13px;
-  
+
   &:hover {
     text-decoration: underline;
     background: transparent;
   }
-  
+
   &.danger {
     color: #ef4444;
   }
-  
+
   &.success {
     color: #10b981;
   }
@@ -1282,7 +1282,7 @@ body {
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  
+
   th {
     text-align: left;
     padding: 12px 16px;
@@ -1292,18 +1292,18 @@ body {
     background: #f9fafb;
     border-bottom: 1px solid #e5e7eb;
   }
-  
+
   td {
     padding: 16px;
     font-size: 14px;
     color: #1f2937;
     border-bottom: 1px solid #f3f4f6;
   }
-  
+
   tr:last-child td {
     border-bottom: none;
   }
-  
+
   tr:hover td {
     background-color: #f9fafb;
   }
@@ -1316,12 +1316,12 @@ body {
   margin-top: 24px;
   padding-top: 16px;
   border-top: 1px solid #f3f4f6;
-  
+
   .page-info {
     font-size: 13px;
     color: #6b7280;
   }
-  
+
   .page-btns {
     display: flex;
     gap: 8px;
@@ -1334,7 +1334,7 @@ body {
   font-size: 12px;
   font-weight: 500;
   display: inline-block;
-  
+
   &.success { background: #dcfce7; color: #166534; }
   &.warning { background: #fef9c3; color: #854d0e; }
   &.info { background: #dbeafe; color: #1e40af; }
@@ -1359,7 +1359,7 @@ body {
   font-size: 14px;
   color: var(--primary-color);
   text-decoration: none;
-  
+
   &:hover {
     text-decoration: underline;
   }
@@ -1404,13 +1404,13 @@ body {
   justify-content: space-between;
   align-items: center;
   flex-shrink: 0;
-  
+
   h3 {
     margin: 0;
     font-size: 18px;
     font-weight: 600;
   }
-  
+
   .close-btn {
     background: none;
     border: none;
@@ -1419,7 +1419,7 @@ body {
     cursor: pointer;
     padding: 0;
     line-height: 1;
-    
+
     &:hover {
       color: #4b5563;
     }
@@ -1430,7 +1430,7 @@ body {
   padding: 24px;
   overflow-y: auto;
   flex: 1;
-  
+
   .modal-message {
     color: #4b5563;
     font-size: 15px;
@@ -1475,7 +1475,7 @@ body {
     display: flex;
     border-bottom: 1px solid #f3f4f6;
     padding-bottom: 8px;
-    
+
     &:last-child {
       border-bottom: none;
     }
@@ -1601,7 +1601,7 @@ body {
   }
 .upload-progress {
     margin-bottom: 16px;
-    
+
     label {
       display: block;
       margin-bottom: 6px;

@@ -99,7 +99,7 @@ const filteredStrategies = computed(() => {
 
 const viewStrategy = (s) => {
   const rows = []
-  const toStr = v => v===null||v===undefined?'':(typeof v==='object'?JSON.stringify(v):String(v))
+  const toStr = v => v === null || v === undefined ? '' : (typeof v === 'object' ? JSON.stringify(v) : String(v))
   const keyMap = {
     strategy_id: '策略ID',
     id: 'ID',
@@ -110,10 +110,10 @@ const viewStrategy = (s) => {
     created_at: '创建时间',
     updated_at: '更新时间',
     payload: '参数配置',
-    formula:'公式',
-    last_operator_id:'最后操作id'
+    formula: '公式',
+    last_operator_id: '最后操作id'
   }
-  Object.keys(s||{}).forEach(k => {
+  Object.keys(s || {}).forEach(k => {
     const label = keyMap[k] || k
     rows.push({ label: label, value: toStr(s[k]) })
   })

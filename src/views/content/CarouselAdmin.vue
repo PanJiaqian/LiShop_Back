@@ -65,7 +65,7 @@ import { createCarousel, updateCarouselStatus, listCarousel, deleteCarousel } fr
 
 export default {
   name: 'CarouselAdmin',
-  setup() {
+  setup () {
     const showToast = inject('showToast')
     const showModal = inject('showModal')
     const listType = ref('商品')

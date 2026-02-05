@@ -6,7 +6,7 @@
       </span>
       新建商品
     </div>
-    
+
     <div class="grid">
       <!-- Basic Info -->
       <div class="card" style="grid-column: span 8;">
@@ -74,7 +74,7 @@
             <!-- Simulated uploaded images -->
           </div>
         </div>
-        
+
         <div class="card-header" style="margin-top: 32px;">
           <h3>发布设置</h3>
         </div>
@@ -158,7 +158,7 @@
 <script>
 export default {
   name: 'ProductCreate',
-  data() {
+  data () {
     return {
       form: {
         name: '',
@@ -186,8 +186,8 @@ export default {
     }
   },
   methods: {
-    addSpec() {
-      this.form.specs.push({ name: '', values: [] });
+    addSpec () {
+      this.form.specs.push({ name: '', values: [] })
     }
   }
 }

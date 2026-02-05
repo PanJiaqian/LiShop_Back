@@ -9,7 +9,7 @@
         <button class="btn-sm primary" @click="handleCreateProduct">+ 新建商品</button>
       </div>
     </div>
-    
+
     <div class="card" style="margin-bottom: 24px;">
       <div class="filter-bar">
         <input type="text" class="form-input" placeholder="搜索商品名称..." v-model="filter.keyword" />
@@ -62,8 +62,8 @@
             <td>{{ item.sort_order }}</td>
             <td>{{ item.shipping_origin }}</td>
             <td>
-              <span 
-                class="badge" 
+              <span
+                class="badge"
                 :class="String(item.status) === '1' ? 'success' : 'gray'"
                 style="cursor: pointer;"
                 @click="toggleStatus(item)"
@@ -83,7 +83,7 @@
           </tr>
         </tbody>
       </table>
-      
+
       <div class="pagination">
         <span class="page-info">共 {{ pagination.total }} 条记录</span>
         <div class="page-btns">
@@ -99,10 +99,10 @@
 <script>
 import { inject, reactive, onMounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { 
-  createAvailableProduct, 
-  importAvailableProductsExcel, 
-  importAvailableProductsVideosZip, 
+import {
+  createAvailableProduct,
+  importAvailableProductsExcel,
+  importAvailableProductsVideosZip,
   importAvailableProductsImagesZip,
   updateAvailableProduct,
   updateAvailableProductStatus,
@@ -114,7 +114,7 @@ import { listCategories } from '@/api/category'
 
 export default {
   name: 'ProductList',
-  setup() {
+  setup () {
     const showModal = inject('showModal')
     const showToast = inject('showToast')
     const hideToast = inject('hideToast')
@@ -133,7 +133,7 @@ export default {
     const setUploadProgress = inject('setUploadProgress')
     const endUploadProgress = inject('endUploadProgress')
     const router = useRouter()
-    
+
     const loading = ref(false)
     const products = ref([])
     const pagination = reactive({
@@ -152,7 +152,7 @@ export default {
       category: '',
       status: ''
     })
-    
+
     const categoriesMap = ref({})
     const categoryOptions = ref([])
     const loadCategoriesMap = async () => {
@@ -177,7 +177,7 @@ export default {
       const k = String(id || '')
       return (categoriesMap.value && categoriesMap.value[k]) || k
     }
-    
+
     const fetchProducts = async () => {
       loading.value = true
       try {
@@ -238,11 +238,11 @@ export default {
     })
 
     const handleSearch = () => {
-       applied.keyword = filter.keyword
-       applied.category = filter.category
-       applied.status = filter.status
-       pagination.page = 1
-       fetchProducts()
+      applied.keyword = filter.keyword
+      applied.category = filter.category
+      applied.status = filter.status
+      pagination.page = 1
+      fetchProducts()
     }
 
     const resetFilter = () => {
@@ -251,7 +251,7 @@ export default {
       filter.status = ''
       handleSearch()
     }
-    
+
     const changePage = (page) => {
       pagination.page = page
       fetchProducts()
@@ -272,10 +272,10 @@ export default {
           category_name: { label: '分类名称', type: 'text', value: '' },
           sort_order: { label: '推荐值', type: 'number', value: '0' },
           shipping_origin: { label: '发货地', type: 'text', value: '' },
-          status: { label: '状态', type: 'select', value: '1', options: [{label:'上架', value:'1'}, {label:'下架', value:'0'}] },
-          is_free_shipping: { label: '包邮', type: 'select', value: '1', options: [{label:'是', value:'1'}, {label:'否', value:'0'}] },
+          status: { label: '状态', type: 'select', value: '1', options: [{ label: '上架', value: '1' }, { label: '下架', value: '0' }] },
+          is_free_shipping: { label: '包邮', type: 'select', value: '1', options: [{ label: '是', value: '1' }, { label: '否', value: '0' }] },
           shipping_time_hours: { label: '发货时效(小时)', type: 'number', value: '24' },
-          support_no_reason_return_7d: { label: '七天无理由', type: 'select', value: '1', options: [{label:'支持', value:'1'}, {label:'不支持', value:'0'}] },
+          support_no_reason_return_7d: { label: '七天无理由', type: 'select', value: '1', options: [{ label: '支持', value: '1' }, { label: '不支持', value: '0' }] },
           main_image: { label: '主图', type: 'file', multiple: true, files: [], maxFiles: 6, hint: '主图最多选择6个文件' },
           images: { label: '轮播图', type: 'file', multiple: true, files: [], maxFiles: 6, hint: '轮播图最多选择6个文件' },
           video_url: { label: '视频', type: 'file', multiple: true, files: [], maxFiles: 2, hint: '视频最多选择2个文件' }
@@ -290,7 +290,7 @@ export default {
           formData.append('is_free_shipping', fields.is_free_shipping.value)
           formData.append('shipping_time_hours', fields.shipping_time_hours.value)
           formData.append('support_no_reason_return_7d', fields.support_no_reason_return_7d.value)
-          
+
           if (fields.main_image.files) {
             const files = Array.from(fields.main_image.files)
             files.forEach(f => formData.append('main_image', f))
@@ -434,17 +434,17 @@ export default {
     }
 
     const editProduct = async (item) => {
-          const categoryOptions = []
-          try {
-            const res = await listCategories({ page: 1, page_size: 200 })
-            const items = (res && res.data && res.data.items) || []
-            items.forEach(c => {
-              const label = c.name || c.category_name || String(c.category_id || '')
-              const value = label
-              categoryOptions.push({ label, value })
-            })
-          } catch (e) {}
-          showModal({
+      const categoryOptions = []
+      try {
+        const res = await listCategories({ page: 1, page_size: 200 })
+        const items = (res && res.data && res.data.items) || []
+        items.forEach(c => {
+          const label = c.name || c.category_name || String(c.category_id || '')
+          const value = label
+          categoryOptions.push({ label, value })
+        })
+      } catch (e) {}
+      showModal({
         type: 'form',
         title: '编辑商品',
         fields: {
@@ -455,11 +455,11 @@ export default {
           shipping_origin: { label: '发货地', type: 'text', value: item.shipping_origin },
           main_image: { label: '主图(修改则上传)', type: 'file', multiple: true, files: [], maxFiles: 6, hint: '主图最多选择6个文件', existing: (Array.isArray(item.main_image) ? item.main_image : (item.main_image ? [item.main_image] : [])).map(x => String(x)).filter(s => s && s.toLowerCase() !== 'null' && s.toLowerCase() !== 'undefined') },
           images: { label: '轮播图(修改则上传)', type: 'file', multiple: true, files: [], maxFiles: 6, hint: '轮播图最多选择6个文件', existing: (Array.isArray(item.images) ? item.images : []).map(x => String(x)).filter(s => s && s.toLowerCase() !== 'null' && s.toLowerCase() !== 'undefined') },
-          video_url: { label: '视频(修改则上传)', type: 'file', multiple: true, files: [], maxFiles: 2, hint: '视频最多选择2个文件', existing: (Array.isArray(item.video) ? item.video : (Array.isArray(item.video_url) ? item.video_url : (item.video_url ? [item.video_url] : []) )).map(x => String(x)).filter(s => s && s.toLowerCase() !== 'null' && s.toLowerCase() !== 'undefined') },
-          status: { label: '状态', type: 'select', value: String(item.status), options: [{label:'上架', value:'1'}, {label:'下架', value:'0'}] },
-          is_free_shipping: { label: '包邮', type: 'select', value: String(item.is_free_shipping), options: [{label:'是', value:'1'}, {label:'否', value:'0'}] },
+          video_url: { label: '视频(修改则上传)', type: 'file', multiple: true, files: [], maxFiles: 2, hint: '视频最多选择2个文件', existing: (Array.isArray(item.video) ? item.video : (Array.isArray(item.video_url) ? item.video_url : (item.video_url ? [item.video_url] : []))).map(x => String(x)).filter(s => s && s.toLowerCase() !== 'null' && s.toLowerCase() !== 'undefined') },
+          status: { label: '状态', type: 'select', value: String(item.status), options: [{ label: '上架', value: '1' }, { label: '下架', value: '0' }] },
+          is_free_shipping: { label: '包邮', type: 'select', value: String(item.is_free_shipping), options: [{ label: '是', value: '1' }, { label: '否', value: '0' }] },
           shipping_time_hours: { label: '发货时效(小时)', type: 'number', value: item.shipping_time_hours },
-          support_no_reason_return_7d: { label: '七天无理由', type: 'select', value: String(item.support_no_reason_return_7d), options: [{label:'支持', value:'1'}, {label:'不支持', value:'0'}] }
+          support_no_reason_return_7d: { label: '七天无理由', type: 'select', value: String(item.support_no_reason_return_7d), options: [{ label: '支持', value: '1' }, { label: '不支持', value: '0' }] }
         },
         onConfirm: async (fields) => {
           const initialMain = Array.isArray(item.main_image) ? item.main_image.map(String) : (item.main_image ? [String(item.main_image)] : [])
@@ -489,7 +489,7 @@ export default {
           formData.append('is_free_shipping', fields.is_free_shipping.value)
           formData.append('shipping_time_hours', fields.shipping_time_hours.value)
           formData.append('support_no_reason_return_7d', fields.support_no_reason_return_7d.value)
-          
+
           if (fields.main_image.files) {
             const files = Array.from(fields.main_image.files)
             files.forEach(f => formData.append('main_image', f))
@@ -536,7 +536,7 @@ export default {
         }
       })
     }
-    
+
     const toggleStatus = async (item) => {
       const newStatus = item.status === 1 ? 0 : 1
       try {
@@ -563,7 +563,7 @@ export default {
         title: '删除商品',
         message: `确定要删除商品 "${item.name}" 吗？此操作不可恢复。`,
         onConfirm: () => {
-           showToast('暂未开放删除接口')
+          showToast('暂未开放删除接口')
         }
       })
     }
@@ -590,9 +590,11 @@ export default {
       return arr.map(x => normalizeUrl(String(x))).filter(Boolean)
     }
     const getVideos = (item) => {
-      const arr = Array.isArray(item.video) ? item.video
-                : (Array.isArray(item.video_url) ? item.video_url
-                  : (item.video_url ? [item.video_url] : []))
+      const arr = Array.isArray(item.video)
+        ? item.video
+        : (Array.isArray(item.video_url)
+            ? item.video_url
+            : (item.video_url ? [item.video_url] : []))
       return arr.map(x => normalizeUrl(String(x))).filter(Boolean)
     }
 
@@ -617,21 +619,21 @@ export default {
       showModal({ type: 'detail', title: '商品详情', data })
     }
 
-      return {
-        loading,
-        products,
-        displayProducts,
-        pagination,
-        filter,
-        formatTime,
-        fetchProducts,
-        handleSearch,
-        resetFilter,
-        changePage,
-        handleCreateProduct,
-        handleImportExcel,
-        handleImportImages,
-        handleImportVideos,
+    return {
+      loading,
+      products,
+      displayProducts,
+      pagination,
+      filter,
+      formatTime,
+      fetchProducts,
+      handleSearch,
+      resetFilter,
+      changePage,
+      handleCreateProduct,
+      handleImportExcel,
+      handleImportImages,
+      handleImportVideos,
       viewDetail,
       editProduct,
       toggleStatus,
@@ -641,7 +643,7 @@ export default {
       getImages,
       previewImage,
       categoryOptions
-      }
+    }
   }
 }
 </script>

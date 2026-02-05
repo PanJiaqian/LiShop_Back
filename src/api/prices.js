@@ -25,4 +25,3 @@ export const deletePriceStrategy = (formData) => {
     headers: { 'Content-Type': 'multipart/form-data' }
   }).then(res => res.data)
 }
-

@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="page-title">消息与工单</div>
-    
+
     <div class="grid">
       <!-- 左侧：消息列表 -->
       <div class="card message-list-card">
@@ -12,9 +12,9 @@
           </div>
         </div>
         <div class="message-list">
-          <div 
-            class="message-item" 
-            v-for="msg in filteredMessages" 
+          <div
+            class="message-item"
+            v-for="msg in filteredMessages"
             :key="msg.id"
             :class="{ unread: !msg.read, active: activeMsg.id === msg.id }"
             @click="selectMessage(msg)"
@@ -42,7 +42,7 @@
             <button class="btn-sm" v-if="activeMsg.type === 'ticket'" @click="resolveTicket">标记已解决</button>
           </div>
         </div>
-        
+
         <div class="chat-history" ref="chatHistory">
           <div class="chat-msg received">
             <div class="avatar">{{ activeMsg.user.charAt(0) }}</div>
@@ -57,7 +57,7 @@
             <div class="avatar">A</div>
           </div>
         </div>
-        
+
         <div class="chat-input">
           <textarea class="form-input" rows="3" placeholder="输入回复内容..." v-model="replyContent"></textarea>
           <div class="input-actions">
@@ -106,7 +106,7 @@ const sendReply = () => {
     showToast('请输入回复内容')
     return
   }
-  
+
   // Simulate sending reply
   if (!activeMsg.value.reply) {
     activeMsg.value.reply = replyContent.value
@@ -114,7 +114,7 @@ const sendReply = () => {
     // In a real app, we would append to a list of messages
     showToast('回复已发送')
   }
-  
+
   replyContent.value = ''
   showToast('发送成功')
 }
@@ -137,7 +137,7 @@ const resolveTicket = () => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  
+
   .card-header {
     padding: 10px 20px;
     border-bottom: 1px solid #e2e8f0;
@@ -147,7 +147,7 @@ const resolveTicket = () => {
 .message-list {
   flex: 1;
   overflow-y: auto;
-  
+
   .message-item {
     padding: 15px 20px;
     border-bottom: 1px solid #f1f5f9;
@@ -155,15 +155,15 @@ const resolveTicket = () => {
     display: flex;
     gap: 12px;
     transition: all 0.2s;
-    
+
     &:hover {
       background: #f8fafc;
     }
-    
+
     &.active {
       background: #eff6ff;
     }
-    
+
     &.unread {
       background: #fffbe6;
       .msg-text {
@@ -171,7 +171,7 @@ const resolveTicket = () => {
         color: #333;
       }
     }
-    
+
     .msg-avatar {
       width: 40px;
       height: 40px;
@@ -184,27 +184,27 @@ const resolveTicket = () => {
       font-weight: bold;
       flex-shrink: 0;
     }
-    
+
     .msg-content {
       flex: 1;
       min-width: 0;
-      
+
       .msg-header {
         display: flex;
         justify-content: space-between;
         margin-bottom: 4px;
-        
+
         .msg-user {
           font-weight: 500;
           color: #333;
         }
-        
+
         .msg-time {
           font-size: 12px;
           color: #94a3b8;
         }
       }
-      
+
       .msg-text {
         font-size: 13px;
         color: #64748b;
@@ -221,19 +221,19 @@ const resolveTicket = () => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  
+
   .card-header {
     padding: 15px 20px;
     border-bottom: 1px solid #e2e8f0;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    
+
     h3 {
       margin: 0;
       font-size: 16px;
     }
-    
+
     .tag {
       margin-left: 10px;
       font-size: 12px;
@@ -249,12 +249,12 @@ const resolveTicket = () => {
   padding: 20px;
   overflow-y: auto;
   background: #f8fafc;
-  
+
   .chat-msg {
     display: flex;
     gap: 10px;
     margin-bottom: 20px;
-    
+
     .avatar {
       width: 36px;
       height: 36px;
@@ -266,7 +266,7 @@ const resolveTicket = () => {
       justify-content: center;
       flex-shrink: 0;
     }
-    
+
     .bubble {
       padding: 10px 15px;
       background: white;
@@ -275,14 +275,14 @@ const resolveTicket = () => {
       max-width: 70%;
       line-height: 1.5;
     }
-    
+
     &.sent {
       justify-content: flex-end;
-      
+
       .avatar {
         background: var(--primary-color);
       }
-      
+
       .bubble {
         background: #eff6ff;
         color: #1e293b;
@@ -295,7 +295,7 @@ const resolveTicket = () => {
   padding: 15px 20px;
   border-top: 1px solid #e2e8f0;
   background: white;
-  
+
   textarea {
     width: 100%;
     resize: none;
@@ -303,13 +303,13 @@ const resolveTicket = () => {
     border: 1px solid #cbd5e1;
     border-radius: 4px;
     padding: 10px;
-    
+
     &:focus {
       outline: none;
       border-color: var(--primary-color);
     }
   }
-  
+
   .input-actions {
     display: flex;
     justify-content: flex-end;
@@ -319,20 +319,20 @@ const resolveTicket = () => {
 .tabs {
   display: flex;
   gap: 20px;
-  
+
   .tab-item {
     padding-bottom: 10px;
     cursor: pointer;
     color: #64748b;
     border-bottom: 2px solid transparent;
     transition: all 0.2s;
-    
+
     &.active {
       color: var(--primary-color);
       border-bottom-color: var(--primary-color);
       font-weight: 500;
     }
-    
+
     &:hover {
       color: var(--primary-color);
     }

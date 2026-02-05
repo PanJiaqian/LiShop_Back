@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="page-title">订单管理</div>
-    
+
     <div class="card" style="margin-bottom: 24px;">
       <div class="tabs">
         <div class="tab-item" :class="{ active: activeTab === 'all' }" @click="activeTab = 'all'">全部订单</div>
@@ -122,7 +122,7 @@ import { listAdminOrdersDetail, updateOrderStatus, updateTrackingNumber, listAbn
 
 export default {
   name: 'OrderList',
-  setup() {
+  setup () {
     const showModal = inject('showModal')
     const showToast = inject('showToast')
     const activeTab = ref('all')
@@ -148,58 +148,58 @@ export default {
       return map[k] || s
     }
 
-const fetchOrders = async () => {
-  try {
-    const res = await listAdminOrdersDetail({ order_id: '', page: 1, page_size: 20, sort_by: 'price', sort_order: 'desc' })
-    if (res && res.success) {
-      const items = (res && res.data && Array.isArray(res.data.orders)) ? res.data.orders : []
-      const mapped = items.map(e => {
-        const o = e.order || {}
-        return {
-          id: o.order_id,
-          user_id: o.user_id || '',
-          address_id: o.address_id || '',
-          total_amount: (o.total_amount != null ? Number(o.total_amount).toFixed(2) : '0.00'),
-          created_at: (o.created_at ? String(o.created_at).replace('T', ' ').split('.')[0] : ''),
-          status: normalizeStatus(o.status),
-          tracking_number: o.tracking_number,
-          logistics_company: o.logistics_company,
-          note: o.note || ''
+    const fetchOrders = async () => {
+      try {
+        const res = await listAdminOrdersDetail({ order_id: '', page: 1, page_size: 20, sort_by: 'price', sort_order: 'desc' })
+        if (res && res.success) {
+          const items = (res && res.data && Array.isArray(res.data.orders)) ? res.data.orders : []
+          const mapped = items.map(e => {
+            const o = e.order || {}
+            return {
+              id: o.order_id,
+              user_id: o.user_id || '',
+              address_id: o.address_id || '',
+              total_amount: (o.total_amount != null ? Number(o.total_amount).toFixed(2) : '0.00'),
+              created_at: (o.created_at ? String(o.created_at).replace('T', ' ').split('.')[0] : ''),
+              status: normalizeStatus(o.status),
+              tracking_number: o.tracking_number,
+              logistics_company: o.logistics_company,
+              note: o.note || ''
+            }
+          })
+          orders.splice(0, orders.length, ...mapped)
+        } else {
+          orders.splice(0, orders.length)
+          const msg = (res && (res.data || res.message)) || '获取订单失败'
+          showToast(String(msg))
         }
-      })
-      orders.splice(0, orders.length, ...mapped)
-    } else {
-      orders.splice(0, orders.length)
-      const msg = (res && (res.data || res.message)) || '获取订单失败'
-      showToast(String(msg))
+      } catch (e) {
+        showToast('获取订单失败')
+      }
     }
-  } catch (e) {
-    showToast('获取订单失败')
-  }
-}
 
-const fetchAbnormalOrders = async () => {
-  try {
-    const res = await listAbnormalOrders({})
-    if (res && res.success) {
-      const arr = (res && res.data && Array.isArray(res.data.orders)) ? res.data.orders : []
-      abnormalOrders.value = arr.map(o => ({
-        order_id: o.order_id,
-        user_name: o.user_name,
-        user_phone: o.user_phone,
-        order_items: Array.isArray(o.order_items) ? o.order_items : [],
-        error_message: o.error_message || ''
-      }))
-    } else {
-      abnormalOrders.value = []
-      const msg = (res && (res.data || res.message)) || '获取异常订单失败'
-      showToast(String(msg))
+    const fetchAbnormalOrders = async () => {
+      try {
+        const res = await listAbnormalOrders({})
+        if (res && res.success) {
+          const arr = (res && res.data && Array.isArray(res.data.orders)) ? res.data.orders : []
+          abnormalOrders.value = arr.map(o => ({
+            order_id: o.order_id,
+            user_name: o.user_name,
+            user_phone: o.user_phone,
+            order_items: Array.isArray(o.order_items) ? o.order_items : [],
+            error_message: o.error_message || ''
+          }))
+        } else {
+          abnormalOrders.value = []
+          const msg = (res && (res.data || res.message)) || '获取异常订单失败'
+          showToast(String(msg))
+        }
+      } catch (e) {
+        abnormalOrders.value = []
+        showToast('获取异常订单失败')
+      }
     }
-  } catch (e) {
-    abnormalOrders.value = []
-    showToast('获取异常订单失败')
-  }
-}
 
     const filteredOrders = computed(() => {
       let res = orders
@@ -232,11 +232,11 @@ const fetchAbnormalOrders = async () => {
 
     const getStatusClass = (status) => {
       const map = {
-        '待付款': 'warning',
-        '待发货': 'info',
-        '待收货': 'primary',
-        '已收货': 'success',
-        '已取消': 'gray'
+        待付款: 'warning',
+        待发货: 'info',
+        待收货: 'primary',
+        已收货: 'success',
+        已取消: 'gray'
       }
       return map[status] || 'gray'
     }
@@ -292,10 +292,10 @@ const fetchAbnormalOrders = async () => {
         { label: '已取消', value: 'CANCELLED' }
       ]
       const invert = {
-        '待付款': 'PENDING',
-        '待发货': 'CONFIRMED',
-        '已收货': 'COMPLETED',
-        '已取消': 'CANCELLED'
+        待付款: 'PENDING',
+        待发货: 'CONFIRMED',
+        已收货: 'COMPLETED',
+        已取消: 'CANCELLED'
       }
       showModal({
         type: 'form',
@@ -333,7 +333,8 @@ const fetchAbnormalOrders = async () => {
           trackingNumber: { label: '物流单号', type: 'text', value: '' },
           fromRegion: { label: '寄件地区', type: 'text', value: '', tooltip: '模板:广东省广州市黄埔区' },
           toRegion: { label: '收件地区', type: 'text', value: '', tooltip: '模板:广东省广州市黄埔区' },
-          senderPhone: { label: '寄件人手机号', type: 'text', value: '', tooltip: '注意事项：\n 1.座机号码：如有分机号，无需传入分机号。\n 2.电商虚拟号码：需传入“-”后的后四位数字。\n 3.手机号验证：建议通过微信小程序验证号码是否正确。\n 例：\n 1.座机 0755-81234567 可传入：075581234567、81234567 或 4567\n 2.电商虚拟号码 13801380000-1234 可传入：1234\n 3.手机号 13801380000 可传入：13801380000 或 8000' }},
+          senderPhone: { label: '寄件人手机号', type: 'text', value: '', tooltip: '注意事项：\n 1.座机号码：如有分机号，无需传入分机号。\n 2.电商虚拟号码：需传入“-”后的后四位数字。\n 3.手机号验证：建议通过微信小程序验证号码是否正确。\n 例：\n 1.座机 0755-81234567 可传入：075581234567、81234567 或 4567\n 2.电商虚拟号码 13801380000-1234 可传入：1234\n 3.手机号 13801380000 可传入：13801380000 或 8000' }
+        },
         onConfirm: async (fields) => {
           try {
             const fd = new FormData()
@@ -433,15 +434,21 @@ const fetchAbnormalOrders = async () => {
         { label: '已取消', value: 'CANCELLED' }
       ]
       const fields = {
-        status: { label: '状态', type: 'select', value: 'SHIPPED', options: statusOptions, onChange: (e) => {
-          const v = e && e.target ? e.target.value : 'SHIPPED'
-          const needShip = String(v).toUpperCase() === 'SHIPPED'
-          fields.trackingNumber.hidden = !needShip
-          fields.logisticsCompany.hidden = !needShip
-          fields.fromRegion.hidden = !needShip
-          fields.toRegion.hidden = !needShip
-          fields.senderPhone.hidden = !needShip
-        } },
+        status: {
+          label: '状态',
+          type: 'select',
+          value: 'SHIPPED',
+          options: statusOptions,
+          onChange: (e) => {
+            const v = e && e.target ? e.target.value : 'SHIPPED'
+            const needShip = String(v).toUpperCase() === 'SHIPPED'
+            fields.trackingNumber.hidden = !needShip
+            fields.logisticsCompany.hidden = !needShip
+            fields.fromRegion.hidden = !needShip
+            fields.toRegion.hidden = !needShip
+            fields.senderPhone.hidden = !needShip
+          }
+        },
         trackingNumber: { label: '物流单号', type: 'text', value: '' },
         logisticsCompany: { label: '物流公司代码', type: 'text', value: '', link: '/company.xlsx', linkText: '公司代码列表' },
         fromRegion: { label: '寄件地区', type: 'text', value: '', tooltip: '模板:广东省广州市黄埔区' },
@@ -505,24 +512,24 @@ const fetchAbnormalOrders = async () => {
       if (val === 'abnormal') fetchAbnormalOrders()
     })
 
-      return {
-        activeTab,
-        filter,
-        orders,
-        selected,
-        abnormalOrders,
-        filteredOrders,
-        getStatusClass,
-        handleSearch,
-        exportOrders,
-        toggleSelectAll,
-        shipOrder,
-        closeOrder,
-        changeTracking,
-        editStatus,
-        viewAbnormalDetail,
-        retrySubscribe
-      }
+    return {
+      activeTab,
+      filter,
+      orders,
+      selected,
+      abnormalOrders,
+      filteredOrders,
+      getStatusClass,
+      handleSearch,
+      exportOrders,
+      toggleSelectAll,
+      shipOrder,
+      closeOrder,
+      changeTracking,
+      editStatus,
+      viewAbnormalDetail,
+      retrySubscribe
+    }
   }
 }
 </script>
@@ -543,7 +550,7 @@ const fetchAbnormalOrders = async () => {
   color: #6b7280;
   border-bottom: 2px solid transparent;
   transition: all 0.2s;
-  
+
   &:hover { color: var(--primary-color); }
   &.active { color: var(--primary-color); border-bottom-color: var(--primary-color); font-weight: 500; }
 }

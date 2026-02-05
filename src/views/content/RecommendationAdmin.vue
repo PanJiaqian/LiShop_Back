@@ -70,7 +70,7 @@ import { createRecommendation, updateRecommendationStatus, listRecommendations, 
 
 export default {
   name: 'RecommendationAdmin',
-  setup() {
+  setup () {
     const showToast = inject('showToast')
     const showModal = inject('showModal')
     const formatTime = inject('formatTime', (t) => {
@@ -111,7 +111,6 @@ export default {
           const fd = new FormData()
           fd.append('carousel_type', fields.carousel_type.value)
           if (fields.available_product_id.value) fd.append('available_product_id', fields.available_product_id.value)
-          
 
           try {
             const res = await createRecommendation(fd)
