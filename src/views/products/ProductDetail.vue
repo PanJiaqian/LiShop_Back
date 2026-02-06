@@ -686,13 +686,23 @@ export default {
         { label: '长度间隔', value: String(item.length_interval || '') },
         { label: '等级折扣', value: String(item.level_discount || '') },
         { label: '产品分类', value: String(item.product_category || '') },
-        { label: '自定义参数1值', value: String(item.custom_param1_value || '') },
-        { label: '自定义参数2值', value: String(item.custom_param2_value || '') },
         { label: '规格', value: String(item.specification || '') },
         { label: '颜色', value: String(item.color || '') },
         { label: '型号', value: String(item.model || '') },
         { label: '状态', value: String(item.status) === '1' ? '上架' : '下架' }
       ]
+      if (String(item.has_custom_params || '0') === '1') {
+        const idx = rows.findIndex(r => r.label === '规格')
+        const inserts = [
+          { label: String(item.custom_param1_name || ''), value: String(item.custom_param1_value == null ? '' : item.custom_param1_value) },
+          { label: String(item.custom_param2_name || ''), value: String(item.custom_param2_value == null ? '' : item.custom_param2_value) }
+        ]
+        if (idx >= 0) {
+          rows.splice(idx, 0, ...inserts)
+        } else {
+          rows.push(...inserts)
+        }
+      }
       const data = []
       const imgs = getImages(item)
       if (imgs.length) {
