@@ -1,3 +1,7 @@
+<!--
+  模块: 顶部导航栏
+  作用: 展示品牌与登录态入口，提供管理员登录/退出与角色信息下拉菜单
+-->
 <template>
   <header class="header">
     <button class="menu-btn" @click="$emit('toggle')">☰</button>

@@ -1,3 +1,7 @@
+<!--
+  模块: 后台管理布局
+  作用: 提供管理端统一骨架（头部/侧边栏/内容区），并承载全局弹窗与上传进度展示
+-->
 <template>
   <div class="admin">
     <layout-header @toggle="toggleSidebar" />

@@ -1,3 +1,7 @@
+<!--
+  模块: 订单详情页
+  作用: 展示订单全量信息与状态流转，支持发货/状态更新等管理操作
+-->
 <template>
   <div class="order-detail">
     <div class="page-header">

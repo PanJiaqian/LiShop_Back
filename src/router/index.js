@@ -1,3 +1,7 @@
+/*
+ * 模块: 路由配置
+ * 作用: 定义后台管理端页面路由，使用 hash 历史并按需懒加载各业务页面
+ */
 import { createRouter, createWebHashHistory } from 'vue-router'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 

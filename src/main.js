@@ -1,3 +1,7 @@
+/*
+ * 模块: 应用入口
+ * 作用: 创建并挂载 Vue 应用，注册路由与状态仓库，并注入全局时间格式化工具
+ */
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'

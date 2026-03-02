@@ -1,3 +1,5 @@
+# 模块: 浏览器兼容目标
+# 作用: 定义构建/转译时的目标浏览器范围，用于控制 polyfill 与 CSS/JS 兼容性
 > 1%
 last 2 versions
 not dead

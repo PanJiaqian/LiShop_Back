@@ -1,3 +1,7 @@
+<!--
+  模块: 示例首页
+  作用: Vue CLI 默认示例页面（当前路由配置未使用，可按需删除或替换）
+-->
 <template>
   <div class="home">
     <img alt="Vue logo" src="../assets/logo.png">

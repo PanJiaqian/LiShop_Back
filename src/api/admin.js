@@ -1,3 +1,7 @@
+/*
+ * 模块: 管理端认证与通用 API 客户端
+ * 作用: 维护管理员登录态(token/过期时间/用户信息)，并提供自动携带 Authorization 的 axios 实例；当接口返回 401 时自动清理登录态
+ */
 import axios from 'axios'
 import { createPinia, setActivePinia, defineStore } from 'pinia'
 
@@ -11,6 +15,11 @@ const USER_KEY = 'shopback_admin_user'
 
 let logoutTimer
 
+/**
+ * 管理员认证状态仓库
+ * - token / expiresAt / user 持久化到 localStorage
+ * - login 成功后启动自动登出计时器
+ */
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     token: localStorage.getItem(TOKEN_KEY) || null,
@@ -66,6 +75,11 @@ export const useAuthStore = defineStore('auth', {
   }
 })
 
+/**
+ * 统一的后台 API 客户端
+ * - 请求拦截器：自动附加 Bearer token
+ * - 响应拦截器：401 触发登出
+ */
 export const api = axios.create({
   baseURL: BASE_URL,
   headers: { 'Content-Type': 'application/json' }
@@ -92,26 +106,54 @@ api.interceptors.response.use(
   }
 )
 
+/**
+ * 管理员登录
+ * @param {{phone: string, password: string}} payload 登录参数
+ */
 export const loginAdmin = payload => {
   const auth = useAuthStore()
   return auth.login(payload)
 }
 
+/**
+ * 创建管理员
+ */
 export const createAdmin = body => api.post('/admin/admins', body).then(r => r.data)
 
+/**
+ * 更新管理员信息
+ */
 export const updateAdmin = body => api.post('/admin/admins/update', body).then(r => r.data)
 
+/**
+ * 更新管理员权限
+ */
 export const updateAdminPermissions = body => api.post('/admin/admins/permissions', body).then(r => r.data)
 
+/**
+ * 更新管理员启用状态
+ */
 export const updateAdminStatus = body => api.post('/admin/admins/status', body).then(r => r.data)
 
+/**
+ * 管理员列表（支持分页/筛选等查询参数）
+ */
 export const listAdmins = params => api.get('/admin/admins', { params }).then(r => r.data)
 
 const authInit = useAuthStore()
 authInit.ensureTimer()
 
+/**
+ * 删除管理员
+ */
 export const deleteAdmin = body => api.post('/admin/admins/delete', body).then(r => r.data)
 
+/**
+ * 为管理员绑定负责的用户（新增绑定）
+ */
 export const bindResponsibleUsers = body => api.post('/admin/admins/bind_users/add', body).then(r => r.data)
 
+/**
+ * 为管理员绑定负责的用户（更新绑定）
+ */
 export const updateResponsibleUsers = body => api.post('/admin/admins/bind_users/update', body).then(r => r.data)

@@ -1,3 +1,7 @@
+<!--
+  模块: 侧边栏菜单
+  作用: 提供后台管理端主要功能入口导航，并根据登录态控制受限页面跳转
+-->
 <template>
   <aside class="sidebar" :class="{ collapsed }">
     <nav class="menu">

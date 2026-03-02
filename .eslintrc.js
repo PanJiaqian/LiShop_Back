@@ -1,3 +1,7 @@
+/*
+ * 模块: ESLint 配置
+ * 作用: 定义项目的代码规范与静态检查规则，供本地开发与 CI 执行 lint 使用
+ */
 module.exports = {
   root: true,
   env: {

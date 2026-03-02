@@ -1,3 +1,5 @@
+# 模块: 编辑器格式规范
+# 作用: 统一各编辑器的缩进与换行等格式化行为，避免不同环境产生无意义差异
 [*.{js,jsx,ts,tsx,vue}]
 indent_style = space
 indent_size = 2
