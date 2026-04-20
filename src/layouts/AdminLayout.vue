@@ -143,6 +143,10 @@
                   @click="enlargeDetailVideo(item.src || item.value)"
                 ></video>
               </div>
+              <div v-else-if="item && item.type === 'token-row'" class="detail-row">
+                <div class="detail-label">{{ item.label }}</div>
+                <div class="detail-value" v-html="renderFormulaTokenHtml(item.value, item.tokenLabelMap)"></div>
+              </div>
               <div v-else class="detail-row">
                 <div class="detail-label">{{ item.label }}</div>
                 <div class="detail-value">{{ formatMaybeTime(item.value) }}</div>
@@ -157,8 +161,18 @@
                 <span v-if="field.tooltip" class="hint-icon" :title="field.tooltip">!</span>
                 <a v-if="field.link" :href="field.link" target="_blank" class="field-link">{{ field.linkText || '查看公司列表' }}</a>
               </div>
+              <div
+                v-if="field.showTokens && (field.type === 'text' || field.type === 'number' || field.type === 'password' || field.type === 'email')"
+                class="form-input token-input"
+                contenteditable="true"
+                spellcheck="false"
+                v-html="renderFormulaTokenHtml(field.value, field.tokenLabelMap)"
+                @input="(e) => { field.value = normalizeFormulaInput(e.target.innerText, field.tokenLabelMap) }"
+                @focus="(e) => { if(field.onFocus) field.onFocus(e) }"
+                @click="(e) => { if(field.onClick) field.onClick(e) }"
+              ></div>
               <input
-                v-if="field.type === 'text' || field.type === 'number' || field.type === 'password' || field.type === 'email'"
+                v-else-if="field.type === 'text' || field.type === 'number' || field.type === 'password' || field.type === 'email'"
                 :type="field.type"
                 v-model="field.value"
                 class="form-input"
@@ -595,6 +609,112 @@ export default {
     }
   },
   methods: {
+    escapeHtml (s) {
+      try {
+        return String(s || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;')
+      } catch (e) {
+        return ''
+      }
+    },
+    escapeRegExp (s) {
+      try {
+        return String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      } catch (e) {
+        return ''
+      }
+    },
+    renderFormulaTokenHtml (val, labelMap) {
+      try {
+        const s = String(val || '')
+        if (!s) return ''
+        const map = (labelMap && typeof labelMap === 'object') ? labelMap : {}
+        const re = /[a-zA-Z_]\w*|\d+(?:\.\d+)?|[()+\-*/]/g
+        let html = ''
+        let lastIndex = 0
+        let m
+        while ((m = re.exec(s))) {
+          const raw = m[0]
+          const before = s.slice(lastIndex, m.index)
+          if (before) html += this.escapeHtml(before)
+          if (map[raw]) {
+            html += `<span class="token-chip" contenteditable="false">${this.escapeHtml(map[raw])}</span>&#8203;`
+          } else {
+            html += this.escapeHtml(raw)
+          }
+          lastIndex = re.lastIndex
+        }
+        const rest = s.slice(lastIndex)
+        if (rest) html += this.escapeHtml(rest)
+        return html
+      } catch (e) {
+        return ''
+      }
+    },
+    normalizeFormulaInput (text, labelMap) {
+      try {
+        let s = String(text || '')
+        if (!s) return ''
+        s = s.replace(/\u200B/g, '')
+        s = s.replace(/\s+/g, ' ').trim()
+        const map = (labelMap && typeof labelMap === 'object') ? labelMap : {}
+        const reverse = {}
+        Object.keys(map).forEach(k => { reverse[map[k]] = k })
+        Object.keys(reverse).forEach(label => {
+          const re = new RegExp(this.escapeRegExp(label), 'g')
+          s = s.replace(re, reverse[label])
+        })
+        return s
+      } catch (e) {
+        return String(text || '')
+      }
+    },
+    isTokenInputLocked (e) {
+      try {
+        const sel = (typeof window !== 'undefined' && window.getSelection) ? window.getSelection() : null
+        if (!sel || !sel.rangeCount) return false
+        const range = sel.getRangeAt(0)
+        const tokenClass = 'token-chip'
+        const target = e && e.target
+        const isTokenNode = node => node && node.nodeType === 1 && node.classList && node.classList.contains(tokenClass)
+        const hasTokenAncestor = node => {
+          let cur = node
+          while (cur && cur !== target) {
+            if (isTokenNode(cur)) return true
+            cur = cur.parentNode
+          }
+          return false
+        }
+        if (hasTokenAncestor(range.startContainer) || hasTokenAncestor(range.endContainer)) return true
+        if (!range.collapsed && range.cloneContents) {
+          const frag = range.cloneContents()
+          if (frag && frag.querySelector && frag.querySelector('.' + tokenClass)) return true
+        }
+        if (e && e.inputType && String(e.inputType).startsWith('delete') && range.collapsed) {
+          let prev = null
+          let next = null
+          if (range.startContainer && range.startContainer.nodeType === 3) {
+            const textNode = range.startContainer
+            const offset = range.startOffset
+            if (offset === 0) prev = textNode.previousSibling
+            if (offset === (textNode.nodeValue || '').length) next = textNode.nextSibling
+          } else if (range.startContainer && range.startContainer.nodeType === 1) {
+            const el = range.startContainer
+            const offset = range.startOffset
+            prev = el.childNodes[offset - 1]
+            next = el.childNodes[offset]
+          }
+          if (isTokenNode(prev) || isTokenNode(next)) return true
+        }
+        return false
+      } catch (e) {
+        return false
+      }
+    },
     formatTimestamp (ts) {
       try {
         let s = String(ts || '').trim()
@@ -1773,6 +1893,32 @@ body {
 .token-btn:hover {
   background: #dbeafe;
   border-color: #93c5fd;
+}
+.token-input {
+  min-height: 36px;
+  line-height: 22px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  white-space: pre-wrap;
+}
+.token-input:focus {
+  outline: none;
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 2px rgba(59,130,246,0.1);
+}
+.token-chip {
+  padding: 2px 10px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  border-radius: 12px;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  line-height: 18px;
 }
 .upload-progress {
   position: fixed;

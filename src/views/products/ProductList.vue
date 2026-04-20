@@ -205,8 +205,10 @@ export default {
           res = await listAvailableProducts(baseParams)
         }
         if (res && res.success) {
-          products.value = res.data.items
-          pagination.total = res.data.total
+          const items = (res && res.data && Array.isArray(res.data.items)) ? res.data.items : []
+          products.value = items
+          const total = (res && res.data && res.data.total != null) ? Number(res.data.total) : items.length
+          pagination.total = Number.isNaN(total) ? items.length : total
         } else {
           const msg = (res && (res.data || res.message)) || '获取商品列表失败'
           showToast(String(msg))
@@ -221,16 +223,24 @@ export default {
     }
 
     const displayProducts = computed(() => {
-      let arr = products.value || []
+      let arr = Array.isArray(products.value) ? products.value : []
       const kw = String(applied.keyword || '').trim()
       if (kw) {
         arr = arr.filter(it => String(it.name || '').includes(kw) || String(it.available_product_id || '').includes(kw))
       }
-      if (applied.category) {
-        arr = arr.filter(it => getCategoryName(it.category_id) === applied.category)
+      const category = String(applied.category || '').trim()
+      if (category) {
+        arr = arr.filter(it => {
+          const rawId = String(it.category_id || '').trim()
+          const rawName = String(it.category_name || '').trim()
+          const mapped = String(getCategoryName(it.category_id) || '').trim()
+          const candidates = [rawId, rawName, mapped].filter(Boolean)
+          return candidates.some(v => v === category || v.includes(category) || category.includes(v))
+        })
       }
-      if (applied.status) {
-        const target = applied.status === '上架' ? '1' : (applied.status === '下架' ? '0' : '')
+      const statusLabel = String(applied.status || '').trim()
+      if (statusLabel) {
+        const target = statusLabel === '上架' ? '1' : (statusLabel === '下架' ? '0' : statusLabel)
         if (target) arr = arr.filter(it => String(it.status) === target)
       }
       return arr

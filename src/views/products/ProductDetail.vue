@@ -42,6 +42,8 @@
             <th>明细名称 / ID</th>
             <th>单位</th>
             <th>单价</th>
+            <th>包装容量</th>
+            <th>包装价格</th>
             <th>库存</th>
             <th>计算方式</th>
             <th>状态</th>
@@ -68,6 +70,8 @@
             <!-- <td>{{ item.available_products_name }}</td> -->
             <td>{{ item.unit }}</td>
             <td>¥{{ item.unit_price }}</td>
+            <td>{{ item.package_capacity || '0' }}</td>
+            <td>¥{{ item.package_price || '0.00' }}</td>
             <td>{{ item.inventory }}</td>
             <td>{{ item.compute_method }}</td>
             <td>
@@ -347,6 +351,9 @@ export default {
           nuomi_item_number: { label: '诺米品号', type: 'text', value: '' },
           product_type: { label: '商品类型', type: 'select', value: 'normal', options: [{ label: '正常生产商品', value: 'normal' }, { label: '呆滞商品', value: 'stagnant' }] },
 
+          package_capacity: { label: '包装容量', type: 'number', value: '0', hint: '一个包装材料可装商品数量' },
+          package_price: { label: '包装价格', type: 'number', value: '0.00', hint: '包装材料价格' },
+
           max_length: { label: '最大长度', type: 'number', value: '0' },
           min_length: { label: '最小长度', type: 'number', value: '0' },
           length_interval: { label: '长度间隔', type: 'text', value: '无' },
@@ -402,6 +409,8 @@ export default {
           append('custom_param1_value')
           append('custom_param2_value')
           append('inventory')
+          append('package_capacity')
+          append('package_price')
 
           if (fields.image.files && fields.image.files[0]) {
             formData.append('image', fields.image.files[0])
@@ -571,6 +580,8 @@ export default {
           item_number: { label: '品号', type: 'text', value: item.item_number || '' },
           nuomi_item_number: { label: '诺米品号', type: 'text', value: item.nuomi_item_number || '' },
           product_type: { label: '商品类型', type: 'select', value: item.product_type || 'normal', options: [{ label: '正常生产商品', value: 'normal' }, { label: '呆滞商品', value: 'stagnant' }] },
+          package_capacity: { label: '包装容量', type: 'number', value: item.package_capacity || '0', hint: '一个包装材料可装商品数量' },
+          package_price: { label: '包装价格', type: 'number', value: item.package_price || '0.00', hint: '包装材料价格' },
           max_length: { label: '最大长度', type: 'number', value: item.max_length },
           min_length: { label: '最小长度', type: 'number', value: item.min_length },
           length_interval: { label: '长度间隔', type: 'text', value: item.length_interval },
@@ -634,6 +645,8 @@ export default {
           append('custom_param1_value')
           append('custom_param2_value')
           append('inventory')
+          append('package_capacity')
+          append('package_price')
 
           if (fields.image.files && fields.image.files[0]) {
             formData.append('image', fields.image.files[0])
@@ -693,6 +706,8 @@ export default {
         { label: '规格', value: String(item.specification || '') },
         { label: '颜色', value: String(item.color || '') },
         { label: '型号', value: String(item.model || '') },
+        { label: '包装容量', value: String(item.package_capacity || '0') },
+        { label: '包装价格', value: String(item.package_price || '0.00') },
         { label: '状态', value: String(item.status) === '1' ? '上架' : '下架' }
       ]
       if (String(item.has_custom_params || '0') === '1') {
@@ -746,6 +761,9 @@ export default {
           },
           color_temperature: { label: '色温', type: 'text', value: '' },
           pricing_type: { label: '定价类型', type: 'select', value: 'fixed', options: [{ label: '固定', value: 'fixed' }, { label: '全部定价', value: 'all_pricing' }] },
+          nuomi_item_number: { label: '诺米品号', type: 'text', value: '' },
+          package_capacity: { label: '包装容量', type: 'number', value: '0', hint: '一个包装材料可装商品数量' },
+          package_price: { label: '包装价格', type: 'number', value: '0.00', hint: '包装材料价格' },
           max_length: { label: '最大长度', type: 'number', value: '0' },
           min_length: { label: '最小长度', type: 'number', value: '0' },
           length_interval: { label: '长度间隔', type: 'text', value: '无' },
@@ -773,6 +791,7 @@ export default {
           append('color_temperature')
           append('length_unit')
           append('pricing_type')
+          append('nuomi_item_number')
           append('max_length')
           append('min_length')
           append('length_interval')
@@ -784,6 +803,8 @@ export default {
           append('custom_param1_value')
           append('custom_param2_value')
           append('inventory')
+          append('package_capacity')
+          append('package_price')
 
           if (fields.image.files && fields.image.files[0]) {
             formData.append('image', fields.image.files[0])

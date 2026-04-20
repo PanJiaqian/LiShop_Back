@@ -119,24 +119,38 @@ const viewStrategy = (s) => {
   }
   Object.keys(s || {}).forEach(k => {
     const label = keyMap[k] || k
-    rows.push({ label: label, value: toStr(s[k]) })
+    if (k === 'formula') {
+      rows.push({ label: label, value: toStr(s[k]), type: 'token-row', tokenLabelMap: formulaTokenLabelMap })
+    } else {
+      rows.push({ label: label, value: toStr(s[k]) })
+    }
   })
   showModal({ type: 'detail', title: '策略详情', data: rows })
 }
 
+const formulaTokenLabelMap = {
+  unit_price: '基础价格',
+  length: '长度',
+  additional_price: '附加价格',
+  quantity: '数量',
+  discount: '折扣率'
+}
+
+const formulaTokenOptions = [
+  { label: '+', value: ' + ' },
+  { label: '-', value: ' - ' },
+  { label: '*', value: ' * ' },
+  { label: '/', value: ' / ' },
+  { label: formulaTokenLabelMap.unit_price, value: 'unit_price' },
+  { label: formulaTokenLabelMap.length, value: 'length' },
+  { label: formulaTokenLabelMap.additional_price, value: 'additional_price' },
+  { label: formulaTokenLabelMap.quantity, value: 'quantity' },
+  { label: formulaTokenLabelMap.discount, value: 'discount' },
+  { label: '(', value: '(' },
+  { label: ')', value: ')' }
+]
+
 const addStrategy = () => {
-  const tokenOptions = [
-    { label: '+', value: ' + ' },
-    { label: '-', value: ' - ' },
-    { label: '*', value: ' * ' },
-    { label: '/', value: ' / ' },
-    { label: 'unit_price', value: 'unit_price' },
-    { label: 'length', value: 'length' },
-    { label: 'additional_price', value: 'additional_price' },
-    { label: 'quantity', value: 'quantity' },
-    { label: '(', value: '(' },
-    { label: ')', value: ')' }
-  ]
   showModal({
     type: 'form',
     title: '新增价格策略',
@@ -144,8 +158,8 @@ const addStrategy = () => {
       name: { label: '策略名称', type: 'text', value: '' },
       description: { label: '描述', type: 'text', value: '根据基础价格、长度、附加价格和数量计算' },
       status: { label: '状态', type: 'select', value: '1', options: [{ label: '启用', value: '1' }, { label: '停用', value: '0' }] },
-      formula: { label: '公式', type: 'text', value: '', hint: '点击下方片段自动组合；未填写时按默认' },
-      formula_tokens: { label: '片段选择', type: 'append-to-field', target: 'formula', value: [], options: tokenOptions }
+      formula: { label: '公式', type: 'text', value: '', hint: '点击下方片段自动组合；未填写时按默认', showTokens: true, tokenLabelMap: formulaTokenLabelMap },
+      formula_tokens: { label: '片段选择', type: 'append-to-field', target: 'formula', value: [], options: formulaTokenOptions }
     },
     onConfirm: async (fields) => {
       try {
@@ -170,18 +184,6 @@ const addStrategy = () => {
 }
 
 const updateStrategy = (s) => {
-  const tokenOptions = [
-    { label: '+', value: ' + ' },
-    { label: '-', value: ' - ' },
-    { label: '*', value: ' * ' },
-    { label: '/', value: ' / ' },
-    { label: 'unit_price', value: 'unit_price' },
-    { label: 'length', value: 'length' },
-    { label: 'additional_price', value: 'additional_price' },
-    { label: 'quantity', value: 'quantity' },
-    { label: '(', value: '(' },
-    { label: ')', value: ')' }
-  ]
   showModal({
     type: 'form',
     title: '更新价格策略',
@@ -190,8 +192,8 @@ const updateStrategy = (s) => {
       name: { label: '策略名称', type: 'text', value: s.name || '' },
       description: { label: '描述', type: 'text', value: s.description || '' },
       status: { label: '状态', type: 'select', value: String(s.status || 1), options: [{ label: '启用', value: '1' }, { label: '停用', value: '0' }] },
-      formula: { label: '公式', type: 'text', value: s.formula || '', hint: '点击下方片段自动组合；未填写时按默认' },
-      formula_tokens: { label: '片段选择', type: 'append-to-field', target: 'formula', value: [], options: tokenOptions }
+      formula: { label: '公式', type: 'text', value: s.formula || '', hint: '点击下方片段自动组合；未填写时按默认', showTokens: true, tokenLabelMap: formulaTokenLabelMap },
+      formula_tokens: { label: '片段选择', type: 'append-to-field', target: 'formula', value: [], options: formulaTokenOptions }
     },
     onConfirm: async (fields) => {
       try {

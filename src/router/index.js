@@ -27,6 +27,7 @@ const router = createRouter({
         { path: 'content/carousel', name: 'carousel', component: () => import('@/views/content/CarouselAdmin.vue') },
         { path: 'content/recommendations', name: 'recommendations', component: () => import('@/views/content/RecommendationAdmin.vue') },
         { path: 'content/announcements', name: 'announcements', component: () => import('@/views/announcements/AnnouncementList.vue') },
+        { path: 'coupons', name: 'coupons', component: () => import('@/views/coupons/CouponList.vue') },
         { path: 'analytics/transaction-stats', name: 'transaction-stats', component: () => import('@/views/analytics/TransactionStats.vue') },
         { path: 'messages', name: 'messages', component: () => import('@/views/messages/Messages.vue') }
       ]

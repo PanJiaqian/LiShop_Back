@@ -64,6 +64,12 @@
             <span class="text">价格策略</span>
           </a>
         </router-link>
+        <router-link to="/coupons" custom v-slot="{ navigate, href, isActive }">
+          <a :class="['menu-item', { 'router-link-active': isActive }]" :href="href" @click="handleLink($event, navigate)">
+            <span class="icon">🎫</span>
+            <span class="text">优惠券管理</span>
+          </a>
+        </router-link>
       </div>
       <div class="menu-group">
         <div class="menu-group-title">内容</div>

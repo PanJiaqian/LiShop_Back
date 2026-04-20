@@ -77,13 +77,19 @@
         </tbody>
       </table>
       <div class="pagination">
-        <span class="page-info">共 {{ filteredOrders.length }} 条记录</span>
+        <span class="page-info">共 {{ pagination.total }} 条记录</span>
         <div class="page-btns">
-          <button class="btn-sm" disabled>上一页</button>
-          <button class="btn-sm active">1</button>
-          <!-- <button class="btn-sm">2</button>
-          <button class="btn-sm">3</button> -->
-          <button class="btn-sm">下一页</button>
+          <button class="btn-sm" :disabled="pagination.page <= 1" @click="changePage(pagination.page - 1)">上一页</button>
+          <button
+            v-for="p in pageNumbers"
+            :key="p"
+            class="btn-sm"
+            :class="{ active: p === pagination.page }"
+            @click="changePage(p)"
+          >
+            {{ p }}
+          </button>
+          <button class="btn-sm" :disabled="isLastPage" @click="changePage(pagination.page + 1)">下一页</button>
         </div>
       </div>
     </div>
@@ -139,6 +145,11 @@ export default {
     const orders = reactive([])
     const abnormalOrders = ref([])
     const selected = reactive({})
+    const pagination = reactive({
+      page: 1,
+      page_size: 20,
+      total: 0
+    })
 
     const normalizeStatus = (s) => {
       const k = String(s || '').toUpperCase()
@@ -154,9 +165,16 @@ export default {
 
     const fetchOrders = async () => {
       try {
-        const res = await listAdminOrdersDetail({ order_id: '', page: 1, page_size: 20, sort_by: 'price', sort_order: 'desc' })
+        const res = await listAdminOrdersDetail({
+          order_id: '',
+          page: pagination.page,
+          page_size: pagination.page_size,
+          sort_by: 'price',
+          sort_order: 'desc'
+        })
         if (res && res.success) {
           const items = (res && res.data && Array.isArray(res.data.orders)) ? res.data.orders : []
+          pagination.total = (res && res.data && res.data.total != null) ? Number(res.data.total) : items.length
           const mapped = items.map(e => {
             const o = e.order || {}
             return {
@@ -174,10 +192,12 @@ export default {
           orders.splice(0, orders.length, ...mapped)
         } else {
           orders.splice(0, orders.length)
+          pagination.total = 0
           const msg = (res && (res.data || res.message)) || '获取订单失败'
           showToast(String(msg))
         }
       } catch (e) {
+        pagination.total = 0
         showToast('获取订单失败')
       }
     }
@@ -243,6 +263,29 @@ export default {
         已取消: 'gray'
       }
       return map[status] || 'gray'
+    }
+
+    const totalPages = computed(() => {
+      const size = Number(pagination.page_size) || 20
+      const total = Number(pagination.total) || 0
+      const pages = Math.ceil(total / size)
+      return pages > 0 ? pages : 1
+    })
+
+    const pageNumbers = computed(() => {
+      const pages = totalPages.value
+      return Array.from({ length: pages }, (_, i) => i + 1)
+    })
+
+    const isLastPage = computed(() => pagination.page >= totalPages.value)
+
+    const changePage = (p) => {
+      const target = Number(p)
+      if (!target || target < 1) return
+      if (target > totalPages.value) return
+      if (target === pagination.page) return
+      pagination.page = target
+      fetchOrders()
     }
 
     const handleSearch = () => {}
@@ -520,10 +563,14 @@ export default {
       activeTab,
       filter,
       orders,
+      pagination,
       selected,
       abnormalOrders,
       filteredOrders,
       getStatusClass,
+      pageNumbers,
+      isLastPage,
+      changePage,
       handleSearch,
       exportOrders,
       toggleSelectAll,
