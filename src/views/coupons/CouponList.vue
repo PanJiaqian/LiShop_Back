@@ -138,12 +138,13 @@ const addCoupon = () => {
         options: [{ label: '固定起止日期', value: '1' }, { label: '领取后N天', value: '2' }],
         onChange: (e, fields) => {
           const isFixed = String(fields.valid_type.value) === '1'
+          fields.valid_start_time.hidden = !isFixed
           fields.valid_end_time.hidden = !isFixed
           fields.valid_days.hidden = isFixed
         }
       },
-      valid_start_time: { label: '起始时间 (必填)', type: 'datetime-local', value: '' },
-      valid_end_time: { label: '结束时间', type: 'datetime-local', value: '' },
+      valid_start_time: { label: '起始时间 (必填)', type: 'datetime-local', value: '', hidden: false },
+      valid_end_time: { label: '结束时间', type: 'datetime-local', value: '', hidden: false },
       valid_days: { label: '有效天数', type: 'number', value: '30', hidden: true },
       trigger_type: { 
         label: '发放触发条件', 
@@ -185,12 +186,12 @@ const addCoupon = () => {
           applicable_time_periods: Array.isArray(fields.applicable_time_periods.value) && fields.applicable_time_periods.value.length > 0 ? fields.applicable_time_periods.value.map(Number) : [1, 2, 3, 4, 5, 6, 7]
         }
         
-        if (!fields.valid_start_time.value) {
-          return showToast('必须填写起始时间')
-        }
-        body.valid_start_time = new Date(fields.valid_start_time.value).toISOString()
-
         if (body.valid_type === 1) {
+          if (!fields.valid_start_time.value) {
+            return showToast('固定日期模式必须填写起始时间')
+          }
+          body.valid_start_time = new Date(fields.valid_start_time.value).toISOString()
+
           if (!fields.valid_end_time.value) {
             return showToast('固定日期模式必须填写结束时间')
           }
@@ -243,11 +244,12 @@ const updateCouponBtn = (c) => {
         options: [{ label: '固定起止日期', value: '1' }, { label: '领取后N天', value: '2' }],
         onChange: (e, fields) => {
           const isFixed = String(fields.valid_type.value) === '1'
+          fields.valid_start_time.hidden = !isFixed
           fields.valid_end_time.hidden = !isFixed
           fields.valid_days.hidden = isFixed
         }
       },
-      valid_start_time: { label: '起始时间 (必填)', type: 'datetime-local', value: toLocalStr(rule.valid_start_time) },
+      valid_start_time: { label: '起始时间 (必填)', type: 'datetime-local', value: toLocalStr(rule.valid_start_time), hidden: String(rule.valid_type) !== '1' },
       valid_end_time: { label: '结束时间', type: 'datetime-local', value: toLocalStr(rule.valid_end_time), hidden: String(rule.valid_type) !== '1' },
       valid_days: { label: '有效天数', type: 'number', value: String(rule.valid_days || 30), hidden: String(rule.valid_type) === '1' },
       trigger_type: { 
@@ -291,12 +293,12 @@ const updateCouponBtn = (c) => {
           applicable_time_periods: Array.isArray(fields.applicable_time_periods.value) && fields.applicable_time_periods.value.length > 0 ? fields.applicable_time_periods.value.map(Number) : [1, 2, 3, 4, 5, 6, 7]
         }
         
-        if (!fields.valid_start_time.value) {
-          return showToast('必须填写起始时间')
-        }
-        body.valid_start_time = new Date(fields.valid_start_time.value).toISOString()
-
         if (body.valid_type === 1) {
+          if (!fields.valid_start_time.value) {
+            return showToast('固定日期模式必须填写起始时间')
+          }
+          body.valid_start_time = new Date(fields.valid_start_time.value).toISOString()
+
           if (!fields.valid_end_time.value) {
             return showToast('固定日期模式必须填写结束时间')
           }

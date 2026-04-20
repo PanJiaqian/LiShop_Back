@@ -155,31 +155,32 @@
           </div>
           <div v-else-if="modal.type === 'form'" class="modal-form">
             <!-- Dynamic form fields based on modal.fields -->
-            <div v-for="(field, key) in modal.fields" :key="key" class="form-group" v-if="!(field && field.hidden)">
-              <div class="label-row">
-                <label>{{ field.label }}</label>
-                <span v-if="field.tooltip" class="hint-icon" :title="field.tooltip">!</span>
-                <a v-if="field.link" :href="field.link" target="_blank" class="field-link">{{ field.linkText || '查看公司列表' }}</a>
-              </div>
-              <div
-                v-if="field.showTokens && (field.type === 'text' || field.type === 'number' || field.type === 'password' || field.type === 'email')"
-                class="form-input token-input"
-                contenteditable="true"
-                spellcheck="false"
-                v-html="renderFormulaTokenHtml(field.value, field.tokenLabelMap)"
-                @input="(e) => { field.value = normalizeFormulaInput(e.target.innerText, field.tokenLabelMap) }"
-                @focus="(e) => { if(field.onFocus) field.onFocus(e) }"
-                @click="(e) => { if(field.onClick) field.onClick(e) }"
-              ></div>
-              <input
-                v-else-if="field.type === 'text' || field.type === 'number' || field.type === 'password' || field.type === 'email'"
-                :type="field.type"
-                v-model="field.value"
-                class="form-input"
-                @focus="(e) => { if(field.onFocus) field.onFocus(e) }"
-                @click="(e) => { if(field.onClick) field.onClick(e) }"
-              />
-              <div v-else-if="field.type === 'level-discount'" class="level-discount-group">
+            <template v-for="(field, key) in modal.fields" :key="key">
+              <div class="form-group" v-if="!(field && field.hidden)">
+                <div class="label-row">
+                  <label>{{ field.label }}</label>
+                  <span v-if="field.tooltip" class="hint-icon" :title="field.tooltip">!</span>
+                  <a v-if="field.link" :href="field.link" target="_blank" class="field-link">{{ field.linkText || '查看公司列表' }}</a>
+                </div>
+                <div
+                  v-if="field.showTokens && (field.type === 'text' || field.type === 'number' || field.type === 'password' || field.type === 'email')"
+                  class="form-input token-input"
+                  contenteditable="true"
+                  spellcheck="false"
+                  v-html="renderFormulaTokenHtml(field.value, field.tokenLabelMap)"
+                  @input="(e) => { field.value = normalizeFormulaInput(e.target.innerText, field.tokenLabelMap) }"
+                  @focus="(e) => { if(field.onFocus) field.onFocus(e) }"
+                  @click="(e) => { if(field.onClick) field.onClick(e) }"
+                ></div>
+                <input
+                  v-else-if="field.type === 'text' || field.type === 'number' || field.type === 'password' || field.type === 'email' || field.type === 'datetime-local' || field.type === 'date' || field.type === 'time'"
+                  :type="field.type"
+                  v-model="field.value"
+                  class="form-input"
+                  @focus="(e) => { if(field.onFocus) field.onFocus(e) }"
+                  @click="(e) => { if(field.onClick) field.onClick(e) }"
+                />
+                <div v-else-if="field.type === 'level-discount'" class="level-discount-group">
                 <div class="ld-add-row">
                   <button class="ld-add-btn"
                           :disabled="((Array.isArray(field.entries)?field.entries.length:0) + (field.newRows||0)) >= (field.max || 3)"
@@ -288,7 +289,8 @@
       </button>
     </div>
     <div v-if="field.hint" class="field-hint">{{ field.hint }}</div>
-            </div>
+              </div>
+            </template>
           </div>
         </div>
         <div class="modal-footer" v-if="!modal.isPreview">
