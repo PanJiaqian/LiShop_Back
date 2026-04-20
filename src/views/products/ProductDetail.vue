@@ -42,8 +42,7 @@
             <th>明细名称 / ID</th>
             <th>单位</th>
             <th>单价</th>
-            <th>包装容量</th>
-            <th>包装价格</th>
+            <th>包装费规格</th>
             <th>库存</th>
             <th>计算方式</th>
             <th>状态</th>
@@ -70,8 +69,7 @@
             <!-- <td>{{ item.available_products_name }}</td> -->
             <td>{{ item.unit }}</td>
             <td>¥{{ item.unit_price }}</td>
-            <td>{{ item.package_capacity || '0' }}</td>
-            <td>¥{{ item.package_price || '0.00' }}</td>
+            <td>{{ item.package_id || '无' }}</td>
             <td>{{ item.inventory }}</td>
             <td>{{ item.compute_method }}</td>
             <td>
@@ -118,6 +116,7 @@ import {
   listProductsByAvailableProduct
 } from '@/api/product'
 import { listPriceStrategies } from '@/api/prices'
+import { listPackageFeeOptions } from '@/api/package_fee'
 
 export default {
   name: 'ProductDetail',
@@ -299,8 +298,21 @@ export default {
       } catch (e) { return [] }
     }
 
+    const buildPackageFeeOptions = async () => {
+      try {
+        const res = await listPackageFeeOptions()
+        const items = (res && res.data && res.data.items) || []
+        const options = [{ label: '无', value: '' }]
+        items.forEach(f => {
+          options.push({ label: `${f.name} (¥${f.price})`, value: f.package_id })
+        })
+        return options
+      } catch (e) { return [{ label: '无', value: '' }] }
+    }
+
     const handleCreateDetailProduct = async () => {
       const strategyOptions = await buildStrategyOptions()
+      const packageFeeOptions = await buildPackageFeeOptions()
       showModal({
         type: 'form',
         className: 'create-detail-modal',
@@ -351,8 +363,7 @@ export default {
           nuomi_item_number: { label: '诺米品号', type: 'text', value: '' },
           product_type: { label: '商品类型', type: 'select', value: 'normal', options: [{ label: '正常生产商品', value: 'normal' }, { label: '呆滞商品', value: 'stagnant' }] },
 
-          package_capacity: { label: '包装容量', type: 'number', value: '0', hint: '一个包装材料可装商品数量' },
-          package_price: { label: '包装价格', type: 'number', value: '0.00', hint: '包装材料价格' },
+          package_id: { label: '包装费规格', type: 'select', value: '', options: packageFeeOptions, hint: '选择包装费计费ID' },
 
           max_length: { label: '最大长度', type: 'number', value: '0' },
           min_length: { label: '最小长度', type: 'number', value: '0' },
@@ -409,8 +420,7 @@ export default {
           append('custom_param1_value')
           append('custom_param2_value')
           append('inventory')
-          append('package_capacity')
-          append('package_price')
+          append('package_id')
 
           if (fields.image.files && fields.image.files[0]) {
             formData.append('image', fields.image.files[0])
@@ -529,8 +539,9 @@ export default {
       })
     }
 
-    const openUpdateModal = async (item) => {
+    const handleEdit = async (item) => {
       const strategyOptions = await buildStrategyOptions()
+      const packageFeeOptions = await buildPackageFeeOptions()
       showModal({
         type: 'form',
         className: 'update-modal',
@@ -580,8 +591,7 @@ export default {
           item_number: { label: '品号', type: 'text', value: item.item_number || '' },
           nuomi_item_number: { label: '诺米品号', type: 'text', value: item.nuomi_item_number || '' },
           product_type: { label: '商品类型', type: 'select', value: item.product_type || 'normal', options: [{ label: '正常生产商品', value: 'normal' }, { label: '呆滞商品', value: 'stagnant' }] },
-          package_capacity: { label: '包装容量', type: 'number', value: item.package_capacity || '0', hint: '一个包装材料可装商品数量' },
-          package_price: { label: '包装价格', type: 'number', value: item.package_price || '0.00', hint: '包装材料价格' },
+          package_id: { label: '包装费规格', type: 'select', value: item.package_id || '', options: packageFeeOptions, hint: '选择包装费计费ID' },
           max_length: { label: '最大长度', type: 'number', value: item.max_length },
           min_length: { label: '最小长度', type: 'number', value: item.min_length },
           length_interval: { label: '长度间隔', type: 'text', value: item.length_interval },
@@ -644,10 +654,8 @@ export default {
           append('model')
           append('custom_param1_value')
           append('custom_param2_value')
-          append('inventory')
-          append('package_capacity')
-          append('package_price')
-
+          append('package_id')
+          
           if (fields.image.files && fields.image.files[0]) {
             formData.append('image', fields.image.files[0])
           }
@@ -706,8 +714,7 @@ export default {
         { label: '规格', value: String(item.specification || '') },
         { label: '颜色', value: String(item.color || '') },
         { label: '型号', value: String(item.model || '') },
-        { label: '包装容量', value: String(item.package_capacity || '0') },
-        { label: '包装价格', value: String(item.package_price || '0.00') },
+        { label: '包装费规格', value: String(item.package_id || '无') },
         { label: '状态', value: String(item.status) === '1' ? '上架' : '下架' }
       ]
       if (String(item.has_custom_params || '0') === '1') {
@@ -731,27 +738,29 @@ export default {
       showModal({ type: 'detail', title: '明细商品详情', data })
     }
 
-    const handleUpdateDetailProduct = () => {
+    const handleUpdateDetailProduct = async (item = null) => {
       // This is the manual ID entry version from previous requirement
+      const strategyOptions = await buildStrategyOptions()
+      const packageFeeOptions = await buildPackageFeeOptions()
       showModal({
         type: 'form',
         title: '更新明细商品(输入ID)',
         fields: {
-          product_id: { label: '明细商品ID', type: 'text', value: '' },
-          name: { label: '明细商品名称', type: 'text', value: '' },
+          product_id: { label: '明细商品ID', type: 'text', value: item ? String(item.product_id || '') : '' },
+          name: { label: '明细商品名称', type: 'text', value: item ? String(item.name || '') : '' },
           // ... (simplified for manual entry, or same full fields)
           // To save space, I'll just use the same full fields but empty
-          available_products_name: { label: '关联商品名称', type: 'text', value: '' },
-          unit: { label: '单位', type: 'text', value: '件' },
-          unit_price: { label: '单价', type: 'number', value: '0.00', hint: '该单位价格指代的为1m的价格' },
-          additional_price: { label: '附加费', type: 'number', value: '0.00' },
-          inventory: { label: '库存', type: 'number', value: '0' },
-          compute_method: { label: '计算方式', type: 'select', value: '直接', options: [{ label: '直接', value: '直接' }, { label: '公式', value: '公式' }] },
-          has_length: { label: '是否有长度', type: 'select', value: '0', options: [{ label: '是', value: '1' }, { label: '否', value: '0' }] },
+          available_products_name: { label: '关联商品名称', type: 'text', value: item ? String(item.available_products_name || '') : '' },
+          unit: { label: '单位', type: 'text', value: item ? String(item.unit || '件') : '件' },
+          unit_price: { label: '单价', type: 'number', value: item ? String(item.unit_price || '0.00') : '0.00', hint: '该单位价格指代的为1m的价格' },
+          additional_price: { label: '附加费', type: 'number', value: item ? String(item.additional_price || '0.00') : '0.00' },
+          inventory: { label: '库存', type: 'number', value: item ? String(item.inventory || '0') : '0' },
+          compute_method: { label: '计算方式', type: 'select', value: item ? String(item.compute_method || '直接') : '直接', options: [{ label: '直接', value: '直接' }, { label: '公式', value: '公式' }] },
+          has_length: { label: '是否有长度', type: 'select', value: item ? String(item.has_length || '0') : '0', options: [{ label: '是', value: '1' }, { label: '否', value: '0' }] },
           length_unit: {
             label: '长度单位',
             type: 'select',
-            value: 'm',
+            value: item ? String(item.length_unit || 'm') : 'm',
             options: [
               { label: 'cm', value: 'cm' },
               { label: 'mm', value: 'mm' },
@@ -759,21 +768,20 @@ export default {
               { label: 'm', value: 'm' }
             ]
           },
-          color_temperature: { label: '色温', type: 'text', value: '' },
-          pricing_type: { label: '定价类型', type: 'select', value: 'fixed', options: [{ label: '固定', value: 'fixed' }, { label: '全部定价', value: 'all_pricing' }] },
-          nuomi_item_number: { label: '诺米品号', type: 'text', value: '' },
-          package_capacity: { label: '包装容量', type: 'number', value: '0', hint: '一个包装材料可装商品数量' },
-          package_price: { label: '包装价格', type: 'number', value: '0.00', hint: '包装材料价格' },
-          max_length: { label: '最大长度', type: 'number', value: '0' },
-          min_length: { label: '最小长度', type: 'number', value: '0' },
-          length_interval: { label: '长度间隔', type: 'text', value: '无' },
-          level_discount: { label: '等级折扣(JSON)', type: 'text', value: '[]' },
-          product_category: { label: '产品分类', type: 'text', value: '' },
-          specification: { label: '规格', type: 'text', value: '' },
-          color: { label: '颜色', type: 'text', value: '' },
-          model: { label: '型号', type: 'text', value: '' },
-          custom_param1_value: { label: '自定义参数1值', type: 'text', value: '' },
-          custom_param2_value: { label: '自定义参数2值', type: 'text', value: '' },
+          color_temperature: { label: '色温', type: 'text', value: item ? String(item.color_temperature || '') : '' },
+          pricing_type: { label: '定价类型', type: 'select', value: item ? String(item.pricing_type || 'fixed') : 'fixed', options: [{ label: '固定', value: 'fixed' }, { label: '全部定价', value: 'all_pricing' }] },
+          nuomi_item_number: { label: '诺米品号', type: 'text', value: item ? String(item.nuomi_item_number || '') : '' },
+          package_id: { label: '包装费规格', type: 'select', value: item ? String(item.package_id || '') : '', options: packageFeeOptions, hint: '选择包装费计费ID' },
+          max_length: { label: '最大长度', type: 'number', value: item ? String(item.max_length || '0') : '0' },
+          min_length: { label: '最小长度', type: 'number', value: item ? String(item.min_length || '0') : '0' },
+          length_interval: { label: '长度间隔', type: 'text', value: item ? String(item.length_interval || '无') : '无' },
+          level_discount: { label: '等级折扣(JSON)', type: 'text', value: item ? String(item.level_discount || '[]') : '[]' },
+          product_category: { label: '产品分类', type: 'text', value: item ? String(item.product_category || '') : '' },
+          specification: { label: '规格', type: 'text', value: item ? String(item.specification || '') : '' },
+          color: { label: '颜色', type: 'text', value: item ? String(item.color || '') : '' },
+          model: { label: '型号', type: 'text', value: item ? String(item.model || '') : '' },
+          custom_param1_value: { label: '自定义参数1值', type: 'text', value: item ? String(item.custom_param1_value || '') : '' },
+          custom_param2_value: { label: '自定义参数2值', type: 'text', value: item ? String(item.custom_param2_value || '') : '' },
           image: { label: '图片', type: 'file', multiple: false, files: null }
         },
         onConfirm: async (fields) => {
@@ -803,8 +811,7 @@ export default {
           append('custom_param1_value')
           append('custom_param2_value')
           append('inventory')
-          append('package_capacity')
-          append('package_price')
+          append('package_id')
 
           if (fields.image.files && fields.image.files[0]) {
             formData.append('image', fields.image.files[0])
@@ -824,6 +831,10 @@ export default {
           }
         }
       })
+    }
+
+    const openUpdateModal = (item) => {
+      handleUpdateDetailProduct(item)
     }
 
     const handleToggleDetailStatus = () => {

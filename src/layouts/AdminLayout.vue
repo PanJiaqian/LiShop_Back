@@ -56,8 +56,8 @@
     </div>
 
     <!-- Global Modal Component -->
-    <div v-if="modal.show" class="modal-overlay" @click="handleOverlayClick">
-      <div class="modal-container" :class="modal.className" @click.stop>
+    <div v-if="modal.show" class="modal-overlay" @mousedown="handleOverlayClick">
+      <div class="modal-container" :class="modal.className" @mousedown.stop>
         <div class="modal-header">
           <h3>{{ modal.title }}</h3>
           <button v-if="!modal.forceConfirm" class="close-btn" @click="closeModal">&times;</button>
@@ -983,6 +983,10 @@ export default {
       })
     },
     handleOverlayClick () {
+      const selection = window.getSelection()
+      if (selection && selection.toString().length > 0) {
+        return
+      }
       if (this.modal.forceConfirm) return
       this.closeModal()
     },
@@ -1507,7 +1511,7 @@ body {
 .modal-container {
   background: white;
   border-radius: 12px;
-  width: 520px;
+  width: 600px;
   max-width: 90%;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   animation: modalFadeIn 0.2s ease-out;
@@ -1722,6 +1726,41 @@ body {
     width: 100%;
     height: 100%;
     object-fit: cover;
+  }
+  .modal-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px 20px;
+    padding-top: 8px;
+  }
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1 1 calc(50% - 20px);
+    min-width: 200px;
+  }
+  .form-group.full-width {
+    flex: 1 1 100%;
+  }
+  .form-group label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+  }
+  .form-input, .form-select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: all 0.2s;
+    box-sizing: border-box;
+  }
+  .form-input:focus, .form-select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
   }
 .upload-progress {
     margin-bottom: 16px;

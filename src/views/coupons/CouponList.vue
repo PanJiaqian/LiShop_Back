@@ -138,12 +138,11 @@ const addCoupon = () => {
         options: [{ label: '固定起止日期', value: '1' }, { label: '领取后N天', value: '2' }],
         onChange: (e, fields) => {
           const isFixed = String(fields.valid_type.value) === '1'
-          fields.valid_start_time.hidden = !isFixed
           fields.valid_end_time.hidden = !isFixed
           fields.valid_days.hidden = isFixed
         }
       },
-      valid_start_time: { label: '起始时间', type: 'datetime-local', value: '' },
+      valid_start_time: { label: '起始时间 (必填)', type: 'datetime-local', value: '' },
       valid_end_time: { label: '结束时间', type: 'datetime-local', value: '' },
       valid_days: { label: '有效天数', type: 'number', value: '30', hidden: true },
       trigger_type: { 
@@ -156,8 +155,21 @@ const addCoupon = () => {
         }
       },
       trigger_time: { label: '定时发放时间', type: 'datetime-local', value: '', hidden: true },
-      applicable_categories: { label: '适用产品系列 (用逗号分隔ID，填ALL表示全部)', type: 'text', value: 'ALL' },
-      applicable_time_periods: { label: '可用时间段 (1-7表示周一到周日，逗号分隔)', type: 'text', value: '1,2,3,4,5,6,7' }
+      applicable_categories: { label: '适用产品系列 (不选默认全部适用)', type: 'checkbox-group', value: [], options: categoryOptions.value.filter(o => o.value !== 'ALL') },
+      applicable_time_periods: { 
+        label: '可用时间段 (周一到周日)', 
+        type: 'checkbox-group', 
+        value: [1, 2, 3, 4, 5, 6, 7], 
+        options: [
+          { label: '周一', value: 1 },
+          { label: '周二', value: 2 },
+          { label: '周三', value: 3 },
+          { label: '周四', value: 4 },
+          { label: '周五', value: 5 },
+          { label: '周六', value: 6 },
+          { label: '周日', value: 7 }
+        ]
+      }
     },
     onConfirm: async (fields) => {
       try {
@@ -169,15 +181,19 @@ const addCoupon = () => {
           min_order_amount: parseFloat(fields.min_order_amount.value),
           valid_type: parseInt(fields.valid_type.value),
           trigger_type: parseInt(fields.trigger_type.value),
-          applicable_categories: fields.applicable_categories.value.split(',').map(s => s.trim()).filter(Boolean),
-          applicable_time_periods: fields.applicable_time_periods.value.split(',').map(s => parseInt(s.trim())).filter(Boolean)
+          applicable_categories: Array.isArray(fields.applicable_categories.value) && fields.applicable_categories.value.length > 0 ? fields.applicable_categories.value : ['ALL'],
+          applicable_time_periods: Array.isArray(fields.applicable_time_periods.value) && fields.applicable_time_periods.value.length > 0 ? fields.applicable_time_periods.value.map(Number) : [1, 2, 3, 4, 5, 6, 7]
         }
         
+        if (!fields.valid_start_time.value) {
+          return showToast('必须填写起始时间')
+        }
+        body.valid_start_time = new Date(fields.valid_start_time.value).toISOString()
+
         if (body.valid_type === 1) {
-          if (!fields.valid_start_time.value || !fields.valid_end_time.value) {
-            return showToast('固定日期模式必须填写起止时间')
+          if (!fields.valid_end_time.value) {
+            return showToast('固定日期模式必须填写结束时间')
           }
-          body.valid_start_time = new Date(fields.valid_start_time.value).toISOString()
           body.valid_end_time = new Date(fields.valid_end_time.value).toISOString()
         } else {
           body.valid_days = parseInt(fields.valid_days.value)
@@ -227,12 +243,11 @@ const updateCouponBtn = (c) => {
         options: [{ label: '固定起止日期', value: '1' }, { label: '领取后N天', value: '2' }],
         onChange: (e, fields) => {
           const isFixed = String(fields.valid_type.value) === '1'
-          fields.valid_start_time.hidden = !isFixed
           fields.valid_end_time.hidden = !isFixed
           fields.valid_days.hidden = isFixed
         }
       },
-      valid_start_time: { label: '起始时间', type: 'datetime-local', value: toLocalStr(rule.valid_start_time), hidden: String(rule.valid_type) !== '1' },
+      valid_start_time: { label: '起始时间 (必填)', type: 'datetime-local', value: toLocalStr(rule.valid_start_time) },
       valid_end_time: { label: '结束时间', type: 'datetime-local', value: toLocalStr(rule.valid_end_time), hidden: String(rule.valid_type) !== '1' },
       valid_days: { label: '有效天数', type: 'number', value: String(rule.valid_days || 30), hidden: String(rule.valid_type) === '1' },
       trigger_type: { 
@@ -245,8 +260,21 @@ const updateCouponBtn = (c) => {
         }
       },
       trigger_time: { label: '定时发放时间', type: 'datetime-local', value: toLocalStr(rule.trigger_time), hidden: String(rule.trigger_type) !== '2' },
-      applicable_categories: { label: '适用产品系列 (用逗号分隔ID，填ALL表示全部)', type: 'text', value: (rule.applicable_categories || []).join(',') },
-      applicable_time_periods: { label: '可用时间段 (1-7表示周一到周日，逗号分隔)', type: 'text', value: (rule.applicable_time_periods || []).join(',') }
+      applicable_categories: { label: '适用产品系列 (不选默认全部适用)', type: 'checkbox-group', value: rule.applicable_categories && !rule.applicable_categories.includes('ALL') ? rule.applicable_categories : [], options: categoryOptions.value.filter(o => o.value !== 'ALL') },
+      applicable_time_periods: { 
+        label: '可用时间段 (周一到周日)', 
+        type: 'checkbox-group', 
+        value: Array.isArray(rule.applicable_time_periods) ? rule.applicable_time_periods.map(Number) : [1, 2, 3, 4, 5, 6, 7], 
+        options: [
+          { label: '周一', value: 1 },
+          { label: '周二', value: 2 },
+          { label: '周三', value: 3 },
+          { label: '周四', value: 4 },
+          { label: '周五', value: 5 },
+          { label: '周六', value: 6 },
+          { label: '周日', value: 7 }
+        ]
+      }
     },
     onConfirm: async (fields) => {
       try {
@@ -259,15 +287,19 @@ const updateCouponBtn = (c) => {
           min_order_amount: parseFloat(fields.min_order_amount.value),
           valid_type: parseInt(fields.valid_type.value),
           trigger_type: parseInt(fields.trigger_type.value),
-          applicable_categories: fields.applicable_categories.value.split(',').map(s => s.trim()).filter(Boolean),
-          applicable_time_periods: fields.applicable_time_periods.value.split(',').map(s => parseInt(s.trim())).filter(Boolean)
+          applicable_categories: Array.isArray(fields.applicable_categories.value) && fields.applicable_categories.value.length > 0 ? fields.applicable_categories.value : ['ALL'],
+          applicable_time_periods: Array.isArray(fields.applicable_time_periods.value) && fields.applicable_time_periods.value.length > 0 ? fields.applicable_time_periods.value.map(Number) : [1, 2, 3, 4, 5, 6, 7]
         }
         
+        if (!fields.valid_start_time.value) {
+          return showToast('必须填写起始时间')
+        }
+        body.valid_start_time = new Date(fields.valid_start_time.value).toISOString()
+
         if (body.valid_type === 1) {
-          if (!fields.valid_start_time.value || !fields.valid_end_time.value) {
-            return showToast('固定日期模式必须填写起止时间')
+          if (!fields.valid_end_time.value) {
+            return showToast('固定日期模式必须填写结束时间')
           }
-          body.valid_start_time = new Date(fields.valid_start_time.value).toISOString()
           body.valid_end_time = new Date(fields.valid_end_time.value).toISOString()
         } else {
           body.valid_days = parseInt(fields.valid_days.value)
@@ -334,7 +366,7 @@ const viewCouponRecords = async (c) => {
     if (res && res.success) {
       const records = res.data.items || []
       const rows = records.map(r => ({
-        label: `用户: ${r.user?.nickname || r.user_id}`,
+        label: `用户: ${r.username || r.user_id}`,
         value: `余额: ¥${r.balance?.toFixed(2) || '0.00'} | 状态: ${r.status === 1 ? '有效' : r.status === 2 ? '已用完' : '已过期'} | 有效期: ${formatDate(r.valid_start_time)} 至 ${formatDate(r.valid_end_time)}`
       }))
       
@@ -351,9 +383,9 @@ const viewCouponRecords = async (c) => {
   }
 }
 
-onMounted(() => { 
+onMounted(() => {
   loadCategories()
-  loadCoupons() 
+  loadCoupons()
 })
 </script>
 

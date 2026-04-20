@@ -64,6 +64,12 @@
             <span class="text">价格策略</span>
           </a>
         </router-link>
+        <router-link to="/pricing/package-fees" custom v-slot="{ navigate, href, isActive }">
+          <a :class="['menu-item', { 'router-link-active': isActive }]" :href="href" @click="handleLink($event, navigate)">
+            <span class="icon">📦</span>
+            <span class="text">包装费规格</span>
+          </a>
+        </router-link>
         <router-link to="/coupons" custom v-slot="{ navigate, href, isActive }">
           <a :class="['menu-item', { 'router-link-active': isActive }]" :href="href" @click="handleLink($event, navigate)">
             <span class="icon">🎫</span>
