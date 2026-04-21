@@ -69,7 +69,7 @@
             <!-- <td>{{ item.available_products_name }}</td> -->
             <td>{{ item.unit }}</td>
             <td>¥{{ item.unit_price }}</td>
-            <td>{{ item.package_id || '无' }}</td>
+            <td>{{ getPackageFeeName(item.package_id) }}</td>
             <td>{{ item.inventory }}</td>
             <td>{{ item.compute_method }}</td>
             <td>
@@ -148,6 +148,27 @@ export default {
     const availableProductId = computed(() => route.params.id)
     const productsIdQuery = computed(() => route.query.products_id)
 
+    const cachedPackageOptions = ref([])
+    const fetchPackageOptions = async () => {
+      try {
+        const res = await listPackageFeeOptions()
+        const items = (res && res.data && res.data.items) || []
+        const options = [{ label: '无', value: '' }]
+        items.forEach(f => {
+          options.push({ label: `${f.name} (¥${f.price})`, value: f.package_id })
+        })
+        cachedPackageOptions.value = options
+      } catch (e) {
+        cachedPackageOptions.value = [{ label: '无', value: '' }]
+      }
+    }
+
+    const getPackageFeeName = (id) => {
+      if (!id) return '无'
+      const opt = cachedPackageOptions.value.find(o => o.value === id)
+      return opt ? opt.label : id
+    }
+
     const fetchProducts = async () => {
       loading.value = true
       try {
@@ -203,6 +224,7 @@ export default {
     }
 
     onMounted(() => {
+      fetchPackageOptions()
       fetchProducts()
     })
     watch(() => route.params.id, () => {
@@ -688,9 +710,14 @@ export default {
       })
     }
 
-    const viewDetail = (item) => {
+    const viewDetail = async (item) => {
+      const packageFeeOptions = await buildPackageFeeOptions()
+      const packageOpt = packageFeeOptions.find(o => o.value === item.package_id)
+      const packageLabel = packageOpt && packageOpt.value !== '' ? packageOpt.label : (item.package_id || '无')
+
       const rows = [
         { label: '明细商品ID', value: String(item.product_id || '') },
+        { label: '明细名称', value: String(item.name || '') },
         { label: '明细商品名称', value: String(item.name || '') },
         { label: '前台显示内容', value: normalizeDisplayContentLabel(item.display_content) },
         { label: '关联商品名称', value: String(item.available_products_id || '') },
@@ -714,7 +741,7 @@ export default {
         { label: '规格', value: String(item.specification || '') },
         { label: '颜色', value: String(item.color || '') },
         { label: '型号', value: String(item.model || '') },
-        { label: '包装费规格', value: String(item.package_id || '无') },
+        { label: '包装费规格', value: String(packageLabel) },
         { label: '状态', value: String(item.status) === '1' ? '上架' : '下架' }
       ]
       if (String(item.has_custom_params || '0') === '1') {
@@ -883,7 +910,8 @@ export default {
       handleUpdateDetailProduct,
       handleToggleDetailStatus,
       openUpdateModal,
-      viewDetail
+      viewDetail,
+      getPackageFeeName
     }
   }
 }
