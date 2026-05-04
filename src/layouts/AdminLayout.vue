@@ -127,19 +127,24 @@
                     class="video-row-thumb"
                     @click="enlargeDetailVideo(src)"
                   >
-                    <video :src="src" muted playsinline crossorigin="anonymous"></video>
+                    <video
+                      :src="normalizeMediaUrl(src)"
+                      class="video-row-player"
+                      muted
+                      playsinline
+                      preload="metadata"
+                    ></video>
                   </div>
                 </div>
               </div>
               <div v-else-if="item && item.type === 'video'" class="detail-video">
                 <div v-if="item.label" class="detail-label">{{ item.label }}</div>
                 <video
-                  :src="item.src || item.value"
-                  :class="item.large ? 'detail-video-large' : ''"
+                  :src="normalizeMediaUrl(item.src || item.value)"
+                  :class="item.large ? 'detail-video-player detail-video-player-large' : 'detail-video-player'"
                   :controls="!!item.large"
                   muted
                   playsinline
-                  crossorigin="anonymous"
                   @click="enlargeDetailVideo(item.src || item.value)"
                 ></video>
               </div>
@@ -232,8 +237,15 @@
                 <div v-if="Array.isArray(field.existing) && field.existing.length" class="file-thumb-list">
                   <div v-for="(u, i) in field.existing" :key="i" class="file-thumb-item">
                     <div class="thumb" @click="previewSelectedFile(u)">
-                      <img v-if="isImageUrl(u)" :src="u" />
-                      <video v-else-if="isVideoUrl(u)" :src="u" muted playsinline style="max-width: 100%; border-radius: 8px; border: 1px solid #e5e7eb;"></video>
+                      <img v-if="isImageUrl(u)" :src="normalizeMediaUrl(u)" />
+                      <video
+                        v-else-if="isVideoUrl(u)"
+                        :src="normalizeMediaUrl(u)"
+                        class="file-thumb-video"
+                        muted
+                        playsinline
+                        preload="metadata"
+                      ></video>
                       <div v-else class="thumb-file">
                         <span class="thumb-icon">📄</span>
                       </div>
@@ -611,6 +623,19 @@ export default {
     }
   },
   methods: {
+    normalizeMediaUrl (u) {
+      try {
+        let s = String(u || '').trim()
+        s = s.replace(/^`+|`+$/g, '')
+        s = s.replace(/^"+|"+$/g, '')
+        s = s.replace(/^'+|'+$/g, '')
+        s = s.trim()
+        if (!s || s.toLowerCase() === 'null' || s.toLowerCase() === 'undefined') return ''
+        return s
+      } catch (e) {
+        return ''
+      }
+    },
     escapeHtml (s) {
       try {
         return String(s || '')
@@ -753,19 +778,19 @@ export default {
     },
     isImageUrl (u) {
       try {
-        const s = String(u || '').toLowerCase()
+        const s = this.normalizeMediaUrl(u).toLowerCase()
         return /\.(png|jpg|jpeg|gif|bmp|webp)(\?.*)?$/.test(s)
       } catch (e) { return false }
     },
     isVideoUrl (u) {
       try {
-        const s = String(u || '').toLowerCase()
+        const s = this.normalizeMediaUrl(u).toLowerCase()
         return /\.(mp4|mov|webm|ogg|m3u8)(\?.*)?$/.test(s)
       } catch (e) { return false }
     },
     basename (u) {
       try {
-        const s = String(u || '')
+        const s = this.normalizeMediaUrl(u)
         const parts = s.split('?')[0].split('/')
         return parts[parts.length - 1] || s
       } catch (e) { return '文件' }
@@ -810,7 +835,7 @@ export default {
           }
           src = this.getFileObjectURL(f)
         } else if (typeof f === 'string') {
-          src = f
+          src = this.normalizeMediaUrl(f)
           isImg = this.isImageUrl(src)
           isVideo = this.isVideoUrl(src)
         }
@@ -876,6 +901,7 @@ export default {
       })()
     },
     enlargeDetailImage (url) {
+      url = this.normalizeMediaUrl(url)
       if (!url) return
       if (this.modal.isPreview) {
         this.modal.type = 'detail'
@@ -903,6 +929,7 @@ export default {
       this.modal.show = true
     },
     enlargeDetailVideo (url) {
+      url = this.normalizeMediaUrl(url)
       if (!url) return
       if (this.modal.isPreview) {
         this.modal.type = 'detail'
@@ -1658,26 +1685,35 @@ body {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    align-items: center;
+    align-items: stretch;
+    width: 100%;
   }
   .detail-video .detail-label {
     font-size: 12px;
     color: #6b7280;
   }
-  .detail-video video {
-    width: 64px;
-    height: 64px;
+  .detail-video .detail-video-player {
+    width: min(100%, 280px);
+    height: 180px;
+    max-width: 100%;
     border-radius: 6px;
     border: 1px solid #e5e7eb;
     cursor: pointer;
-    object-fit: cover;
+    object-fit: contain;
+    background: #0f172a;
+    display: block;
+    margin: 0 auto;
   }
-  .detail-video video.detail-video-large {
+  .detail-video .detail-video-player.detail-video-player-large {
     width: 100%;
-    height: auto;
-    max-height: 80vh;
+    max-width: min(100%, 960px);
+    height: min(72vh, 70vw);
+    min-height: 320px;
+    max-height: 72vh;
     border-radius: 8px;
     cursor: default;
+    object-fit: contain;
+    background: #000;
   }
   .detail-image-row .detail-label {
     font-size: 12px;
@@ -1717,17 +1753,20 @@ body {
   }
   .video-row-thumb {
     flex: 0 0 auto;
-    width: 64px;
-    height: 64px;
+    width: 112px;
+    height: 84px;
     border-radius: 6px;
     border: 1px solid #e5e7eb;
     overflow: hidden;
     cursor: pointer;
+    background: #0f172a;
   }
-  .video-row-thumb video {
+  .video-row-thumb .video-row-player {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
+    display: block;
+    background: #0f172a;
   }
   .modal-form {
     display: flex;
@@ -1879,11 +1918,45 @@ body {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  overflow: hidden;
+  background: #f8fafc;
 }
 .file-thumb-item .thumb img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+.file-thumb-item .thumb .file-thumb-video {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  object-fit: contain;
+  background: #0f172a;
+}
+@media (max-width: 900px) {
+  .detail-video .detail-video-player.detail-video-player-large {
+    height: min(60vh, 56vw);
+    min-height: 240px;
+  }
+  .video-row-thumb {
+    width: 96px;
+    height: 72px;
+  }
+}
+@media (max-width: 640px) {
+  .detail-video .detail-video-player {
+    width: 100%;
+    height: 160px;
+  }
+  .detail-video .detail-video-player.detail-video-player-large {
+    height: min(52vh, 64vw);
+    min-height: 220px;
+  }
+  .file-thumb-list {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 .file-thumb-item .thumb-file {
   width: 100%;
