@@ -90,3 +90,21 @@ export const deleteProductFile = (formData) => {
     }
   }).then(res => res.data)
 }
+
+/**
+ * 删除明细商品（multipart/form-data）
+ *
+ * @param {FormData} formData 请求表单，需包含明细商品 ID
+ * @returns {Promise<Object>} 删除结果
+ * @example
+ * const formData = new FormData()
+ * formData.append('product_id', 'P001')
+ * await deleteProductDetail(formData)
+ */
+export const deleteProductDetail = (formData) => {
+  return api.post('/admin/products/delete', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  }).then(res => res.data)
+}

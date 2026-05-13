@@ -66,6 +66,20 @@ import { listPriceStrategies, createPriceStrategy, updatePriceStrategy, resetPri
 
 const showModal = inject('showModal')
 const showToast = inject('showToast')
+const resolveApiMessage = inject('resolveApiMessage', (source, fallback = '操作失败') => {
+  if (source && source.response && source.response.data) {
+    const payload = source.response.data
+    const message = payload && payload.message ? String(payload.message) : ''
+    const detail = payload && payload.data != null ? payload.data : ''
+    return [message, detail].filter(v => String(v || '').trim()).join('：') || fallback
+  }
+  if (source && typeof source === 'object') {
+    const message = source.message ? String(source.message) : ''
+    const detail = source.data != null ? source.data : ''
+    return [message, detail].filter(v => String(v || '').trim()).join('：') || fallback
+  }
+  return fallback
+})
 
 const filter = ref({ keyword: '', status: '' })
 const strategies = ref([])
@@ -77,12 +91,12 @@ const loadStrategies = async () => {
       strategies.value = res.data.items
     } else {
       strategies.value = []
-      const msg = (res && (res.data || res.message)) || '获取价格策略失败'
+      const msg = resolveApiMessage(res, '获取价格策略失败')
       showToast(String(msg))
     }
   } catch (e) {
     strategies.value = []
-    showToast('获取价格策略失败')
+    showToast(resolveApiMessage(e, '获取价格策略失败'))
   }
 }
 
@@ -175,10 +189,10 @@ const addStrategy = () => {
           showToast(res.message || '创建成功')
           await loadStrategies()
         } else {
-          const msg = (res && (res.data || res.message)) || '创建失败'
+          const msg = resolveApiMessage(res, '创建失败')
           showToast(String(msg))
         }
-      } catch (e) { showToast('请求失败') }
+      } catch (e) { showToast(resolveApiMessage(e, '请求失败')) }
     }
   })
 }
@@ -206,8 +220,8 @@ const updateStrategy = (s) => {
           formula
         }
         const res = await updatePriceStrategy(body)
-        if (res && res.success) { showToast(res.message || '更新成功'); await loadStrategies() } else { const msg = (res && (res.data || res.message)) || '更新失败'; showToast(String(msg)) }
-      } catch (e) { showToast('请求失败') }
+        if (res && res.success) { showToast(res.message || '更新成功'); await loadStrategies() } else { const msg = resolveApiMessage(res, '更新失败'); showToast(String(msg)) }
+      } catch (e) { showToast(resolveApiMessage(e, '请求失败')) }
     }
   })
 }
@@ -215,8 +229,8 @@ const updateStrategy = (s) => {
 const resetStrategy = async (s) => {
   try {
     const res = await resetPriceStrategy({ strategy_id: s.strategy_id || s.id })
-    if (res && res.success) { showToast(res.message || '重置成功'); await loadStrategies() } else { const msg = (res && (res.data || res.message)) || '重置失败'; showToast(String(msg)) }
-  } catch (e) { showToast('请求失败') }
+    if (res && res.success) { showToast(res.message || '重置成功'); await loadStrategies() } else { const msg = resolveApiMessage(res, '重置失败'); showToast(String(msg)) }
+  } catch (e) { showToast(resolveApiMessage(e, '请求失败')) }
 }
 
 const removeStrategy = (s) => {
@@ -234,11 +248,11 @@ const removeStrategy = (s) => {
           showToast(msg)
           await loadStrategies()
         } else {
-          const msg = (res && (res.data || res.message)) || '删除失败'
+          const msg = resolveApiMessage(res, '删除失败')
           showToast(String(msg))
         }
       } catch (e) {
-        showToast('删除失败')
+        showToast(resolveApiMessage(e, '删除失败'))
       }
     }
   })

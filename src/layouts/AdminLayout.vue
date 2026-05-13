@@ -73,7 +73,7 @@
               <div class="summary-item wide" v-if="modal.result && modal.result.message"><span class="label">说明</span><span class="value">{{ modal.result.message }}</span></div>
               <div class="summary-item" v-if="modal.result && modal.result.data && (modal.result.data.failure_count != null)"><span class="label">失败条数</span><span class="value">{{ modal.result.data.failure_count }}</span></div>
             </div>
-            <div v-if="modal.result && modal.result.data">
+            <div v-if="modal.result && modal.result.data != null">
               <table v-if="Array.isArray(modal.result.data.failures) && modal.result.data.failures.length" class="result-table">
                 <thead>
                   <tr>
@@ -92,6 +92,10 @@
               </table>
               <div v-else-if="Array.isArray(modal.result.data)" class="result-list">
                 <div class="list-item" v-for="(t, i) in modal.result.data" :key="i">{{ t }}</div>
+              </div>
+              <div v-else-if="isResultDataScalar(modal.result.data)" class="result-text">{{ formatResultDataText(modal.result.data) }}</div>
+              <div v-else-if="getResultDataRows(modal.result.data).length" class="result-list">
+                <div class="list-item" v-for="(row, i) in getResultDataRows(modal.result.data)" :key="i">{{ row.label }}: {{ row.value }}</div>
               </div>
             </div>
           </div>
@@ -163,7 +167,10 @@
             <template v-for="(field, key) in modal.fields" :key="key">
               <div class="form-group" v-if="!(field && field.hidden)">
                 <div class="label-row">
-                  <label>{{ field.label }}</label>
+                  <label>
+                    <span v-if="field.required" class="required-mark">*</span>
+                    {{ field.label }}
+                  </label>
                   <span v-if="field.tooltip" class="hint-icon" :title="field.tooltip">!</span>
                   <a v-if="field.link" :href="field.link" target="_blank" class="field-link">{{ field.linkText || '查看公司列表' }}</a>
                 </div>
@@ -181,7 +188,9 @@
                   v-else-if="field.type === 'text' || field.type === 'number' || field.type === 'password' || field.type === 'email' || field.type === 'datetime-local' || field.type === 'date' || field.type === 'time'"
                   :type="field.type"
                   v-model="field.value"
-                  class="form-input"
+                  :readonly="!!field.readonly"
+                  :disabled="!!field.disabled"
+                  :class="['form-input', { 'readonly-input': field.readonly, 'disabled-input': field.disabled }]"
                   @focus="(e) => { if(field.onFocus) field.onFocus(e) }"
                   @click="(e) => { if(field.onClick) field.onClick(e) }"
                 />
@@ -344,7 +353,7 @@ import LayoutHeader from '@/components/LayoutHeader.vue'
 import LayoutSidebar from '@/components/LayoutSidebar.vue'
 import { reactive, provide, watch, ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/api/admin'
+import { useAuthStore, buildApiMessage, resolveApiErrorMessage, resolveApiResultMessage } from '@/api/admin'
 import { deleteProductFile } from '@/api/product'
 
 export default {
@@ -394,6 +403,9 @@ export default {
     })
     onMounted(() => {
       try {
+        window.addEventListener('shopback-api-error', handleApiErrorEvent)
+      } catch (e) {}
+      try {
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
             hidePageLoading()
@@ -404,6 +416,9 @@ export default {
       }
     })
     onBeforeUnmount(() => {
+      try {
+        window.removeEventListener('shopback-api-error', handleApiErrorEvent)
+      } catch (e) {}
       try { if (typeof removeBefore === 'function') removeBefore() } catch (e) {}
       try { if (typeof removeAfter === 'function') removeAfter() } catch (e) {}
       if (hideTimer) {
@@ -443,6 +458,10 @@ export default {
       active: false,
       percent: 0,
       text: ''
+    })
+    const lastApiError = reactive({
+      text: '',
+      at: 0
     })
 
     const showModal = (options) => {
@@ -487,10 +506,51 @@ export default {
 
     provide('showModal', showModal)
     const toasts = reactive([])
+
+    /**
+     * 判断 toast 文案是否属于信息量较低的兜底提示。
+     * @param {string} text 提示文本
+     * @returns {boolean} 是否为兜底提示
+     */
+    const isGenericFallbackToast = (text) => {
+      const value = String(text || '').trim()
+      return /^(请求失败|导入请求失败|获取.+失败|创建失败|更新失败|删除失败|更改失败|更改请求失败|状态更新失败|状态更新请求失败)$/.test(value)
+    }
+
+    /**
+     * 监听 axios 拦截器派发的全局接口错误事件。
+     * @param {CustomEvent} event 事件对象
+     */
+    const handleApiErrorEvent = (event) => {
+      const message = buildApiMessage(event && event.detail && event.detail.message, '', '')
+      if (!message) return
+      lastApiError.text = message
+      lastApiError.at = Date.now()
+      showToast({ text: message, source: 'api-error' })
+    }
+
+    /**
+     * 统一解析字符串、返回包体和异常对象，避免后端 data 错误详情丢失。
+     * @param {unknown} arg Toast 输入参数
+     * @returns {string} 已展示的文案
+     */
     const showToast = (arg) => {
+      const isErrorLike = arg instanceof Error || !!(arg && arg.response)
       const isObj = typeof arg === 'object' && arg !== null
-      const m = String(isObj ? (arg.text || arg.message || arg.msg || '') : (arg || ''))
+      let m = ''
+      if (isErrorLike) {
+        m = resolveApiErrorMessage(arg, '')
+      } else if (isObj && arg.error) {
+        m = resolveApiErrorMessage(arg.error, arg.fallback || '')
+      } else if (isObj && arg.result) {
+        m = resolveApiResultMessage(arg.result, arg.fallback || '')
+      } else {
+        m = String(isObj ? (arg.text || arg.message || arg.msg || '') : (arg || ''))
+      }
       if (!m) return ''
+      if ((!isObj || arg.source !== 'api-error') && isGenericFallbackToast(m) && lastApiError.text && (Date.now() - lastApiError.at) < 1500) {
+        return lastApiError.text
+      }
       toasts.push(m)
       const persist = isObj && !!arg.persist
       if (!persist) {
@@ -517,6 +577,10 @@ export default {
     provide('showToast', showToast)
     provide('hideToast', hideToast)
     provide('confirmDialog', confirmDialog)
+    provide('resolveApiMessage', (source, fallback = '操作失败') => {
+      if (source && source.response) return resolveApiErrorMessage(source, fallback)
+      return resolveApiResultMessage(source, fallback)
+    })
     let progressTimer = null
     const duringUploadCap = 95
     const smoothTo = (target, step = 2, done) => {
@@ -873,11 +937,25 @@ export default {
     },
     confirmDeleteExistingUrl (field, i) {
       const t = this
-      ;(async () => {
+      const backup = {
+        type: t.modal.type,
+        title: t.modal.title,
+        message: t.modal.message,
+        fields: t.modal.fields,
+        data: t.modal.data,
+        onConfirm: t.modal.onConfirm,
+        className: t.modal.className
+      }
+      const rawName = Array.isArray(field.existing) ? String(field.existing[i]) : ''
+      const fileName = String(rawName || '').replace(/^`+|`+$/g, '').trim()
+      t.modal.type = 'confirm'
+      t.modal.title = '确认删除'
+      t.modal.message = `确定要删除${String(field.label || '该文件')}吗？`
+      t.modal.fields = {}
+      t.modal.data = []
+      t.modal.onConfirm = async () => {
         try {
-          const pid = (t.modal.fields && t.modal.fields.product_id && t.modal.fields.product_id.value) ? String(t.modal.fields.product_id.value) : ''
-          const rawName = Array.isArray(field.existing) ? String(field.existing[i]) : ''
-          const fileName = String(rawName || '').replace(/^`+|`+$/g, '').trim()
+          const pid = (backup.fields && backup.fields.product_id && backup.fields.product_id.value) ? String(backup.fields.product_id.value) : ''
           const label = String(field.label || '')
           let fileType = ''
           if (label.includes('主图')) fileType = 'main_image'
@@ -892,13 +970,53 @@ export default {
             if (Array.isArray(field.existing)) field.existing.splice(i, 1)
             t.showToast(body.message || '删除成功')
           } else {
-            const msg = (body && (body.data || body.message)) || '删除失败'
+            const msg = resolveApiResultMessage(body, '删除失败')
             t.showToast(String(msg))
           }
         } catch (e) {
-          t.showToast('删除失败')
+          t.showToast({ error: e, fallback: '删除失败' })
         }
-      })()
+      }
+      t.modal.className = ''
+      t.modal.isPreview = true
+      t.modal.backup = backup
+      t.modal.show = true
+    },
+    /**
+     * 判断结果弹窗的 data 是否为可直接展示的标量值。
+     * @param {unknown} data 结果数据
+     * @returns {boolean} 是否为标量数据
+     */
+    isResultDataScalar (data) {
+      return ['string', 'number', 'boolean'].includes(typeof data)
+    },
+    /**
+     * 将标量结果数据格式化为文本。
+     * @param {unknown} data 结果数据
+     * @returns {string} 展示文本
+     */
+    formatResultDataText (data) {
+      return String(data == null ? '' : data)
+    },
+    /**
+     * 将对象型结果数据转换为键值对列表，便于结果弹窗展示。
+     * @param {unknown} data 结果数据
+     * @returns {Array<{label: string, value: string}>} 可展示的键值对
+     */
+    getResultDataRows (data) {
+      if (!data || typeof data !== 'object' || Array.isArray(data)) return []
+      return Object.keys(data)
+        .filter(key => key !== 'failures')
+        .map(key => {
+          const value = data[key]
+          if (value == null) return null
+          if (typeof value === 'object') {
+            const text = buildApiMessage('', value, '')
+            return text ? { label: key, value: text } : null
+          }
+          return { label: key, value: String(value) }
+        })
+        .filter(Boolean)
     },
     enlargeDetailImage (url) {
       url = this.normalizeMediaUrl(url)
@@ -1986,6 +2104,7 @@ body {
   font-weight: bold;
 }
 .label-row { display: flex; align-items: center; gap: 8px; }
+.required-mark { color: #ef4444; margin-right: 4px; font-weight: 700; }
 .hint-icon { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: #fef3c7; color: #b45309; font-weight: 700; font-size: 12px; cursor: help; }
 .field-link { font-size: 12px; color: #2563eb; text-decoration: underline; }
 .token-list {

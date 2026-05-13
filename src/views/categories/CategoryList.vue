@@ -426,26 +426,32 @@ const previewCategoryImage = (url) => {
   if (!url) return
   showModal({ type: 'detail', title: '图片预览', data: [{ label: '', value: url, type: 'image', large: true }] })
 }
-const deleteCategoryImage = async () => {
+const deleteCategoryImage = () => {
   const url = normalizeImageUrl(activeCategory.value?.image_url || '')
   if (!url) return
-  const fd = new FormData()
-  fd.append('product_id', activeCategory.value.id)
-  fd.append('file_name', url)
-  fd.append('file_type', 'images')
-  try {
-    const res = await deleteProductFile(fd)
-    if (res && res.success) {
-      showToast(res.message || '删除成功')
-      if (activeCategory.value) activeCategory.value.image_url = ''
-      await fetchCategories()
-    } else {
-      const msg = (res && (res.data || res.message)) || '删除失败'
-      showToast(String(msg))
+  confirmDialog({
+    title: '确认删除',
+    content: '确定要删除当前分类图片吗？',
+    onConfirm: async () => {
+      const fd = new FormData()
+      fd.append('product_id', activeCategory.value.id)
+      fd.append('file_name', url)
+      fd.append('file_type', 'images')
+      try {
+        const res = await deleteProductFile(fd)
+        if (res && res.success) {
+          showToast(res.message || '删除成功')
+          if (activeCategory.value) activeCategory.value.image_url = ''
+          await fetchCategories()
+        } else {
+          const msg = (res && (res.data || res.message)) || '删除失败'
+          showToast(String(msg))
+        }
+      } catch (e) {
+        showToast('删除失败')
+      }
     }
-  } catch (e) {
-    showToast('删除失败')
-  }
+  })
 }
 const removeSelectedCategoryImage = () => {
   try {

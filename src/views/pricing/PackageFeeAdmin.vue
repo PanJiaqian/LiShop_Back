@@ -63,16 +63,16 @@
       <div v-if="pagination.total > 0" class="pagination">
         <span class="page-info">共 {{ pagination.total }} 条，每页 {{ pagination.page_size }} 条</span>
         <div class="page-buttons">
-          <button 
-            class="btn-page" 
+          <button
+            class="btn-page"
             :disabled="pagination.page <= 1"
             @click="changePage(pagination.page - 1)"
           >
             上一页
           </button>
           <span class="current-page">{{ pagination.page }}</span>
-          <button 
-            class="btn-page" 
+          <button
+            class="btn-page"
             :disabled="pagination.page * pagination.page_size >= pagination.total"
             @click="changePage(pagination.page + 1)"
           >
@@ -90,9 +90,23 @@ import { listPackageFees, createPackageFee, updatePackageFee, deletePackageFee }
 
 export default {
   name: 'PackageFeeAdmin',
-  setup() {
+  setup () {
     const showModal = inject('showModal')
     const showToast = inject('showToast')
+    const resolveApiMessage = inject('resolveApiMessage', (source, fallback = '操作失败') => {
+      if (source && source.response && source.response.data) {
+        const payload = source.response.data
+        const message = payload && payload.message ? String(payload.message) : ''
+        const detail = payload && payload.data != null ? payload.data : ''
+        return [message, detail].filter(v => String(v || '').trim()).join('：') || fallback
+      }
+      if (source && typeof source === 'object') {
+        const message = source.message ? String(source.message) : ''
+        const detail = source.data != null ? source.data : ''
+        return [message, detail].filter(v => String(v || '').trim()).join('：') || fallback
+      }
+      return fallback
+    })
 
     const loading = ref(false)
     const fees = ref([])
@@ -109,9 +123,13 @@ export default {
         if (res && res.success) {
           fees.value = res.data.items || []
           pagination.total = res.data.total || 0
+        } else {
+          fees.value = []
+          pagination.total = 0
+          showToast(resolveApiMessage(res, '获取包装费列表失败'))
         }
       } catch (e) {
-        showToast('获取包装费列表失败')
+        showToast(resolveApiMessage(e, '获取包装费列表失败'))
       } finally {
         loading.value = false
       }
@@ -132,10 +150,10 @@ export default {
         title: '新建包装费规格',
         fields: {
           name: { label: '包装费名称', type: 'text', value: '' },
-          type: { label: '计费方式', type: 'select', value: 'quantity', options: [{label: '按数量', value: 'quantity'}, {label: '按重量', value: 'weight'}] },
+          type: { label: '计费方式', type: 'select', value: 'quantity', options: [{ label: '按数量', value: 'quantity' }, { label: '按重量', value: 'weight' }] },
           max_capacity: { label: '最大承载量', type: 'number', value: '0' },
           price: { label: '包装价格', type: 'number', value: '0.00' },
-          status: { label: '状态', type: 'select', value: '1', options: [{label: '启用', value: '1'}, {label: '停用', value: '0'}] }
+          status: { label: '状态', type: 'select', value: '1', options: [{ label: '启用', value: '1' }, { label: '停用', value: '0' }] }
         },
         onConfirm: async (fields) => {
           try {
@@ -150,10 +168,10 @@ export default {
               showToast('创建成功')
               fetchFees()
             } else {
-              showToast(res?.message || '创建失败')
+              showToast(resolveApiMessage(res, '创建失败'))
             }
           } catch (e) {
-            showToast('创建失败: ' + (e.message || '网络错误'))
+            showToast(resolveApiMessage(e, '创建失败'))
           }
         }
       })
@@ -165,10 +183,10 @@ export default {
         title: '编辑包装费规格',
         fields: {
           name: { label: '包装费名称', type: 'text', value: item.name },
-          type: { label: '计费方式', type: 'select', value: item.type, options: [{label: '按数量', value: 'quantity'}, {label: '按重量', value: 'weight'}] },
+          type: { label: '计费方式', type: 'select', value: item.type, options: [{ label: '按数量', value: 'quantity' }, { label: '按重量', value: 'weight' }] },
           max_capacity: { label: '最大承载量', type: 'number', value: String(item.max_capacity) },
           price: { label: '包装价格', type: 'number', value: String(item.price) },
-          status: { label: '状态', type: 'select', value: String(item.status), options: [{label: '启用', value: '1'}, {label: '停用', value: '0'}] }
+          status: { label: '状态', type: 'select', value: String(item.status), options: [{ label: '启用', value: '1' }, { label: '停用', value: '0' }] }
         },
         onConfirm: async (fields) => {
           try {
@@ -184,10 +202,10 @@ export default {
               showToast('更新成功')
               fetchFees()
             } else {
-              showToast(res?.message || '更新失败')
+              showToast(resolveApiMessage(res, '更新失败'))
             }
           } catch (e) {
-            showToast('更新失败: ' + (e.message || '网络错误'))
+            showToast(resolveApiMessage(e, '更新失败'))
           }
         }
       })
@@ -205,10 +223,10 @@ export default {
               showToast('删除成功')
               fetchFees()
             } else {
-              showToast(res?.message || '删除失败')
+              showToast(resolveApiMessage(res, '删除失败'))
             }
           } catch (e) {
-            showToast('删除失败: ' + (e.message || '网络错误'))
+            showToast(resolveApiMessage(e, '删除失败'))
           }
         }
       })

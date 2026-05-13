@@ -72,6 +72,46 @@
         </tbody>
       </table>
     </div>
+
+    <!-- 优惠券记录弹窗 -->
+    <div v-if="recordModal.visible" class="modal-overlay" @mousedown="closeRecordModal">
+      <div class="modal-container custom-large-modal" @mousedown.stop>
+        <div class="modal-header">
+          <h3>优惠券发放/领取记录</h3>
+          <button class="close-btn" @click="closeRecordModal">&times;</button>
+        </div>
+        <div class="modal-body" style="padding: 16px; max-height: 60vh; overflow-y: auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>用户</th>
+                <th>余额</th>
+                <th>状态</th>
+                <th>有效期</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="r in recordModal.records" :key="r.record_id">
+                <td>{{ r.username || r.user_id }}</td>
+                <td>¥{{ r.balance?.toFixed(2) || '0.00' }}</td>
+                <td>
+                  <span class="badge" :class="r.status === 1 ? 'success' : 'gray'">
+                    {{ r.status === 1 ? '有效' : r.status === 2 ? '已用完' : '已过期' }}
+                  </span>
+                </td>
+                <td>{{ formatDate(r.valid_start_time) }} 至 {{ formatDate(r.valid_end_time) }}</td>
+              </tr>
+              <tr v-if="!recordModal.records.length">
+                <td colspan="4" style="color:#6b7280; padding: 24px;">该优惠券尚未发放或领取</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="modal-footer" style="padding: 16px; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end;">
+          <button class="btn-sm primary" @click="closeRecordModal">确定</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -85,6 +125,15 @@ const showToast = inject('showToast')
 
 const coupons = ref([])
 const categoryOptions = ref([])
+const recordModal = ref({
+  visible: false,
+  records: []
+})
+
+const closeRecordModal = () => {
+  recordModal.value.visible = false
+  recordModal.value.records = []
+}
 
 const loadCategories = async () => {
   try {
@@ -131,10 +180,10 @@ const addCoupon = () => {
       discount_type: { label: '抵扣模式', type: 'select', value: '2', options: [{ label: '按固定金额', value: '2' }, { label: '按比例', value: '1' }] },
       discount_value: { label: '抵扣数值', type: 'number', value: '10' },
       min_order_amount: { label: '使用门槛', type: 'number', value: '100' },
-      valid_type: { 
-        label: '有效期模式', 
-        type: 'select', 
-        value: '1', 
+      valid_type: {
+        label: '有效期模式',
+        type: 'select',
+        value: '1',
         options: [{ label: '固定起止日期', value: '1' }, { label: '领取后N天', value: '2' }],
         onChange: (e, fields) => {
           const isFixed = String(fields.valid_type.value) === '1'
@@ -146,10 +195,10 @@ const addCoupon = () => {
       valid_start_time: { label: '起始时间 (必填)', type: 'datetime-local', value: '', hidden: false },
       valid_end_time: { label: '结束时间', type: 'datetime-local', value: '', hidden: false },
       valid_days: { label: '有效天数', type: 'number', value: '30', hidden: true },
-      trigger_type: { 
-        label: '发放触发条件', 
-        type: 'select', 
-        value: '1', 
+      trigger_type: {
+        label: '发放触发条件',
+        type: 'select',
+        value: '1',
         options: [{ label: '新用户注册', value: '1' }, { label: '定时发放', value: '2' }],
         onChange: (e, fields) => {
           fields.trigger_time.hidden = String(fields.trigger_type.value) !== '2'
@@ -157,10 +206,10 @@ const addCoupon = () => {
       },
       trigger_time: { label: '定时发放时间', type: 'datetime-local', value: '', hidden: true },
       applicable_categories: { label: '适用产品系列 (不选默认全部适用)', type: 'checkbox-group', value: [], options: categoryOptions.value.filter(o => o.value !== 'ALL') },
-      applicable_time_periods: { 
-        label: '可用时间段 (周一到周日)', 
-        type: 'checkbox-group', 
-        value: [1, 2, 3, 4, 5, 6, 7], 
+      applicable_time_periods: {
+        label: '可用时间段 (周一到周日)',
+        type: 'checkbox-group',
+        value: [1, 2, 3, 4, 5, 6, 7],
         options: [
           { label: '周一', value: 1 },
           { label: '周二', value: 2 },
@@ -185,7 +234,7 @@ const addCoupon = () => {
           applicable_categories: Array.isArray(fields.applicable_categories.value) && fields.applicable_categories.value.length > 0 ? fields.applicable_categories.value : ['ALL'],
           applicable_time_periods: Array.isArray(fields.applicable_time_periods.value) && fields.applicable_time_periods.value.length > 0 ? fields.applicable_time_periods.value.map(Number) : [1, 2, 3, 4, 5, 6, 7]
         }
-        
+
         if (body.valid_type === 1) {
           if (!fields.valid_start_time.value) {
             return showToast('固定日期模式必须填写起始时间')
@@ -199,7 +248,7 @@ const addCoupon = () => {
         } else {
           body.valid_days = parseInt(fields.valid_days.value)
         }
-        
+
         if (body.trigger_type === 2) {
           if (!fields.trigger_time.value) return showToast('定时发放必须填写发放时间')
           body.trigger_time = new Date(fields.trigger_time.value).toISOString()
@@ -212,8 +261,8 @@ const addCoupon = () => {
         } else {
           showToast((res && res.message) || '创建优惠券失败')
         }
-      } catch (e) { 
-        showToast('请求失败') 
+      } catch (e) {
+        showToast('请求失败')
       }
     }
   })
@@ -227,7 +276,7 @@ const updateCouponBtn = (c) => {
     d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
     return d.toISOString().slice(0, 16)
   }
-  
+
   showModal({
     type: 'form',
     title: '更新优惠券',
@@ -237,10 +286,10 @@ const updateCouponBtn = (c) => {
       discount_type: { label: '抵扣模式', type: 'select', value: String(rule.discount_type || 2), options: [{ label: '按固定金额', value: '2' }, { label: '按比例', value: '1' }] },
       discount_value: { label: '抵扣数值', type: 'number', value: String(rule.discount_value || 0) },
       min_order_amount: { label: '使用门槛', type: 'number', value: String(rule.min_order_amount || 0) },
-      valid_type: { 
-        label: '有效期模式', 
-        type: 'select', 
-        value: String(rule.valid_type || 1), 
+      valid_type: {
+        label: '有效期模式',
+        type: 'select',
+        value: String(rule.valid_type || 1),
         options: [{ label: '固定起止日期', value: '1' }, { label: '领取后N天', value: '2' }],
         onChange: (e, fields) => {
           const isFixed = String(fields.valid_type.value) === '1'
@@ -252,10 +301,10 @@ const updateCouponBtn = (c) => {
       valid_start_time: { label: '起始时间 (必填)', type: 'datetime-local', value: toLocalStr(rule.valid_start_time), hidden: String(rule.valid_type) !== '1' },
       valid_end_time: { label: '结束时间', type: 'datetime-local', value: toLocalStr(rule.valid_end_time), hidden: String(rule.valid_type) !== '1' },
       valid_days: { label: '有效天数', type: 'number', value: String(rule.valid_days || 30), hidden: String(rule.valid_type) === '1' },
-      trigger_type: { 
-        label: '发放触发条件', 
-        type: 'select', 
-        value: String(rule.trigger_type || 1), 
+      trigger_type: {
+        label: '发放触发条件',
+        type: 'select',
+        value: String(rule.trigger_type || 1),
         options: [{ label: '新用户注册', value: '1' }, { label: '定时发放', value: '2' }],
         onChange: (e, fields) => {
           fields.trigger_time.hidden = String(fields.trigger_type.value) !== '2'
@@ -263,10 +312,10 @@ const updateCouponBtn = (c) => {
       },
       trigger_time: { label: '定时发放时间', type: 'datetime-local', value: toLocalStr(rule.trigger_time), hidden: String(rule.trigger_type) !== '2' },
       applicable_categories: { label: '适用产品系列 (不选默认全部适用)', type: 'checkbox-group', value: rule.applicable_categories && !rule.applicable_categories.includes('ALL') ? rule.applicable_categories : [], options: categoryOptions.value.filter(o => o.value !== 'ALL') },
-      applicable_time_periods: { 
-        label: '可用时间段 (周一到周日)', 
-        type: 'checkbox-group', 
-        value: Array.isArray(rule.applicable_time_periods) ? rule.applicable_time_periods.map(Number) : [1, 2, 3, 4, 5, 6, 7], 
+      applicable_time_periods: {
+        label: '可用时间段 (周一到周日)',
+        type: 'checkbox-group',
+        value: Array.isArray(rule.applicable_time_periods) ? rule.applicable_time_periods.map(Number) : [1, 2, 3, 4, 5, 6, 7],
         options: [
           { label: '周一', value: 1 },
           { label: '周二', value: 2 },
@@ -292,7 +341,7 @@ const updateCouponBtn = (c) => {
           applicable_categories: Array.isArray(fields.applicable_categories.value) && fields.applicable_categories.value.length > 0 ? fields.applicable_categories.value : ['ALL'],
           applicable_time_periods: Array.isArray(fields.applicable_time_periods.value) && fields.applicable_time_periods.value.length > 0 ? fields.applicable_time_periods.value.map(Number) : [1, 2, 3, 4, 5, 6, 7]
         }
-        
+
         if (body.valid_type === 1) {
           if (!fields.valid_start_time.value) {
             return showToast('固定日期模式必须填写起始时间')
@@ -306,7 +355,7 @@ const updateCouponBtn = (c) => {
         } else {
           body.valid_days = parseInt(fields.valid_days.value)
         }
-        
+
         if (body.trigger_type === 2) {
           if (!fields.trigger_time.value) return showToast('定时发放必须填写发放时间')
           body.trigger_time = new Date(fields.trigger_time.value).toISOString()
@@ -319,8 +368,8 @@ const updateCouponBtn = (c) => {
         } else {
           showToast((res && res.message) || '更新优惠券失败')
         }
-      } catch (e) { 
-        showToast('请求失败') 
+      } catch (e) {
+        showToast('请求失败')
       }
     }
   })
@@ -366,17 +415,8 @@ const viewCouponRecords = async (c) => {
   try {
     const res = await listCouponRecords(c.coupon_id, { page: 1, page_size: 50 })
     if (res && res.success) {
-      const records = res.data.items || []
-      const rows = records.map(r => ({
-        label: `用户: ${r.username || r.user_id}`,
-        value: `余额: ¥${r.balance?.toFixed(2) || '0.00'} | 状态: ${r.status === 1 ? '有效' : r.status === 2 ? '已用完' : '已过期'} | 有效期: ${formatDate(r.valid_start_time)} 至 ${formatDate(r.valid_end_time)}`
-      }))
-      
-      if (rows.length === 0) {
-        rows.push({ label: '暂无记录', value: '该优惠券尚未发放或领取' })
-      }
-      
-      showModal({ type: 'detail', title: '优惠券发放/领取记录', data: rows })
+      recordModal.value.records = res.data.items || []
+      recordModal.value.visible = true
     } else {
       showToast((res && res.message) || '获取记录失败')
     }
@@ -440,5 +480,47 @@ onMounted(() => {
 .badge.gray {
   background-color: #f3f4f6;
   color: #4b5563;
+}
+
+/* 记录弹窗样式 */
+.custom-large-modal {
+  width: 800px;
+  max-width: 95vw;
+}
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-container {
+  background: #fff;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+.modal-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+.close-btn {
+  background: transparent;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #6b7280;
 }
 </style>

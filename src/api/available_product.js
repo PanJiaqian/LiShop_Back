@@ -84,3 +84,21 @@ export const listAvailableProducts = (params) => {
 export const searchAvailableProducts = (params) => {
   return api.get('/admin/available_products/search', { params }).then(res => res.data)
 }
+
+/**
+ * 删除可售商品（multipart/form-data）
+ *
+ * @param {FormData} formData 请求表单，需包含商品 ID
+ * @returns {Promise<Object>} 删除结果
+ * @example
+ * const formData = new FormData()
+ * formData.append('product_id', 'AP001')
+ * await deleteAvailableProduct(formData)
+ */
+export const deleteAvailableProduct = (formData) => {
+  return api.post('/admin/available_products/delete', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  }).then(res => res.data)
+}

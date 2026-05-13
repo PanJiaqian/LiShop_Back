@@ -111,7 +111,8 @@ import {
   updateAvailableProduct,
   updateAvailableProductStatus,
   listAvailableProducts,
-  searchAvailableProducts
+  searchAvailableProducts,
+  deleteAvailableProduct
 } from '@/api/available_product'
 import { getOrderStats, getAvailableProductSalesStats } from '@/api/stats'
 import { listCategories } from '@/api/category'
@@ -122,6 +123,20 @@ export default {
     const showModal = inject('showModal')
     const showToast = inject('showToast')
     const hideToast = inject('hideToast')
+    const resolveApiMessage = inject('resolveApiMessage', (source, fallback = '操作失败') => {
+      if (source && source.response && source.response.data) {
+        const payload = source.response.data
+        const message = payload && payload.message ? String(payload.message) : ''
+        const detail = payload && payload.data != null ? payload.data : ''
+        return [message, detail].filter(v => String(v || '').trim()).join('：') || fallback
+      }
+      if (source && typeof source === 'object') {
+        const message = source.message ? String(source.message) : ''
+        const detail = source.data != null ? source.data : ''
+        return [message, detail].filter(v => String(v || '').trim()).join('：') || fallback
+      }
+      return fallback
+    })
     const formatTime = inject('formatTime', (t) => {
       if (t == null) return ''
       try {
@@ -210,13 +225,13 @@ export default {
           const total = (res && res.data && res.data.total != null) ? Number(res.data.total) : items.length
           pagination.total = Number.isNaN(total) ? items.length : total
         } else {
-          const msg = (res && (res.data || res.message)) || '获取商品列表失败'
+          const msg = resolveApiMessage(res, '获取商品列表失败')
           showToast(String(msg))
           products.value = []
           pagination.total = 0
         }
       } catch (e) {
-        showToast('获取商品列表失败')
+        showToast(resolveApiMessage(e, '获取商品列表失败'))
       } finally {
         loading.value = false
       }
@@ -271,8 +286,19 @@ export default {
       fetchProducts()
     }
 
+    /**
+     * 跳转到商品明细页，并携带母商品名称用于明细商品创建时自动回填。
+     *
+     * @param {Object} item 当前母商品数据项
+     * @returns {Promise<void>} 路由跳转结果
+     */
     const goToDetail = (item) => {
-      router.push(`/products/${item.available_product_id}/detail`)
+      return router.push({
+        path: `/products/${item.available_product_id}/detail`,
+        query: {
+          available_products_name: String(item.name || '')
+        }
+      })
     }
 
     // --- Main Product Operations ---
@@ -282,10 +308,10 @@ export default {
         type: 'form',
         title: '新建商品',
         fields: {
-          name: { label: '商品名称', type: 'text', value: '' },
-          category_name: { label: '分类名称', type: 'text', value: '' },
+          name: { label: '商品名称', required: true, type: 'text', value: '' },
+          category_name: { label: '分类名称', required: true, type: 'text', value: '' },
           sort_order: { label: '推荐值', type: 'number', value: '0' },
-          shipping_origin: { label: '发货地', type: 'text', value: '' },
+          shipping_origin: { label: '发货地', required: true, type: 'text', value: '' },
           status: { label: '状态', type: 'select', value: '1', options: [{ label: '上架', value: '1' }, { label: '下架', value: '0' }] },
           is_free_shipping: { label: '包邮', type: 'select', value: '1', options: [{ label: '是', value: '1' }, { label: '否', value: '0' }] },
           shipping_time_hours: { label: '发货时效(小时)', type: 'number', value: '24' },
@@ -325,11 +351,11 @@ export default {
               endUploadProgress && endUploadProgress()
               fetchProducts()
             } else {
-              const msg = (res && (res.data || res.message)) || '新建失败'
+              const msg = resolveApiMessage(res, '新建失败')
               showToast(String(msg))
             }
           } catch (e) {
-            showToast('新建失败: ' + (e.message || '网络错误'))
+            showToast(resolveApiMessage(e, '新建失败'))
             endUploadProgress && endUploadProgress()
           }
         }
@@ -367,7 +393,17 @@ export default {
           } catch (e) {
             hideToast(loadingToast)
             endUploadProgress && endUploadProgress()
-            showToast('导入请求失败')
+            const apiResult = e && e.response && e.response.data
+            if (apiResult && typeof apiResult === 'object') {
+              showModal({
+                type: 'result',
+                title: '导入结果',
+                result: apiResult,
+                forceConfirm: true,
+                onConfirm: () => {}
+              })
+            }
+            showToast(resolveApiMessage(e, '导入请求失败'))
           }
         }
       })
@@ -404,7 +440,17 @@ export default {
           } catch (e) {
             hideToast(loadingToast)
             endUploadProgress && endUploadProgress()
-            showToast('导入请求失败')
+            const apiResult = e && e.response && e.response.data
+            if (apiResult && typeof apiResult === 'object') {
+              showModal({
+                type: 'result',
+                title: '导入结果',
+                result: apiResult,
+                forceConfirm: true,
+                onConfirm: () => {}
+              })
+            }
+            showToast(resolveApiMessage(e, '导入请求失败'))
           }
         }
       })
@@ -441,7 +487,17 @@ export default {
           } catch (e) {
             hideToast(loadingToast)
             endUploadProgress && endUploadProgress()
-            showToast('导入请求失败')
+            const apiResult = e && e.response && e.response.data
+            if (apiResult && typeof apiResult === 'object') {
+              showModal({
+                type: 'result',
+                title: '导入结果',
+                result: apiResult,
+                forceConfirm: true,
+                onConfirm: () => {}
+              })
+            }
+            showToast(resolveApiMessage(e, '导入请求失败'))
           }
         }
       })
@@ -539,12 +595,12 @@ export default {
               endUploadProgress && endUploadProgress()
               fetchProducts()
             } else {
-              const msg = (res && (res.data || res.message)) || '更新失败'
+              const msg = resolveApiMessage(res, '更新失败')
               endUploadProgress && endUploadProgress()
               showToast(String(msg))
             }
           } catch (e) {
-            showToast('更新失败: ' + (e.message || '网络错误'))
+            showToast(resolveApiMessage(e, '更新失败'))
             endUploadProgress && endUploadProgress()
           }
         }
@@ -563,21 +619,43 @@ export default {
           item.status = newStatus
           fetchProducts()
         } else {
-          const msg = (res && (res.data || res.message)) || '状态更新失败'
+          const msg = resolveApiMessage(res, '状态更新失败')
           showToast(String(msg))
         }
       } catch (e) {
-        showToast('状态更新请求失败')
+        showToast(resolveApiMessage(e, '状态更新请求失败'))
       }
     }
 
+    /**
+     * 删除母商品，并在成功后刷新当前列表。
+     *
+     * @param {Object} item 当前母商品数据项
+     * @returns {void}
+     */
     const deleteProduct = (item) => {
       showModal({
         type: 'confirm',
         title: '删除商品',
         message: `确定要删除商品 "${item.name}" 吗？此操作不可恢复。`,
-        onConfirm: () => {
-          showToast('暂未开放删除接口')
+        onConfirm: async () => {
+          try {
+            const formData = new FormData()
+            formData.append('product_id', item.available_product_id)
+            const res = await deleteAvailableProduct(formData)
+            if (res && res.success) {
+              showToast((res && res.message) || '删除商品成功')
+              if (products.value.length === 1 && pagination.page > 1) {
+                pagination.page -= 1
+              }
+              await fetchProducts()
+            } else {
+              const msg = resolveApiMessage(res, '删除商品失败')
+              showToast(String(msg))
+            }
+          } catch (e) {
+            showToast(resolveApiMessage(e, '删除商品失败'))
+          }
         }
       })
     }
