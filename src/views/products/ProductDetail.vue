@@ -40,6 +40,7 @@
           <tr>
             <!-- <th width="80">图片</th> -->
             <th>明细名称 / ID</th>
+            <th>仓库</th>
             <th>单位</th>
             <th>单价</th>
             <th>包装费规格</th>
@@ -51,7 +52,7 @@
         </thead>
         <tbody>
           <tr v-if="products.length === 0">
-            <td colspan="8" style="text-align: center; padding: 20px; color: #999;">暂无明细数据</td>
+            <td colspan="9" style="text-align: center; padding: 20px; color: #999;">暂无明细数据</td>
           </tr>
           <tr v-for="item in displayProducts" :key="item.product_id">
             <!-- <td>
@@ -67,6 +68,7 @@
               </div>
             </td>
             <!-- <td>{{ item.available_products_name }}</td> -->
+            <td>{{ item.warehouse || '-' }}</td>
             <td>{{ item.unit }}</td>
             <td>¥{{ item.unit_price }}</td>
             <td>{{ getPackageFeeName(item.package_id) }}</td>
@@ -425,6 +427,7 @@ export default {
             value: isAvailableProductContext.value ? String(currentAvailableProductName.value || '').trim() : (availableProductsName || ''),
             readonly: isAvailableProductContext.value
           },
+          warehouse: { label: '仓库', required: true, type: 'text', value: item ? String(item.warehouse || '') : '' },
           unit: { label: '单位', required: true, type: 'text', value: item ? String(item.unit || '件') : '件' },
           unit_price: { label: '单价', required: true, type: 'number', value: item ? String(item.unit_price ?? '0.00') : '0.00', hint: '该单位价格指代的为1m的价格' },
           additional_price: { label: '附加费', type: 'number', value: item ? String(item.additional_price ?? '0.00') : '0.00' },
@@ -518,6 +521,7 @@ export default {
           append('name')
           append('display_content')
           formData.append('available_products_name', availableProductsName)
+          append('warehouse')
           append('unit')
           append('unit_price')
           append('additional_price')
@@ -691,6 +695,7 @@ export default {
         { label: '明细商品名称', value: String(item.name || '') },
         { label: '前台显示内容', value: normalizeDisplayContentLabel(item.display_content) },
         { label: '关联商品名称', value: String(item.available_products_name || item.available_product_name || item.available_products_id || '') },
+        { label: '仓库', value: String(item.warehouse || '') },
         { label: '单位', value: String(item.unit || '') },
         { label: '单价', value: String(item.unit_price || '') },
         { label: '附加费', value: String(item.additional_price || '') },

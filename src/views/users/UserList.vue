@@ -48,6 +48,7 @@
             <th>手机号</th>
             <th>等级</th>
             <th>地区</th>
+            <th>ERP代码</th>
             <!-- <th>上级ID</th> -->
             <!-- <th>注册时间</th> -->
             <th>状态</th>
@@ -71,6 +72,7 @@
               <span class="badge" :class="getLevelClass(user.level)">Level {{ user.level }}</span>
             </td>
             <td>{{ user.region }}</td>
+            <td>{{ user.customer_erp_code }}</td>
             <!-- <td>{{ user.parent_id }}</td> -->
             <!-- <td>{{ formatTime(user.created_at) }}</td> -->
             <td>
@@ -194,6 +196,7 @@ export default {
           company_name: { label: '公司名称', type: 'text', value: '' },
           contact_name: { label: '联系人', type: 'text', value: '' },
           region: { label: '所在地区', type: 'text', value: '' },
+          customer_erp_code: { label: '客户ERP代码', type: 'text', value: '' },
           level: { label: '会员等级', type: 'number', value: '1' }
         },
         onConfirm: async (fields) => {
@@ -206,6 +209,7 @@ export default {
               company_name: fields.company_name.value,
               contact_name: fields.contact_name.value,
               region: fields.region.value,
+              customer_erp_code: fields.customer_erp_code.value,
               level: parseInt(fields.level.value) || 1,
               parent_id: 0
             })
@@ -270,6 +274,7 @@ export default {
           { label: '公司名称', value: user.company_name },
           { label: '联系人', value: user.contact_name },
           { label: '地区', value: user.region },
+          { label: '客户ERP代码', value: user.customer_erp_code },
           { label: '等级', value: user.level },
           { label: '状态', value: user.status === 1 ? '正常' : '禁用' },
           { label: '上级ID', value: user.parent_id },
@@ -289,6 +294,7 @@ export default {
           company_name: { label: '公司名称', type: 'text', value: user.company_name },
           contact_name: { label: '联系人', type: 'text', value: user.contact_name },
           region: { label: '所在地区', type: 'text', value: user.region },
+          customer_erp_code: { label: '客户ERP代码', type: 'text', value: user.customer_erp_code || '' },
           level: { label: '会员等级', type: 'number', value: String(user.level || 1) },
           status: {
             label: '状态',
@@ -311,6 +317,7 @@ export default {
               company_name: fields.company_name.value,
               contact_name: fields.contact_name.value,
               region: fields.region.value,
+              customer_erp_code: fields.customer_erp_code.value,
               level: parseInt(fields.level.value) || 1
             })
             const res2 = await updateUserStatus({
