@@ -116,6 +116,7 @@ import {
 } from '@/api/available_product'
 import { getOrderStats, getAvailableProductSalesStats } from '@/api/stats'
 import { listCategories } from '@/api/category'
+import { listGroups } from '@/api/group'
 
 export default {
   name: 'ProductList',
@@ -174,6 +175,15 @@ export default {
 
     const categoriesMap = ref({})
     const categoryOptions = ref([])
+    const activeGroups = ref([])
+    const fetchActiveGroups = async () => {
+      try {
+        const res = await listGroups({ status: 'active' })
+        if (res && res.success) {
+          activeGroups.value = res.data?.items || res.data || []
+        }
+      } catch (e) {}
+    }
     const loadCategoriesMap = async () => {
       try {
         const res = await listCategories({ page: 1, page_size: 500 })
@@ -264,6 +274,7 @@ export default {
     onMounted(() => {
       loadCategoriesMap()
       fetchProducts()
+      fetchActiveGroups()
     })
 
     const handleSearch = () => {
@@ -304,6 +315,7 @@ export default {
     // --- Main Product Operations ---
 
     const handleCreateProduct = () => {
+      const groupOptions = activeGroups.value.map(g => ({ label: g.group_name, value: g.group_id }))
       showModal({
         type: 'form',
         title: '新建商品',
@@ -316,6 +328,7 @@ export default {
           is_free_shipping: { label: '包邮', type: 'select', value: '1', options: [{ label: '是', value: '1' }, { label: '否', value: '0' }] },
           shipping_time_hours: { label: '发货时效(小时)', type: 'number', value: '24' },
           support_no_reason_return_7d: { label: '七天无理由', type: 'select', value: '1', options: [{ label: '支持', value: '1' }, { label: '不支持', value: '0' }] },
+          visible_user_ids: { label: '可见分组白名单', type: 'checkbox-group', value: [], options: groupOptions, hint: '不选则所有用户可见' },
           main_image: { label: '主图', type: 'file', multiple: true, files: [], maxFiles: 6, hint: '主图最多选择6个文件' },
           images: { label: '轮播图', type: 'file', multiple: true, files: [], maxFiles: 6, hint: '轮播图最多选择6个文件' },
           video_url: { label: '视频', type: 'file', multiple: true, files: [], maxFiles: 2, hint: '视频最多选择2个文件' }
@@ -330,6 +343,11 @@ export default {
           formData.append('is_free_shipping', fields.is_free_shipping.value)
           formData.append('shipping_time_hours', fields.shipping_time_hours.value)
           formData.append('support_no_reason_return_7d', fields.support_no_reason_return_7d.value)
+
+          const visibleIds = fields.visible_user_ids.value
+          if (Array.isArray(visibleIds) && visibleIds.length) {
+            formData.append('visible_user_ids', JSON.stringify(visibleIds))
+          }
 
           if (fields.main_image.files) {
             const files = Array.from(fields.main_image.files)
@@ -367,7 +385,7 @@ export default {
         type: 'form',
         title: '导入商品Excel',
         fields: {
-          file: { label: '选择Excel文件', type: 'file', multiple: false, files: null }
+          file: { label: '选择Excel文件', type: 'file', multiple: false, files: null, hint: '支持新增列：visible_user_ids（可见分组白名单，JSON数组字符串，如 ["A组","B组"]）' }
         },
         onConfirm: async (fields) => {
           const loadingToast = showToast({ text: '开始上传...', persist: true })
@@ -514,6 +532,8 @@ export default {
           categoryOptions.push({ label, value })
         })
       } catch (e) {}
+      const groupOptions = activeGroups.value.map(g => ({ label: g.group_name, value: g.group_id }))
+      const currentVisibleIds = Array.isArray(item.available_products_visible_user_ids) ? item.available_products_visible_user_ids : []
       showModal({
         type: 'form',
         title: '编辑商品',
@@ -523,6 +543,7 @@ export default {
           category_name: { label: '分类名称', type: 'select', value: categoryOptions.find(o => o.label === String(item.category_id))?.value || (categoryOptions[0]?.value || ''), options: categoryOptions },
           sort_order: { label: '推荐值', type: 'number', value: item.sort_order },
           shipping_origin: { label: '发货地', type: 'text', value: item.shipping_origin },
+          visible_user_ids: { label: '可见分组白名单', type: 'checkbox-group', value: currentVisibleIds, options: groupOptions, hint: '不选则所有用户可见' },
           main_image: { label: '主图(修改则上传)', type: 'file', multiple: true, files: [], maxFiles: 6, hint: '主图最多选择6个文件', existing: (Array.isArray(item.main_image) ? item.main_image : (item.main_image ? [item.main_image] : [])).map(x => String(x)).filter(s => s && s.toLowerCase() !== 'null' && s.toLowerCase() !== 'undefined') },
           images: { label: '轮播图(修改则上传)', type: 'file', multiple: true, files: [], maxFiles: 6, hint: '轮播图最多选择6个文件', existing: (Array.isArray(item.images) ? item.images : []).map(x => String(x)).filter(s => s && s.toLowerCase() !== 'null' && s.toLowerCase() !== 'undefined') },
           video_url: { label: '视频(修改则上传)', type: 'file', multiple: true, files: [], maxFiles: 2, hint: '视频最多选择2个文件', existing: (Array.isArray(item.video) ? item.video : (Array.isArray(item.video_url) ? item.video_url : (item.video_url ? [item.video_url] : []))).map(x => String(x)).filter(s => s && s.toLowerCase() !== 'null' && s.toLowerCase() !== 'undefined') },
@@ -535,7 +556,6 @@ export default {
           const initialMain = Array.isArray(item.main_image) ? item.main_image.map(String) : (item.main_image ? [String(item.main_image)] : [])
           const initialImages = Array.isArray(item.images) ? item.images.map(String) : []
           const initialVideos = Array.isArray(item.video_url) ? item.video_url.map(String) : (item.video_url ? [String(item.video_url)] : [])
-          // Validation
           if (fields.main_image.files && fields.main_image.files.length > 6) {
             showToast('主图最多选择6个文件，请删除多余文件')
             return
@@ -559,6 +579,14 @@ export default {
           formData.append('is_free_shipping', fields.is_free_shipping.value)
           formData.append('shipping_time_hours', fields.shipping_time_hours.value)
           formData.append('support_no_reason_return_7d', fields.support_no_reason_return_7d.value)
+
+          const visibleIds = fields.visible_user_ids.value
+          formData.append('visible_user_ids', JSON.stringify(Array.isArray(visibleIds) ? visibleIds : []))
+
+          const categoryChanged = fields.category_name.value !== (categoryOptions.find(o => o.label === String(item.category_id))?.value || '')
+          if (categoryChanged) {
+            formData.append('confirm', '1')
+          }
 
           if (fields.main_image.files) {
             const files = Array.from(fields.main_image.files)
@@ -691,12 +719,20 @@ export default {
     }
 
     const viewDetail = (item) => {
+      const visibleIds = Array.isArray(item.available_products_visible_user_ids) ? item.available_products_visible_user_ids : []
+      const visibleText = visibleIds.length
+        ? visibleIds.map(id => {
+            const g = activeGroups.value.find(g => g.group_id === id)
+            return g ? g.group_name : id
+          }).join(', ')
+        : '不限制（所有用户可见）'
       const rows = [
         { label: '商品ID', value: String(item.available_product_id || '') },
         { label: '商品名称', value: String(item.name || '') },
         { label: '分类', value: getCategoryName(item.category_id) },
         { label: '推荐值', value: String(item.sort_order || '') },
         { label: '发货地', value: String(item.shipping_origin || '') },
+        { label: '可见分组', value: visibleText },
         { label: '状态', value: String(item.status) === '1' ? '上架' : '下架' },
         { label: '创建时间', value: formatTime(item.created_at) }
       ]

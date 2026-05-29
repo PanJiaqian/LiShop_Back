@@ -49,6 +49,7 @@
             <th>等级</th>
             <th>地区</th>
             <th>ERP代码</th>
+            <th>分组</th>
             <!-- <th>上级ID</th> -->
             <!-- <th>注册时间</th> -->
             <th>状态</th>
@@ -73,6 +74,7 @@
             </td>
             <td>{{ user.region }}</td>
             <td>{{ user.customer_erp_code }}</td>
+            <td>{{ formatGroupNames(user.group_ids) }}</td>
             <!-- <td>{{ user.parent_id }}</td> -->
             <!-- <td>{{ formatTime(user.created_at) }}</td> -->
             <td>
@@ -106,6 +108,7 @@
 <script>
 import { inject, reactive, ref, onMounted, computed } from 'vue'
 import { listUsers, createUser, updateUser, updateUserStatus, importUsersExcel, deleteUser, updateUserAvatar } from '@/api/user.js'
+import { listGroups } from '@/api/group.js'
 
 export default {
   name: 'UserList',
@@ -136,10 +139,28 @@ export default {
     const page = ref(1)
     const pageSize = ref(20)
     const fileInput = ref(null)
+    const activeGroups = ref([])
+
+    const fetchActiveGroups = async () => {
+      try {
+        const res = await listGroups({ status: 'active' })
+        if (res && res.success) {
+          activeGroups.value = res.data?.items || res.data || []
+        }
+      } catch (e) {}
+    }
 
     const formatTime = (t) => {
       if (!t) return ''
       return t.replace('T', ' ').split('.')[0]
+    }
+
+    const formatGroupNames = (groupIds) => {
+      if (!Array.isArray(groupIds) || !groupIds.length) return '-'
+      return groupIds.map(id => {
+        const g = activeGroups.value.find(g => g.group_id === id)
+        return g ? g.group_name : id
+      }).join(', ')
     }
 
     const fetchUsers = async () => {
@@ -185,6 +206,7 @@ export default {
     }
 
     const addUser = () => {
+      const groupOptions = activeGroups.value.map(g => ({ label: g.group_name, value: g.group_id }))
       showModal({
         type: 'form',
         title: '添加用户',
@@ -197,7 +219,8 @@ export default {
           contact_name: { label: '联系人', type: 'text', value: '' },
           region: { label: '所在地区', type: 'text', value: '' },
           customer_erp_code: { label: '客户ERP代码', type: 'text', value: '' },
-          level: { label: '会员等级', type: 'number', value: '1' }
+          level: { label: '会员等级', type: 'number', value: '1' },
+          group_ids: { label: '所属分组', type: 'checkbox-group', value: [], options: groupOptions }
         },
         onConfirm: async (fields) => {
           try {
@@ -211,7 +234,8 @@ export default {
               region: fields.region.value,
               customer_erp_code: fields.customer_erp_code.value,
               level: parseInt(fields.level.value) || 1,
-              parent_id: 0
+              parent_id: 0,
+              group_ids: fields.group_ids.value.length ? fields.group_ids.value : null
             })
             if (res && res.success) {
               showToast(res.message || '用户添加成功')
@@ -228,7 +252,12 @@ export default {
     }
 
     const triggerImport = () => {
-      fileInput.value.click()
+      showModal({
+        type: 'confirm',
+        title: '导入用户',
+        message: '支持的Excel列：用户名、手机号、密码、邮箱、公司名称、联系人、地区、等级、group_id/group_name（分组名称，可选）、customer_erp_code（客户ERP代码，可选，同一经销商下唯一）。\n\n点击确认选择文件。',
+        onConfirm: () => { fileInput.value.click() }
+      })
     }
 
     const handleImport = async (e) => {
@@ -275,6 +304,7 @@ export default {
           { label: '联系人', value: user.contact_name },
           { label: '地区', value: user.region },
           { label: '客户ERP代码', value: user.customer_erp_code },
+          { label: '所属分组', value: formatGroupNames(user.group_ids) },
           { label: '等级', value: user.level },
           { label: '状态', value: user.status === 1 ? '正常' : '禁用' },
           { label: '上级ID', value: user.parent_id },
@@ -284,6 +314,8 @@ export default {
     }
 
     const editUser = (user) => {
+      const groupOptions = activeGroups.value.map(g => ({ label: g.group_name, value: g.group_id }))
+      const currentGroupIds = Array.isArray(user.group_ids) ? user.group_ids : []
       showModal({
         type: 'form',
         title: '编辑用户',
@@ -296,6 +328,7 @@ export default {
           region: { label: '所在地区', type: 'text', value: user.region },
           customer_erp_code: { label: '客户ERP代码', type: 'text', value: user.customer_erp_code || '' },
           level: { label: '会员等级', type: 'number', value: String(user.level || 1) },
+          group_ids: { label: '所属分组', type: 'checkbox-group', value: currentGroupIds, options: groupOptions },
           status: {
             label: '状态',
             type: 'select',
@@ -318,7 +351,8 @@ export default {
               contact_name: fields.contact_name.value,
               region: fields.region.value,
               customer_erp_code: fields.customer_erp_code.value,
-              level: parseInt(fields.level.value) || 1
+              level: parseInt(fields.level.value) || 1,
+              group_ids: fields.group_ids.value.length ? fields.group_ids.value : null
             })
             const res2 = await updateUserStatus({
               user_id: user.user_id,
@@ -374,6 +408,7 @@ export default {
 
     onMounted(() => {
       fetchUsers()
+      fetchActiveGroups()
     })
 
     return {
@@ -384,6 +419,7 @@ export default {
       page,
       pageSize,
       fileInput,
+      activeGroups,
       getLevelClass,
       handleSearch,
       resetFilter,
@@ -394,7 +430,8 @@ export default {
       editUser,
       removeUser,
       changePage,
-      formatTime
+      formatTime,
+      formatGroupNames
     }
   }
 }

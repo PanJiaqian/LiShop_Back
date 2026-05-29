@@ -57,3 +57,10 @@ export const uploadCategoryImage = (formData) => {
     }
   }).then(res => res.data)
 }
+
+/**
+ * 分类分组变更影响预览
+ */
+export const previewCategoryGroupChange = (data) => {
+  return api.post('/admin/categories/group_change/preview', data).then(res => res.data)
+}

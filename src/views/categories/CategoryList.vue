@@ -67,6 +67,18 @@
               <input type="number" class="form-input" v-model="activeCategory.sort_order">
             </div>
             <div class="form-group">
+              <label>绑定分组</label>
+              <div class="checkbox-group">
+                <label v-for="g in activeGroups" :key="g.group_id" class="checkbox-item">
+                  <input type="checkbox" :value="g.group_id"
+                    :checked="Array.isArray(activeCategory.categories_group_id) && activeCategory.categories_group_id.includes(g.group_id)"
+                    @change="toggleCategoryGroup(g.group_id, $event.target.checked)" />
+                  {{ g.group_name }}
+                </label>
+              </div>
+              <div class="field-hint">不选则为公共分类（所有用户可见）</div>
+            </div>
+            <div class="form-group">
               <label>状态</label>
               <div class="radio-group">
                 <label class="radio-label"><input type="radio" :name="'status'+activeCategory.id" :value="1" v-model="activeCategory.status"> 上架</label>
@@ -135,8 +147,9 @@
 
 <script setup>
 import { ref, inject, onMounted, computed } from 'vue'
-import { listCategories, createCategory, updateCategory, updateCategoryStatus, deleteCategory as deleteCategoryApi, uploadCategoryImage } from '@/api/category'
+import { listCategories, createCategory, updateCategory, updateCategoryStatus, deleteCategory as deleteCategoryApi, uploadCategoryImage, previewCategoryGroupChange } from '@/api/category'
 import { deleteProductFile } from '@/api/product'
+import { listGroups } from '@/api/group'
 
 const showModal = inject('showModal')
 const showToast = inject('showToast')
@@ -145,7 +158,17 @@ const confirmDialog = inject('confirmDialog')
 const categories = ref([])
 const flatCategories = ref([])
 const activeCategory = ref(null)
+const activeGroups = ref([])
 const showCustomParamNames = computed(() => String(activeCategory.value?.has_custom_params ?? 0) === '1')
+
+const fetchActiveGroups = async () => {
+  try {
+    const res = await listGroups({ status: 'active' })
+    if (res && res.success) {
+      activeGroups.value = res.data?.items || res.data || []
+    }
+  } catch (e) {}
+}
 
 const fetchCategories = async () => {
   try {
@@ -219,10 +242,22 @@ const sortTree = (nodes) => {
 
 onMounted(() => {
   fetchCategories()
+  fetchActiveGroups()
 })
 
 const selectCategory = (cat) => {
   activeCategory.value = cat
+}
+
+const toggleCategoryGroup = (groupId, checked) => {
+  if (!activeCategory.value) return
+  let arr = Array.isArray(activeCategory.value.categories_group_id) ? [...activeCategory.value.categories_group_id] : []
+  if (checked) {
+    if (!arr.includes(groupId)) arr.push(groupId)
+  } else {
+    arr = arr.filter(id => id !== groupId)
+  }
+  activeCategory.value.categories_group_id = arr
 }
 
 const toggleExpand = (cat) => {
@@ -248,6 +283,13 @@ const handleAddCategory = () => {
       name: { label: '类目名称', type: 'text', value: '' },
       parent_id: { label: '上级类目', type: 'select', value: '无', options },
       sort_order: { label: '推荐值', type: 'number', value: '1' },
+      categories_group_id: {
+        label: '绑定分组',
+        type: 'checkbox-group',
+        value: [],
+        options: activeGroups.value.map(g => ({ label: g.group_name, value: g.group_id })),
+        hint: '不选则为公共分类（所有用户可见）'
+      },
       has_custom_params: {
         label: '自定义参数',
         type: 'select',
@@ -276,7 +318,7 @@ const handleAddCategory = () => {
     },
     onConfirm: async (fields) => {
       try {
-        const res = await createCategory({
+        const payload = {
           name: fields.name.value,
           parent_id: resolveParentId(fields.parent_id.value),
           sort_order: parseInt(fields.sort_order.value),
@@ -284,7 +326,12 @@ const handleAddCategory = () => {
           custom_param1_name: fields.custom_param1_name.hidden ? '' : fields.custom_param1_name.value,
           custom_param2_name: fields.custom_param2_name.hidden ? '' : fields.custom_param2_name.value,
           status: parseInt(fields.status.value)
-        })
+        }
+        const groupVal = fields.categories_group_id.value
+        if (Array.isArray(groupVal) && groupVal.length) {
+          payload.categories_group_id = groupVal
+        }
+        const res = await createCategory(payload)
         if (res && res.success) {
           showToast('创建分类成功')
           await fetchCategories()
@@ -327,16 +374,51 @@ const deleteCategory = (cat) => {
 const saveCategory = async () => {
   if (!activeCategory.value) return
 
+  const groupVal = Array.isArray(activeCategory.value.categories_group_id)
+    ? activeCategory.value.categories_group_id
+    : []
+
   try {
-    const res1 = await updateCategory({
+    const updatePayload = {
       category_id: activeCategory.value.id,
       name: activeCategory.value.name,
       parent_id: resolveParentId(activeCategory.value.parent_id),
       sort_order: parseInt(activeCategory.value.sort_order),
       has_custom_params: parseInt(activeCategory.value.has_custom_params || 0),
       custom_param1_name: activeCategory.value.custom_param1_name || '',
-      custom_param2_name: activeCategory.value.custom_param2_name || ''
-    })
+      custom_param2_name: activeCategory.value.custom_param2_name || '',
+      categories_group_id: groupVal.length ? groupVal : [],
+      confirm: 0
+    }
+
+    const previewRes = await updateCategory(updatePayload)
+
+    if (previewRes && previewRes.success && previewRes.data && previewRes.data.need_confirm) {
+      const preview = previewRes.data
+      const isToPublic = groupVal.length === 0
+      const msg = isToPublic
+        ? `将分类改为公共分类，${preview.message || '可能影响关联母商品白名单'}。\n\n确认：清空分类分组并清空母商品白名单\n取消：仅清空分类分组，保留母商品白名单`
+        : `分组变更将影响以下母商品白名单：${preview.message || ''}\n\n确认后将自动移除冲突分组。`
+
+      confirmDialog({
+        title: '分组变更确认',
+        content: msg,
+        onConfirm: async () => {
+          updatePayload.confirm = 1
+          const res = await updateCategory(updatePayload)
+          if (res && res.success) {
+            showToast('保存成功')
+            await fetchCategories()
+          } else {
+            showToast(res?.message || res?.data || '保存失败')
+          }
+        }
+      })
+      return
+    }
+
+    updatePayload.confirm = 1
+    const res1 = await updateCategory(updatePayload)
     const res2 = await updateCategoryStatus({
       category_id: activeCategory.value.id,
       status: String(activeCategory.value.status)
@@ -585,6 +667,23 @@ const removeSelectedCategoryImage = () => {
     font-size: 48px;
     margin-bottom: 16px;
   }
+}
+.checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.field-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #999;
 }
 .product-thumb {
   position: relative;

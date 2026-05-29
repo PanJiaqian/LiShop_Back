@@ -22,6 +22,7 @@ const router = createRouter({
         { path: 'orders', name: 'orders', component: () => import('@/views/orders/OrderList.vue') },
         { path: 'orders/:id', name: 'order-detail', component: () => import('@/views/orders/OrderDetail.vue') },
         { path: 'users', name: 'users', component: () => import('@/views/users/UserList.vue') },
+        { path: 'groups', name: 'groups', component: () => import('@/views/groups/GroupList.vue') },
         { path: 'admins', name: 'admins', component: () => import('@/views/admins/AdminList.vue') },
         { path: 'pricing/strategies', name: 'pricing-strategies', component: () => import('@/views/pricing/PricingStrategy.vue') },
         { path: 'pricing/package-fees', name: 'package-fees', component: () => import('@/views/pricing/PackageFeeAdmin.vue') },

@@ -102,3 +102,17 @@ export const deleteAvailableProduct = (formData) => {
     }
   }).then(res => res.data)
 }
+
+/**
+ * 查询母商品可选分组范围（含绑定状态）
+ */
+export const getVisibleUsers = (params) => {
+  return api.get('/admin/available_products/visible_users', { params }).then(res => res.data)
+}
+
+/**
+ * 母商品改分类影响预览
+ */
+export const previewCategoryChange = (data) => {
+  return api.post('/admin/available_products/category_change/preview', data).then(res => res.data)
+}
