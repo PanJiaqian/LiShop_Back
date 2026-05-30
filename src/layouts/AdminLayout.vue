@@ -176,6 +176,7 @@
                 </div>
                 <div
                   v-if="field.showTokens && (field.type === 'text' || field.type === 'number' || field.type === 'password' || field.type === 'email')"
+                  :key="'token-input-' + key + '-' + (field._rev || 0)"
                   class="form-input token-input"
                   contenteditable="true"
                   spellcheck="false"
@@ -210,7 +211,7 @@
                        :key="idx">
                     <input class="form-input ld-display"
                            :readonly="true"
-                           :value="row ? (`等级${row.level}:${row.discount}`) : ''"
+                           :value="row ? (`等级${row.level}:${Math.round(parseFloat(row.discount) * 100)}%`) : ''"
                            :placeholder="row ? '' : '点击设置'"
                            @click="() => openLevelDiscountEditor(field, idx, row)" />
                     <button class="ld-del-btn" @click="() => removeLevelDiscountRow(field, idx)">×</button>
@@ -305,7 +306,7 @@
                 </label>
               </div>
               <div v-if="field.type === 'append-to-field'" class="token-list">
-      <button v-for="opt in field.options" :key="opt.value" class="token-btn" @click="modal.fields[field.target].value += opt.value">
+      <button v-for="opt in field.options" :key="opt.value" class="token-btn" @click="() => { const t = modal.fields[field.target]; t.value += opt.value; t._rev = (t._rev || 0) + 1 }">
         {{ opt.label }}
       </button>
     </div>
@@ -319,7 +320,7 @@
           <button class="btn-sm primary" @click="confirmModal">确定</button>
         </div>
       </div>
-      <div v-if="sideEditor.visible" class="side-editor" @click.stop>
+      <div v-if="sideEditor.visible" class="side-editor" @mousedown.stop @click.stop>
         <div class="side-editor-header">等级折扣编辑</div>
         <div class="side-editor-body">
           <div class="form-group">
@@ -332,8 +333,8 @@
             </select>
           </div>
           <div class="form-group">
-            <label>折扣</label>
-            <input class="form-input" placeholder="示例：0.98" v-model="sideEditor.discount" />
+            <label>折扣（%）</label>
+            <input class="form-input" type="number" step="1" min="0" max="100" placeholder="示例：92 表示92%折扣" v-model="sideEditor.discount" />
           </div>
         </div>
         <div class="side-editor-footer">
@@ -494,6 +495,7 @@ export default {
         modal.show = true
       } else {
         modal.show = false
+        cancelLevelDiscountEditor()
       }
     }
 
@@ -627,7 +629,8 @@ export default {
       sideEditor.field = field
       sideEditor.index = idx
       sideEditor.level = row ? String(row.level || '') : ''
-      sideEditor.discount = row ? String(row.discount || '') : ''
+      const rawDiscount = row ? parseFloat(row.discount) : ''
+      sideEditor.discount = rawDiscount !== '' && !isNaN(rawDiscount) ? String(Math.round(rawDiscount * 100)) : ''
     }
     const cancelLevelDiscountEditor = () => {
       sideEditor.visible = false
@@ -640,22 +643,25 @@ export default {
       const field = sideEditor.field
       if (!field) return cancelLevelDiscountEditor()
       const sel = String(sideEditor.level || '').trim()
-      const val = String(sideEditor.discount || '').trim()
+      const pctVal = String(sideEditor.discount || '').trim()
       const arr = Array.isArray(field.entries) ? [...field.entries] : []
       const isEdit = sideEditor.index < arr.length
-      if (!sel || !val) { showToast('请先选择等级并填写折扣'); return }
+      if (!sel || !pctVal) { showToast('请先选择等级并填写折扣'); return }
+      const pctNum = parseFloat(pctVal)
+      if (isNaN(pctNum) || pctNum < 0 || pctNum > 100) { showToast('折扣需在0~100之间'); return }
+      const decimalVal = String(pctNum / 100)
       const dup = arr.some((d, i) => i !== (isEdit ? sideEditor.index : -1) && String(d.level) === sel)
       if (dup) { showToast('不得重复设定同一等级折扣'); return }
       if (isEdit) {
-        arr[sideEditor.index] = { level: sel, discount: val }
+        arr[sideEditor.index] = { level: sel, discount: decimalVal }
       } else {
         if (arr.length >= (field.max || 3)) { showToast('最多添加三条等级折扣'); return }
-        arr.push({ level: sel, discount: val })
+        arr.push({ level: sel, discount: decimalVal })
         field.newRows = Math.max(0, (field.newRows || 0) - 1)
       }
       field.entries = arr
       try { field.value = JSON.stringify(arr) } catch (e) { field.value = '[]' }
-      field.display = arr.map(d => `等级${d.level}:${d.discount}`).join('; ')
+      field.display = arr.map(d => `等级${d.level}:${Math.round(parseFloat(d.discount) * 100)}%`).join('; ')
       cancelLevelDiscountEditor()
     }
     const removeLevelDiscountRow = (field, idx) => {
@@ -664,7 +670,7 @@ export default {
         arr.splice(idx, 1)
         field.entries = arr
         try { field.value = JSON.stringify(arr) } catch (e) { field.value = '[]' }
-        field.display = arr.map(d => `等级${d.level}:${d.discount}`).join('; ')
+        field.display = arr.map(d => `等级${d.level}:${Math.round(parseFloat(d.discount) * 100)}%`).join('; ')
       } else {
         field.newRows = Math.max(0, (field.newRows || 0) - 1)
       }
@@ -1898,6 +1904,11 @@ body {
     gap: 6px;
     flex: 1 1 calc(50% - 20px);
     min-width: 200px;
+    .field-hint {
+      margin-top: 4px;
+      font-size: 11px;
+      color: #f5222d;
+    }
   }
   .form-group.full-width {
     flex: 1 1 100%;
