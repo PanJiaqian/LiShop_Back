@@ -378,21 +378,23 @@ export default {
     }
 
     const buildLevelDiscountField = (item) => {
-      const raw = item ? String(item.level_discount || '[]').trim().replace(/^`+|`+$/g, '').replace(/^\"+|\"+$/g, '').replace(/^'+|'+$/g, '') : '[]'
+      const normalize = (ld) => {
+        if (!ld) return '[]'
+        if (typeof ld === 'string') return ld.trim().replace(/^`+|`+$/g, '').replace(/^\"+|\"+$/g, '').replace(/^'+|'+$/g, '')
+        if (Array.isArray(ld) || typeof ld === 'object') return JSON.stringify(ld)
+        return '[]'
+      }
+      const raw = item ? normalize(item.level_discount) : '[]'
       const entries = (() => {
         if (!item) return []
         try {
-          const v = JSON.parse(String(item.level_discount || '[]'))
+          const v = typeof item.level_discount === 'string' ? JSON.parse(raw) : (Array.isArray(item.level_discount) ? item.level_discount : [])
           return Array.isArray(v) ? v.map(d => ({ level: String(d.level), discount: String(d.discount) })) : []
         } catch (e) { return [] }
       })()
       const display = (() => {
-        if (!item) return ''
-        try {
-          const v = JSON.parse(String(item.level_discount || '[]'))
-          const arr = Array.isArray(v) ? v : []
-          return arr.map(d => `等级${d.level}:${d.discount}`).join('; ')
-        } catch (e) { return '' }
+        if (!entries.length) return ''
+        return entries.map(d => `等级${d.level}:${Math.round(parseFloat(d.discount) * 100)}%`).join('; ')
       })()
       return { label: '等级折扣', type: 'level-discount', value: raw || '[]', entries, max: 3, display }
     }
@@ -537,7 +539,13 @@ export default {
           append('max_length')
           append('min_length')
           append('length_interval')
-          formData.append('level_discount', String(fields.level_discount.value || '[]'))
+          formData.append('level_discount', (() => {
+            const v = fields.level_discount.value
+            if (!v) return '[]'
+            if (typeof v === 'string') return v
+            if (Array.isArray(v) || typeof v === 'object') return JSON.stringify(v)
+            return '[]'
+          })())
           append('product_category')
           append('specification')
           append('color')
@@ -711,7 +719,18 @@ export default {
         { label: '最大长度', value: String(item.max_length || '') },
         { label: '最小长度', value: String(item.min_length || '') },
         { label: '长度间隔', value: String(item.length_interval || '') },
-        { label: '等级折扣', value: String(item.level_discount || '') },
+        {
+          label: '等级折扣',
+          value: (() => {
+            const ld = item.level_discount
+            if (!ld) return ''
+            if (typeof ld === 'string') {
+              try { const arr = JSON.parse(ld); return Array.isArray(arr) ? arr.map(d => `等级${d.level}:${Math.round(parseFloat(d.discount) * 100)}%`).join('; ') : ld } catch (e) { return ld }
+            }
+            if (Array.isArray(ld)) return ld.map(d => `等级${d.level}:${Math.round(parseFloat(d.discount) * 100)}%`).join('; ')
+            return JSON.stringify(ld)
+          })()
+        },
         { label: '产品分类', value: String(item.product_category || '') },
         { label: '规格', value: String(item.specification || '') },
         { label: '颜色', value: String(item.color || '') },
