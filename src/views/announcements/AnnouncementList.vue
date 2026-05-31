@@ -254,6 +254,9 @@ export default {
   vertical-align: middle;
   text-align: center;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
 }
 
 .data-table tr:hover td {

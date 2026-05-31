@@ -106,7 +106,7 @@
 </template>
 
 <script>
-import { inject, reactive, ref, onMounted, computed } from 'vue'
+import { inject, reactive, ref, onMounted, onActivated, onUnmounted, computed } from 'vue'
 import { listUsers, createUser, updateUser, updateUserStatus, importUsersExcel, deleteUser, updateUserAvatar } from '@/api/user.js'
 import { listGroups } from '@/api/group.js'
 
@@ -143,11 +143,13 @@ export default {
 
     const fetchActiveGroups = async () => {
       try {
-        const res = await listGroups({ status: 'active' })
+        const res = await listGroups({ group_id: '', status: 'active' })
         if (res && res.success) {
           activeGroups.value = res.data?.items || res.data || []
         }
-      } catch (e) {}
+      } catch (e) {
+        console.warn('[UserList] fetchActiveGroups failed:', e)
+      }
     }
 
     const formatTime = (t) => {
@@ -205,7 +207,8 @@ export default {
       handleSearch()
     }
 
-    const addUser = () => {
+    const addUser = async () => {
+      await fetchActiveGroups()
       const groupOptions = activeGroups.value.map(g => ({ label: g.group_name, value: g.group_id }))
       showModal({
         type: 'form',
@@ -313,7 +316,8 @@ export default {
       })
     }
 
-    const editUser = (user) => {
+    const editUser = async (user) => {
+      await fetchActiveGroups()
       const groupOptions = activeGroups.value.map(g => ({ label: g.group_name, value: g.group_id }))
       const currentGroupIds = Array.isArray(user.group_ids) ? user.group_ids : []
       showModal({
@@ -406,8 +410,20 @@ export default {
       })
     }
 
+    const onGroupChanged = () => {
+      fetchActiveGroups()
+      fetchUsers()
+    }
+
     onMounted(() => {
       fetchUsers()
+      fetchActiveGroups()
+      window.addEventListener('shopback-group-changed', onGroupChanged)
+    })
+    onUnmounted(() => {
+      window.removeEventListener('shopback-group-changed', onGroupChanged)
+    })
+    onActivated(() => {
       fetchActiveGroups()
     })
 
@@ -457,6 +473,9 @@ export default {
   vertical-align: middle;
   text-align: center;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
 }
 .data-table tr:hover td {
   background-color: #f9fafb;

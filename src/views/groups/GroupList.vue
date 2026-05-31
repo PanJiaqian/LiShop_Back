@@ -124,7 +124,7 @@ const formatTime = (t) => t ? t.replace('T', ' ').split('.')[0] : ''
 
 const fetchGroups = async () => {
   try {
-    const params = { sort_by: filter.sort_by, sort_order: filter.sort_order }
+    const params = { group_id: '', sort_by: filter.sort_by, sort_order: filter.sort_order }
     if (filter.status) params.status = filter.status
     const res = await listGroups(params)
     if (res && res.success) {
@@ -194,6 +194,7 @@ const editGroup = (group) => {
         if (res && res.success) {
           showToast(res.message || '更新成功')
           fetchGroups()
+          window.dispatchEvent(new CustomEvent('shopback-group-changed', { detail: { action: 'updated', group_id: group.group_id } }))
         } else {
           showToast(res?.message || res?.data || '更新失败')
         }
@@ -214,6 +215,7 @@ const removeGroup = (group) => {
         if (res && res.success) {
           showToast(res.message || '删除成功')
           fetchGroups()
+          window.dispatchEvent(new CustomEvent('shopback-group-changed', { detail: { action: 'deleted', group_id: group.group_id } }))
         } else {
           showToast(res?.message || res?.data || '删除失败')
         }

@@ -249,6 +249,9 @@ export default {
 .data-table td {
   text-align: center;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
 }
 
 .badge.success {

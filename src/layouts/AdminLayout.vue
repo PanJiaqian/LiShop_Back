@@ -290,20 +290,23 @@
                 <option v-for="opt in field.options" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
               </select>
               <div v-else-if="field.type === 'checkbox-group'" class="checkbox-group">
-                <label v-for="opt in field.options" :key="opt.value" class="checkbox-item">
-                  <input type="checkbox"
-                         :value="opt.value"
-                         :checked="Array.isArray(field.value) && field.value.includes(opt.value)"
-                         @change="(e) => {
-                           const v = opt.value
-                           const arr = Array.isArray(field.value) ? [...field.value] : []
-                           if (e.target.checked) { if (!arr.includes(v)) arr.push(v) }
-                           else { const i = arr.indexOf(v); if (i >= 0) arr.splice(i, 1) }
-                           field.value = arr
-                         }"
-                  />
-                  {{ opt.label }}
-                </label>
+                <template v-if="Array.isArray(field.options) && field.options.length">
+                  <label v-for="opt in field.options" :key="opt.value" class="checkbox-item">
+                    <input type="checkbox"
+                           :value="opt.value"
+                           :checked="Array.isArray(field.value) && field.value.includes(opt.value)"
+                           @change="(e) => {
+                             const v = opt.value
+                             const arr = Array.isArray(field.value) ? [...field.value] : []
+                             if (e.target.checked) { if (!arr.includes(v)) arr.push(v) }
+                             else { const i = arr.indexOf(v); if (i >= 0) arr.splice(i, 1) }
+                             field.value = arr
+                           }"
+                    />
+                    {{ opt.label }}
+                  </label>
+                </template>
+                <span v-else class="empty-options-hint">暂无可用分组，请先在「分组管理」中创建</span>
               </div>
               <div v-if="field.type === 'append-to-field'" class="token-list">
       <button v-for="opt in field.options" :key="opt.value" class="token-btn" @click="() => { const t = modal.fields[field.target]; t.value += opt.value; t._rev = (t._rev || 0) + 1 }">
@@ -1194,9 +1197,11 @@ body {
 .admin-content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   position: relative;
   padding: 24px;
   background-color: var(--bg-color);
+  min-width: 0;
 }
 
 .disabled-select {
@@ -1314,6 +1319,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .grid {
@@ -1329,6 +1336,9 @@ body {
   padding: 24px;
   transition: transform 0.2s, box-shadow 0.2s;
   border: 1px solid rgba(229, 231, 235, 0.5);
+  overflow-x: auto;
+  max-width: 100%;
+  box-sizing: border-box;
 
   &:hover {
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
@@ -1409,6 +1419,8 @@ body {
   margin-bottom: 24px;
   border-bottom: 1px solid #e5e7eb;
   padding-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 12px;
 
   h3 {
     margin: 0;
@@ -1448,11 +1460,16 @@ body {
 
   input {
     width: 200px;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
   }
 
   select {
     width: auto;
     min-width: 120px;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 }
 
@@ -1562,6 +1579,7 @@ body {
 /* Data Table */
 .data-table {
   width: 100%;
+  min-width: 600px;
   border-collapse: collapse;
 
   th {
@@ -1597,6 +1615,8 @@ body {
   margin-top: 24px;
   padding-top: 16px;
   border-top: 1px solid #f3f4f6;
+  flex-wrap: wrap;
+  gap: 12px;
 
   .page-info {
     font-size: 13px;
@@ -1959,6 +1979,12 @@ body {
     gap: 8px;
     font-size: 14px;
     color: #374151;
+  }
+  .empty-options-hint {
+    grid-column: 1 / -1;
+    font-size: 13px;
+    color: #f59e0b;
+    padding: 8px 0;
   }
 }
 

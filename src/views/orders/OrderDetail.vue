@@ -469,6 +469,9 @@ export default {
   text-align: center;
   white-space: nowrap;
   vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
 }
 
 .order-total {

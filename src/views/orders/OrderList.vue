@@ -593,6 +593,7 @@ export default {
   margin-left: -24px;
   margin-right: -24px;
   padding: 0 24px;
+  flex-wrap: wrap;
 }
 .tab-item {
   padding: 12px 24px;
@@ -631,6 +632,9 @@ export default {
   vertical-align: middle;
   padding: 8px 10px;
   line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
 }
 
 .data-table th {

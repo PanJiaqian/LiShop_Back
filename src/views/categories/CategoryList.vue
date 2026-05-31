@@ -69,12 +69,15 @@
             <div class="form-group">
               <label>绑定分组</label>
               <div class="checkbox-group">
-                <label v-for="g in activeGroups" :key="g.group_id" class="checkbox-item">
-                  <input type="checkbox" :value="g.group_id"
-                    :checked="Array.isArray(activeCategory.categories_group_id) && activeCategory.categories_group_id.includes(g.group_id)"
-                    @change="toggleCategoryGroup(g.group_id, $event.target.checked)" />
-                  {{ g.group_name }}
-                </label>
+                <template v-if="activeGroups.length">
+                  <label v-for="g in activeGroups" :key="g.group_id" class="checkbox-item">
+                    <input type="checkbox" :value="g.group_id"
+                      :checked="Array.isArray(activeCategory.categories_group_id) && activeCategory.categories_group_id.includes(g.group_id)"
+                      @change="toggleCategoryGroup(g.group_id, $event.target.checked)" />
+                    {{ g.group_name }}
+                  </label>
+                </template>
+                <span v-else class="empty-options-hint">暂无可用分组，请先在「分组管理」中创建</span>
               </div>
               <div class="field-hint">不选则为公共分类（所有用户可见）</div>
             </div>
@@ -146,7 +149,7 @@
 </template>
 
 <script setup>
-import { ref, inject, onMounted, computed } from 'vue'
+import { ref, inject, onMounted, onActivated, onUnmounted, computed } from 'vue'
 import { listCategories, createCategory, updateCategory, updateCategoryStatus, deleteCategory as deleteCategoryApi, uploadCategoryImage, previewCategoryGroupChange } from '@/api/category'
 import { deleteProductFile } from '@/api/product'
 import { listGroups } from '@/api/group'
@@ -163,11 +166,13 @@ const showCustomParamNames = computed(() => String(activeCategory.value?.has_cus
 
 const fetchActiveGroups = async () => {
   try {
-    const res = await listGroups({ status: 'active' })
+    const res = await listGroups({ group_id: '', status: 'active' })
     if (res && res.success) {
       activeGroups.value = res.data?.items || res.data || []
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn('[CategoryList] fetchActiveGroups failed:', e)
+  }
 }
 
 const fetchCategories = async () => {
@@ -240,8 +245,20 @@ const sortTree = (nodes) => {
   nodes.forEach(n => sortTree(n.children))
 }
 
+const onGroupChanged = () => {
+  fetchActiveGroups()
+  fetchCategories()
+}
+
 onMounted(() => {
   fetchCategories()
+  fetchActiveGroups()
+  window.addEventListener('shopback-group-changed', onGroupChanged)
+})
+onUnmounted(() => {
+  window.removeEventListener('shopback-group-changed', onGroupChanged)
+})
+onActivated(() => {
   fetchActiveGroups()
 })
 
@@ -264,7 +281,8 @@ const toggleExpand = (cat) => {
   cat.expanded = !cat.expanded
 }
 
-const handleAddCategory = () => {
+const handleAddCategory = async () => {
+  await fetchActiveGroups()
   const options = [{ label: '一级类目', value: '无' }]
   const pushOpts = (nodes, prefix) => {
     (nodes || []).forEach(n => {
@@ -318,6 +336,25 @@ const handleAddCategory = () => {
     },
     onConfirm: async (fields) => {
       try {
+        const groupVal = fields.categories_group_id.value
+        const parentName = fields.parent_id.value
+        if (parentName && parentName !== '无') {
+          const parentCat = flatCategories.value.find(c => c.name === parentName)
+          if (parentCat) {
+            const parentGroups = Array.isArray(parentCat.categories_group_id) ? parentCat.categories_group_id : []
+            if (parentGroups.length === 0 && Array.isArray(groupVal) && groupVal.length > 0) {
+              showToast('父分类无分组时，子分类不允许绑定分组')
+              return
+            }
+            if (parentGroups.length > 0 && Array.isArray(groupVal) && groupVal.length > 0) {
+              const invalid = groupVal.filter(id => !parentGroups.includes(id))
+              if (invalid.length) {
+                showToast('子分类绑定分组必须为父分类分组的子集')
+                return
+              }
+            }
+          }
+        }
         const payload = {
           name: fields.name.value,
           parent_id: resolveParentId(fields.parent_id.value),
@@ -327,7 +364,6 @@ const handleAddCategory = () => {
           custom_param2_name: fields.custom_param2_name.hidden ? '' : fields.custom_param2_name.value,
           status: parseInt(fields.status.value)
         }
-        const groupVal = fields.categories_group_id.value
         if (Array.isArray(groupVal) && groupVal.length) {
           payload.categories_group_id = groupVal
         }
@@ -378,6 +414,25 @@ const saveCategory = async () => {
     ? activeCategory.value.categories_group_id
     : []
 
+  const parentName = activeCategory.value.parent_id
+  if (parentName && parentName !== '无' && parentName !== '0') {
+    const parentCat = flatCategories.value.find(c => c.name === parentName)
+    if (parentCat) {
+      const parentGroups = Array.isArray(parentCat.categories_group_id) ? parentCat.categories_group_id : []
+      if (parentGroups.length === 0 && groupVal.length > 0) {
+        showToast('父分类无分组时，子分类不允许绑定分组')
+        return
+      }
+      if (parentGroups.length > 0 && groupVal.length > 0) {
+        const invalid = groupVal.filter(id => !parentGroups.includes(id))
+        if (invalid.length) {
+          showToast('子分类绑定分组必须为父分类分组的子集')
+          return
+        }
+      }
+    }
+  }
+
   try {
     const updatePayload = {
       category_id: activeCategory.value.id,
@@ -388,33 +443,66 @@ const saveCategory = async () => {
       custom_param1_name: activeCategory.value.custom_param1_name || '',
       custom_param2_name: activeCategory.value.custom_param2_name || '',
       categories_group_id: groupVal.length ? groupVal : [],
-      confirm: 0
+      confirm: 1
     }
 
-    const previewRes = await updateCategory(updatePayload)
+    const originalGroupIds = flatCategories.value.find(c => c.id === activeCategory.value.id)
+    const originalGroups = originalGroupIds ? (Array.isArray(originalGroupIds.categories_group_id) ? originalGroupIds.categories_group_id : []) : []
+    const groupChanged = JSON.stringify([...groupVal].sort()) !== JSON.stringify([...originalGroups].sort())
 
-    if (previewRes && previewRes.success && previewRes.data && previewRes.data.need_confirm) {
+    if (groupChanged) {
+      updatePayload.confirm = 0
+      const previewRes = await updateCategory(updatePayload)
+
+      if (previewRes && previewRes.success && previewRes.data && previewRes.data.need_confirm) {
       const preview = previewRes.data
       const isToPublic = groupVal.length === 0
-      const msg = isToPublic
-        ? `将分类改为公共分类，${preview.message || '可能影响关联母商品白名单'}。\n\n确认：清空分类分组并清空母商品白名单\n取消：仅清空分类分组，保留母商品白名单`
-        : `分组变更将影响以下母商品白名单：${preview.message || ''}\n\n确认后将自动移除冲突分组。`
-
-      confirmDialog({
-        title: '分组变更确认',
-        content: msg,
-        onConfirm: async () => {
-          updatePayload.confirm = 1
-          const res = await updateCategory(updatePayload)
-          if (res && res.success) {
-            showToast('保存成功')
-            await fetchCategories()
-          } else {
-            showToast(res?.message || res?.data || '保存失败')
+      if (isToPublic) {
+        showModal({
+          type: 'form',
+          title: '分组变更确认',
+          fields: {
+            _info: { label: '提示', type: 'text', value: preview.message || '将分类改为公共分类，可能影响关联母商品白名单', readonly: true },
+            action: {
+              label: '请选择操作方式',
+              type: 'select',
+              value: '1',
+              options: [
+                { label: '清空分类分组并清空母商品白名单', value: '1' },
+                { label: '仅清空分类分组，保留母商品白名单', value: '2' }
+              ]
+            }
+          },
+          onConfirm: async (f) => {
+            updatePayload.confirm = parseInt(f.action.value)
+            const res = await updateCategory(updatePayload)
+            if (res && res.success) {
+              showToast('保存成功')
+              await fetchCategories()
+            } else {
+              showToast(res?.message || res?.data || '保存失败')
+            }
           }
-        }
-      })
+        })
+      } else {
+        const msg = `分组变更将影响以下母商品白名单：${preview.message || ''}\n\n确认后将自动移除冲突分组。`
+        confirmDialog({
+          title: '分组变更确认',
+          content: msg,
+          onConfirm: async () => {
+            updatePayload.confirm = 1
+            const res = await updateCategory(updatePayload)
+            if (res && res.success) {
+              showToast('保存成功')
+              await fetchCategories()
+            } else {
+              showToast(res?.message || res?.data || '保存失败')
+            }
+          }
+        })
+      }
       return
+    }
     }
 
     updatePayload.confirm = 1
@@ -684,6 +772,11 @@ const removeSelectedCategoryImage = () => {
   margin-top: 6px;
   font-size: 12px;
   color: #999;
+}
+.empty-options-hint {
+  font-size: 13px;
+  color: #f59e0b;
+  padding: 4px 0;
 }
 .product-thumb {
   position: relative;

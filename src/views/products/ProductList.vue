@@ -101,7 +101,7 @@
 </template>
 
 <script>
-import { inject, reactive, onMounted, ref, computed } from 'vue'
+import { inject, reactive, onMounted, onActivated, onUnmounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   createAvailableProduct,
@@ -112,7 +112,8 @@ import {
   updateAvailableProductStatus,
   listAvailableProducts,
   searchAvailableProducts,
-  deleteAvailableProduct
+  deleteAvailableProduct,
+  getVisibleUsers
 } from '@/api/available_product'
 import { getOrderStats, getAvailableProductSalesStats } from '@/api/stats'
 import { listCategories } from '@/api/category'
@@ -178,11 +179,13 @@ export default {
     const activeGroups = ref([])
     const fetchActiveGroups = async () => {
       try {
-        const res = await listGroups({ status: 'active' })
+        const res = await listGroups({ group_id: '', status: 'active' })
         if (res && res.success) {
           activeGroups.value = res.data?.items || res.data || []
         }
-      } catch (e) {}
+      } catch (e) {
+        console.warn('[ProductList] fetchActiveGroups failed:', e)
+      }
     }
     const loadCategoriesMap = async () => {
       try {
@@ -271,9 +274,21 @@ export default {
       return arr
     })
 
+    const onGroupChanged = () => {
+      fetchActiveGroups()
+      fetchProducts()
+    }
+
     onMounted(() => {
       loadCategoriesMap()
       fetchProducts()
+      fetchActiveGroups()
+      window.addEventListener('shopback-group-changed', onGroupChanged)
+    })
+    onUnmounted(() => {
+      window.removeEventListener('shopback-group-changed', onGroupChanged)
+    })
+    onActivated(() => {
       fetchActiveGroups()
     })
 
@@ -314,7 +329,8 @@ export default {
 
     // --- Main Product Operations ---
 
-    const handleCreateProduct = () => {
+    const handleCreateProduct = async () => {
+      await fetchActiveGroups()
       const groupOptions = activeGroups.value.map(g => ({ label: g.group_name, value: g.group_id }))
       showModal({
         type: 'form',
@@ -532,8 +548,20 @@ export default {
           categoryOptions.push({ label, value })
         })
       } catch (e) {}
-      const groupOptions = activeGroups.value.map(g => ({ label: g.group_name, value: g.group_id }))
-      const currentVisibleIds = Array.isArray(item.available_products_visible_user_ids) ? item.available_products_visible_user_ids : []
+      let groupOptions = []
+      let currentVisibleIds = []
+      try {
+        const visRes = await getVisibleUsers({ product_id: item.available_product_id })
+        if (visRes && visRes.success) {
+          const visItems = visRes.data?.items || visRes.data || []
+          groupOptions = visItems.map(g => ({ label: g.group_name, value: g.group_id }))
+          currentVisibleIds = visItems.filter(g => g.bind_status === 'bound').map(g => g.group_id)
+        }
+      } catch (e) {
+        await fetchActiveGroups()
+        groupOptions = activeGroups.value.map(g => ({ label: g.group_name, value: g.group_id }))
+        currentVisibleIds = Array.isArray(item.available_products_visible_user_ids) ? item.available_products_visible_user_ids : []
+      }
       showModal({
         type: 'form',
         title: '编辑商品',
@@ -585,7 +613,7 @@ export default {
 
           const categoryChanged = fields.category_name.value !== (categoryOptions.find(o => o.label === String(item.category_id))?.value || '')
           if (categoryChanged) {
-            formData.append('confirm', '1')
+            formData.append('confirm', '0')
           }
 
           if (fields.main_image.files) {
@@ -618,13 +646,58 @@ export default {
 
           try {
             const res = await updateAvailableProduct(formData, { onUploadProgress: (e) => setUploadProgress && setUploadProgress(e, '正在上传商品') })
+            endUploadProgress && endUploadProgress()
+            if (res && res.success && categoryChanged && res.data && res.data.need_confirm) {
+              const preview = res.data
+              showModal({
+                type: 'confirm',
+                title: '分类变更确认',
+                message: `${preview.message || '分类变更将影响母商品白名单'}\n\n确认后将自动移除冲突分组。`,
+                onConfirm: async () => {
+                  const fd2 = new FormData()
+                  fd2.append('product_id', item.available_product_id)
+                  fd2.append('name', fields.name.value)
+                  fd2.append('category_name', fields.category_name.value)
+                  fd2.append('sort_order', fields.sort_order.value)
+                  fd2.append('shipping_origin', fields.shipping_origin.value)
+                  fd2.append('status', fields.status.value)
+                  fd2.append('is_free_shipping', fields.is_free_shipping.value)
+                  fd2.append('shipping_time_hours', fields.shipping_time_hours.value)
+                  fd2.append('support_no_reason_return_7d', fields.support_no_reason_return_7d.value)
+                  fd2.append('visible_user_ids', JSON.stringify(Array.isArray(visibleIds) ? visibleIds : []))
+                  fd2.append('confirm', '1')
+                  if (fields.main_image.files) {
+                    Array.from(fields.main_image.files).forEach(f => fd2.append('main_image', f))
+                  }
+                  if (fields.images.files) {
+                    Array.from(fields.images.files).forEach(f => fd2.append('images', f))
+                  }
+                  if (fields.video_url.files) {
+                    Array.from(fields.video_url.files).forEach(f => fd2.append('video_url', f))
+                  }
+                  if (removedMain.length) fd2.append('remove_main_image', JSON.stringify(removedMain))
+                  if (removedImages.length) fd2.append('remove_images', JSON.stringify(removedImages))
+                  if (removedVideos.length) fd2.append('remove_video_url', JSON.stringify(removedVideos))
+                  try {
+                    const res2 = await updateAvailableProduct(fd2)
+                    if (res2 && res2.success) {
+                      showToast('更新商品成功')
+                      fetchProducts()
+                    } else {
+                      showToast(resolveApiMessage(res2, '更新失败'))
+                    }
+                  } catch (e2) {
+                    showToast(resolveApiMessage(e2, '更新失败'))
+                  }
+                }
+              })
+              return
+            }
             if (res && res.success) {
               showToast('更新商品成功')
-              endUploadProgress && endUploadProgress()
               fetchProducts()
             } else {
               const msg = resolveApiMessage(res, '更新失败')
-              endUploadProgress && endUploadProgress()
               showToast(String(msg))
             }
           } catch (e) {
@@ -796,6 +869,9 @@ export default {
   vertical-align: middle;
   text-align: center;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
 }
 .data-table tr:hover td {
   background-color: #f9fafb;
